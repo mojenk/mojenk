@@ -1,0 +1,32 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hobg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1710" />
+      <stop offset="100%" stop-color="#3d3520" />
+    </linearGradient>
+    <linearGradient id="hoskin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d8c4a0" />
+      <stop offset="100%" stop-color="#a68b64" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#hobg)" />
+  <path d="M55,200 C55,150 72,125 100,125 C128,125 145,150 145,200 Z" fill="#4a432a" />
+  <ellipse cx="100" cy="88" rx="30" ry="34" fill="url(#hoskin)" />
+  <!-- Curly hair -->
+  <path d="M70,88 C68,58 80,44 100,44 C120,44 132,58 130,88 C132,70 124,56 100,56 C76,56 68,70 70,88" fill="#8b5a2b" />
+  <!-- Big friendly eyes -->
+  <circle cx="90" cy="90" r="4" fill="#1a1510" />
+  <circle cx="110" cy="90" r="4" fill="#1a1510" />
+  <!-- Round face / cheeks -->
+  <circle cx="82" cy="102" r="6" fill="#b89c78" opacity="0.6" />
+  <circle cx="118" cy="102" r="6" fill="#b89c78" opacity="0.6" />
+  <!-- Pipe hint -->
+  <line x1="118" y1="108" x2="150" y2="98" stroke="#5c4a3a" stroke-width="3" />
+  <circle cx="154" cy="96" r="5" fill="#3d2e1e" />
+  <rect x="4" y="4" width="192" height="192" fill="none" stroke="#8a7a4a" stroke-width="4" rx="8" />
+  <rect x="10" y="10" width="180" height="180" fill="none" stroke="#c9b86a" stroke-width="1" rx="4" />
+  <circle cx="12" cy="12" r="3" fill="#c9b86a" />
+  <circle cx="188" cy="12" r="3" fill="#c9b86a" />
+  <circle cx="12" cy="188" r="3" fill="#c9b86a" />
+  <circle cx="188" cy="188" r="3" fill="#c9b86a" />
+</svg>

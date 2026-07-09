@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>test login</title></head>
+<body>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  const username = params.get('username');
+  const target = params.get('target') || '/';
+  if (id) {
+    localStorage.setItem('dnd_user', JSON.stringify({ id, username }));
+  }
+  window.location.href = target;
+</script>
+</body>
+</html>

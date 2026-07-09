@@ -1,0 +1,34 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ibg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#120d1a" />
+      <stop offset="100%" stop-color="#2d1a3d" />
+    </linearGradient>
+    <linearGradient id="iskin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a67c9c" />
+      <stop offset="100%" stop-color="#6b4a66" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#ibg)" />
+  <path d="M42,200 C42,138 62,112 100,112 C138,112 158,138 158,200 Z" fill="#3d2a4a" />
+  <ellipse cx="100" cy="76" rx="34" ry="40" fill="url(#iskin)" />
+  <!-- Horns -->
+  <path d="M72,60 C65,35 78,20 85,40 C80,35 72,45 72,60" fill="#8a7a8a" />
+  <path d="M128,60 C135,35 122,20 115,40 C120,35 128,45 128,60" fill="#8a7a8a" />
+  <!-- Hair -->
+  <path d="M66,75 C64,45 78,28 100,28 C122,28 136,45 134,75 C136,58 128,46 100,46 C72,46 64,58 66,75" fill="#1a1018" />
+  <!-- Glowing eyes -->
+  <circle cx="88" cy="82" r="4" fill="#e8a8d8" />
+  <circle cx="112" cy="82" r="4" fill="#e8a8d8" />
+  <circle cx="88" cy="82" r="2" fill="#fff" />
+  <circle cx="112" cy="82" r="2" fill="#fff" />
+  <!-- Staff hint -->
+  <line x1="165" y1="200" x2="165" y2="130" stroke="#5c4a3a" stroke-width="4" />
+  <circle cx="165" cy="125" r="7" fill="#9a6aa0" />
+  <rect x="4" y="4" width="192" height="192" fill="none" stroke="#7a5a8a" stroke-width="4" rx="4" />
+  <rect x="10" y="10" width="180" height="180" fill="none" stroke="#c9a8d8" stroke-width="1" rx="2" />
+  <circle cx="12" cy="12" r="3" fill="#c9a8d8" />
+  <circle cx="188" cy="12" r="3" fill="#c9a8d8" />
+  <circle cx="12" cy="188" r="3" fill="#c9a8d8" />
+  <circle cx="188" cy="188" r="3" fill="#c9a8d8" />
+</svg>

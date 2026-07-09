@@ -1,0 +1,10 @@
+{
+  "deploy": {
+    "type": "fullstack",
+    "frontendDir": "frontend",
+    "backendDir": "backend",
+    "apiPrefix": "/api",
+    "backendPort": 4001,
+    "backendStartCommand": "npm start"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Kader'in Sesi",
+  "short_name": "DnD AI",
+  "description": "Yapay Zeka Hikaye Anlatıcılı D&D Macerası",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f3460",
+  "theme_color": "#0f3460",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

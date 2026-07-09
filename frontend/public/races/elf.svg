@@ -1,0 +1,30 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ebg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1a15" />
+      <stop offset="100%" stop-color="#1e3d2f" />
+    </linearGradient>
+    <linearGradient id="eskin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d8c4a8" />
+      <stop offset="100%" stop-color="#9c8a6e" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#ebg)" />
+  <path d="M45,200 C45,145 65,115 100,115 C135,115 155,145 155,200 Z" fill="#2f4a3a" />
+  <ellipse cx="100" cy="80" rx="32" ry="38" fill="url(#eskin)" />
+  <!-- pointed ears -->
+  <path d="M68,78 L52,62 L70,72 Z" fill="#9c8a6e" />
+  <path d="M132,78 L148,62 L130,72 Z" fill="#9c8a6e" />
+  <!-- hood -->
+  <path d="M62,85 C60,40 80,20 100,20 C120,20 140,40 138,85 L132,70 C132,50 118,38 100,38 C82,38 68,50 68,70 Z" fill="#1f2f25" />
+  <circle cx="88" cy="82" r="3.5" fill="#1a1510" />
+  <circle cx="112" cy="82" r="3.5" fill="#1a1510" />
+  <!-- bow hint -->
+  <path d="M150,200 Q170,150 150,120" fill="none" stroke="#4a674d" stroke-width="3" />
+  <rect x="4" y="4" width="192" height="192" fill="none" stroke="#6b8a6d" stroke-width="4" rx="4" />
+  <rect x="10" y="10" width="180" height="180" fill="none" stroke="#a8c9a9" stroke-width="1" rx="2" />
+  <circle cx="12" cy="12" r="3" fill="#a8c9a9" />
+  <circle cx="188" cy="12" r="3" fill="#a8c9a9" />
+  <circle cx="12" cy="188" r="3" fill="#a8c9a9" />
+  <circle cx="188" cy="188" r="3" fill="#a8c9a9" />
+</svg>

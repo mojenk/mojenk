@@ -1,0 +1,32 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="dbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a120d" />
+      <stop offset="100%" stop-color="#3d2a1a" />
+    </linearGradient>
+    <linearGradient id="dskin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c4a47c" />
+      <stop offset="100%" stop-color="#8c6e47" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#dbg)" />
+  <path d="M42,200 C42,138 62,112 100,112 C138,112 158,138 158,200 Z" fill="#4a3b2a" />
+  <ellipse cx="100" cy="76" rx="36" ry="40" fill="url(#dskin)" />
+  <!-- Helmet with horns -->
+  <path d="M64,72 C64,32 82,16 100,16 C118,16 136,32 136,72 L136,60 C136,36 120,28 100,28 C80,28 64,36 64,60 Z" fill="#5c4a3a" />
+  <path d="M66,48 L48,28 L62,52 Z" fill="#7a6a55" />
+  <path d="M134,48 L152,28 L138,52 Z" fill="#7a6a55" />
+  <!-- Beard -->
+  <path d="M64,96 C64,140 82,160 100,160 C118,160 136,140 136,96 L136,106 C136,150 120,170 100,170 C80,170 64,150 64,106 Z" fill="#c9b896" />
+  <circle cx="88" cy="82" r="4" fill="#1a1510" />
+  <circle cx="112" cy="82" r="4" fill="#1a1510" />
+  <!-- Pickaxe hint -->
+  <line x1="160" y1="200" x2="170" y2="150" stroke="#7a6a55" stroke-width="5" />
+  <path d="M165,145 L155,130 L175,130 Z" fill="#8a8a8a" />
+  <rect x="4" y="4" width="192" height="192" fill="none" stroke="#9c7d3c" stroke-width="4" rx="4" />
+  <rect x="10" y="10" width="180" height="180" fill="none" stroke="#d4b86a" stroke-width="1" rx="2" />
+  <circle cx="12" cy="12" r="3" fill="#d4b86a" />
+  <circle cx="188" cy="12" r="3" fill="#d4b86a" />
+  <circle cx="12" cy="188" r="3" fill="#d4b86a" />
+  <circle cx="188" cy="188" r="3" fill="#d4b86a" />
+</svg>
