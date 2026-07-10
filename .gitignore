@@ -9,6 +9,16 @@ frontend/node_modules/
 .env.*.local
 backend/.env
 frontend/.env
+backend/.secret.local
+backend/.service-account.local.json
+backend/.gemini-key.local
+backend/.env.*
+!backend/.env.example
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
 
 # Build outputs
 frontend/dist/

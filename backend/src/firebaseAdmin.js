@@ -1,4 +1,11 @@
-const admin = require('firebase-admin');
+const {
+  applicationDefault,
+  cert,
+  getApp,
+  getApps,
+  initializeApp,
+} = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
 
 let initStatus = 'not_configured';
 let initError = null;
@@ -20,29 +27,33 @@ function loadServiceAccount() {
   }
 }
 
-if (admin.getApps().length === 0) {
+if (getApps().length === 0) {
   const serviceAccount = loadServiceAccount();
   if (serviceAccount) {
     try {
-      admin.initializeApp({ credential: admin.cert(serviceAccount) });
+      initializeApp({ credential: cert(serviceAccount) });
       console.log('Firebase Admin initialized with service account:', serviceAccount.client_email);
       initStatus = 'service_account';
     } catch (err) {
       console.error('Firebase Admin failed to initialize with service account:', err.message);
       initError = err.message;
-      admin.initializeApp({ projectId: serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID || 'kaderin-sesi' });
+      initializeApp({ projectId: serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID || 'kaderin-sesi' });
       initStatus = 'error';
     }
   } else {
-    admin.initializeApp({
-      credential: admin.applicationDefault(),
+    initializeApp({
+      credential: applicationDefault(),
       projectId: process.env.FIREBASE_PROJECT_ID || 'kaderin-sesi',
     });
-    initStatus = process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'application_default' : 'application_default_pending';
+    initStatus = 'application_default';
   }
 }
 
-admin.__initStatus = initStatus;
-admin.__initError = initError;
+const app = getApp();
 
-module.exports = admin;
+module.exports = {
+  app,
+  auth: () => getAuth(app),
+  __initStatus: initStatus,
+  __initError: initError,
+};

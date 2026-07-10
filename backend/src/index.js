@@ -35,22 +35,17 @@ app.get('/api/health', async (req, res) => {
   let firestoreError = null;
   let userCount = null;
   let charCount = null;
-  if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    firestoreStatus = 'credentials_required';
-    firestoreError = 'FIREBASE_SERVICE_ACCOUNT_JSON veya Google application credentials gerekli';
-  } else {
-    try {
-      const [users, characters] = await Promise.all([
-        firestore.collection('users').count().get(),
-        firestore.collection('characters').count().get(),
-      ]);
-      userCount = users.data().count;
-      charCount = characters.data().count;
-      firestoreStatus = 'connected';
-    } catch (err) {
-      firestoreStatus = 'error';
-      firestoreError = err.message;
-    }
+  try {
+    const [users, characters] = await Promise.all([
+      firestore.collection('users').count().get(),
+      firestore.collection('characters').count().get(),
+    ]);
+    userCount = users.data().count;
+    charCount = characters.data().count;
+    firestoreStatus = 'connected';
+  } catch (err) {
+    firestoreStatus = 'error';
+    firestoreError = err.message;
   }
   res.json({
     status: 'ok',

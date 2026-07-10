@@ -25,25 +25,29 @@ Karakter alt koleksiyonları:
 
 Oturum mesajları `sessions/{sessionId}/messages` altında tutulur.
 
-## Gerekli backend ortam değişkenleri
+## Firebase yayını
 
-- `FIREBASE_SERVICE_ACCOUNT_JSON`: Firebase hizmet hesabı JSON'u, tek satır
-- `FIREBASE_PROJECT_ID`: Firebase proje kimliği
-- `GEMINI_API_KEY`: Gemini API anahtarı veya ilk kurulumdan sonra Firestore `appSettings` kaydı
-- `ADMIN_UIDS`: Virgülle ayrılmış Firebase UID listesi veya ilk admin kurulumu
-- `PORT`: Platform tarafından atanır
+Üretimde React arayüzü Firebase Hosting, Express API ise 2. nesil Firebase Functions üzerinde çalışır. Functions çalışma zamanı Firestore'a otomatik Google Cloud kimliğiyle bağlanır; Service Account JSON gerekmez.
 
-Hizmet hesabı kaynak koduna veya `.env.example` içine yazılmamalıdır.
+Gemini anahtarı yalnızca Secret Manager'da tutulur:
+
+```bash
+npx firebase-tools functions:secrets:set GEMINI_API_KEY
+```
+
+İlk yönetici, giriş yaptıktan sonra Ayarlar sayfasındaki tek kullanımlık yönetici atama düğmesiyle belirlenir.
 
 ## Firestore güvenliği
 
 `firestore.rules` istemciden tüm doğrudan okumaları ve yazmaları kapatır. Firebase Admin SDK güvenilir backend ortamında kuralları aşarak çalışır.
 
-Firebase CLI kullanıldığında indeks ve kurallar:
+Derleme ve Firebase dağıtımı:
 
 ```bash
-firebase deploy --only firestore:rules,firestore:indexes
+npm run firebase:deploy
 ```
+
+Bu komut frontend'i derler; Functions, Hosting, Firestore kuralları ve indekslerini `kaderin-sesi` projesine dağıtır. Dağıtım için Firebase projesinin Blaze planında olması gerekir.
 
 ## Çalıştırma
 
@@ -64,4 +68,10 @@ Backend:
 ```bash
 cd backend
 npm start
+```
+
+Yerel Firebase Emulator Suite:
+
+```bash
+npm run firebase:serve
 ```

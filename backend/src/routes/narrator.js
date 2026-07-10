@@ -9,14 +9,10 @@ const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 
-// Lazy-init Gemini client so missing key does not crash app boot.
-// The key is read from the app_settings DB table (set via
-// /api/setup/gemini-key) with a fallback to the GEMINI_API_KEY env var for
-// local/dev usage.
 let genAI;
 async function getGenAI() {
   if (!genAI) {
-    const apiKey = await getSetting('GEMINI_API_KEY', 'GEMINI_API_KEY');
+    const apiKey = process.env.GEMINI_API_KEY || await getSetting('GEMINI_API_KEY');
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not configured.');
     }

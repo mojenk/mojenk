@@ -1,24 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
-const { setSetting, hasSetting } = require('../settings');
+const { hasSetting } = require('../settings');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 
 router.post('/gemini-key', verifyFirebaseToken, async (req, res) => {
-  try {
-    const { apiKey } = req.body || {};
-    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length < 10) {
-      return res.status(400).json({ error: 'Geçerli bir apiKey gerekli' });
-    }
-    if (await hasSetting('GEMINI_API_KEY')) {
-      return res.status(409).json({ error: 'Zaten yapılandırılmış' });
-    }
-    await setSetting('GEMINI_API_KEY', apiKey.trim());
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('setup/gemini-key error:', err.message);
-    res.status(500).json({ error: 'Sunucu hatası' });
-  }
+  res.status(410).json({ error: 'Gemini anahtarı yalnızca Firebase Secret Manager üzerinden yapılandırılabilir' });
 });
 
 router.post('/admin', verifyFirebaseToken, async (req, res) => {

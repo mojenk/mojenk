@@ -8,7 +8,13 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'kaderin-sesi';
 // secrets), we fall back to manual JWT verification against Google's public
 // signing certs, which only needs the (non-secret) project ID. See
 // backend/src/lib/verifyFirebaseIdToken.js for details.
-const useAdminSdk = admin.__initStatus === 'service_account' || admin.__initStatus === 'application_default';
+const useAdminSdk = admin.__initStatus === 'service_account'
+  || (admin.__initStatus === 'application_default' && Boolean(
+    process.env.K_SERVICE
+    || process.env.FUNCTION_TARGET
+    || process.env.GOOGLE_APPLICATION_CREDENTIALS
+    || process.env.GOOGLE_CLOUD_PROJECT
+  ));
 
 async function decodeToken(token) {
   if (useAdminSdk) {

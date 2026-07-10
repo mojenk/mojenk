@@ -1,7 +1,7 @@
 const admin = require('./firebaseAdmin');
 const { getFirestore, Timestamp, FieldValue } = require('firebase-admin/firestore');
 
-const firestore = getFirestore(admin.getApp());
+const firestore = getFirestore(admin.app);
 firestore.settings({ ignoreUndefinedProperties: true });
 
 function normalizeValue(value) {
