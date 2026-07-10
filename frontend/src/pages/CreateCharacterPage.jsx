@@ -148,11 +148,11 @@ export default function CreateCharacterPage({ user }) {
           return user?.id ? user : null;
         }
       })();
-      if (!currentUser?.id) {
+      if (!(currentUser?.uid || currentUser?.firebase_uid || currentUser?.id)) {
         throw new Error('Kullanıcı bilgisi alınamadı');
       }
       const data = await createCharacter({
-        userId: currentUser.id, name, race, charClass,
+        name, race, charClass,
         ...stats, background,
       });
       if (data.character) {

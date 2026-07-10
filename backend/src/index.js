@@ -16,6 +16,7 @@ const firebaseAdmin = require('./firebaseAdmin');
 const app = express();
 const PORT = parseInt(process.env.PORT || process.env.BACKEND_PORT, 10) || 4001;
 
+app.set('trust proxy', 1);
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 

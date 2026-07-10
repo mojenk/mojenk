@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
-const { hasSetting } = require('../settings');
+const { setSetting, hasSetting } = require('../settings');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 
 router.post('/gemini-key', verifyFirebaseToken, async (req, res) => {
