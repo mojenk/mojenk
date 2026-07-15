@@ -33,6 +33,7 @@ ui-debug.log
 frontend/dist/
 backend/public/
 public/
+releases/
 
 # Logs
 *.log
