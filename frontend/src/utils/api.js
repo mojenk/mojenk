@@ -103,6 +103,14 @@ export async function updateCharacterHP(id, hp, userId) {
   });
 }
 
+export async function applyAdReward(characterId, sessionId, turnCount) {
+  return safeFetch(`${API}/characters/${characterId}/reward`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, turnCount }),
+  });
+}
+
 export async function getSessions(characterId) {
   return safeFetch(`${API}/game/sessions?characterId=${characterId}`);
 }
@@ -348,6 +356,10 @@ export async function adminDeleteWorldEvent(id) {
 
 export async function adminCheck() {
   return safeFetch(`${API}/admin/check`);
+}
+
+export async function getAnnouncements() {
+  return safeFetch(`${API}/announcements`);
 }
 
 export async function claimAdmin() {

@@ -11,6 +11,7 @@ const narratorRoutes = require('./routes/narrator');
 const shopRoutes = require('./routes/shop');
 const adminRoutes = require('./routes/admin');
 const setupRoutes = require('./routes/setup');
+const announcementRoutes = require('./routes/announcements');
 const firebaseAdmin = require('./firebaseAdmin');
 
 const app = express();
@@ -26,6 +27,7 @@ app.use('/api/', limiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/setup', setupRoutes);
+app.use('/api/announcements', announcementRoutes);
 app.use('/api/characters', characterRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/narrator', narratorRoutes);

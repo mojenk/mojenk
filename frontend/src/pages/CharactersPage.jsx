@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getCharacters, getSessions, deleteCharacter, deleteSession } from '../utils/api';
 import { playClick, playDamage, playError } from '../utils/sounds';
 import Particles from '../components/Particles';
+import AnnouncementsBar from '../components/AnnouncementsBar';
 import { Sparkles, Swords, Castle, Skull, Heart, Coins, ScrollText, Trash2, X, Dices } from 'lucide-react';
 
 const RACE_PORTRAITS = {
@@ -184,6 +185,8 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
         </div>
 
       </div>
+
+      <AnnouncementsBar />
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', paddingBottom: '2rem' }}>

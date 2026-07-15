@@ -1,0 +1,23 @@
+{
+  "appId": "com.kaderinsesi.app",
+  "appName": "Kaderin Sesi",
+  "webDir": "../public",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": "android/app/keystore.jks",
+      "keystoreAlias": "kaderinsesi"
+    }
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2500,
+      "launchAutoHide": true,
+      "backgroundColor": "#0d0a07",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP"
+    }
+  }
+}

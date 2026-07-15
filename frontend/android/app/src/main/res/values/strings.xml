@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kaderin Sesi</string>
+    <string name="title_activity_main">Kaderin Sesi</string>
+    <string name="package_name">com.kaderinsesi.app</string>
+    <string name="custom_url_scheme">com.kaderinsesi.app</string>
+</resources>

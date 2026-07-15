@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
-const { setSetting, hasSetting } = require('../settings');
+const { setSetting } = require('../settings');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 
 router.post('/gemini-key', verifyFirebaseToken, async (req, res) => {
@@ -10,8 +10,13 @@ router.post('/gemini-key', verifyFirebaseToken, async (req, res) => {
 
 router.post('/admin', verifyFirebaseToken, async (req, res) => {
   try {
-    if (await hasSetting('ADMIN_UIDS')) {
-      return res.status(409).json({ error: 'Zaten yapılandırılmış' });
+    const settingRef = firestore.collection('appSettings').doc('ADMIN_UIDS');
+    const settingSnapshot = await settingRef.get();
+    const configuredUids = settingSnapshot.exists
+      ? String(settingSnapshot.data().value || '').split(',').map((value) => value.trim()).filter(Boolean)
+      : [];
+    if (configuredUids.length > 0 && !configuredUids.includes(req.firebaseUser.uid)) {
+      return res.status(409).json({ error: 'Başka bir yönetici hesabı zaten yapılandırılmış' });
     }
     await setSetting('ADMIN_UIDS', req.firebaseUser.uid);
     const ref = firestore.collection('users').doc(req.firebaseUser.uid);

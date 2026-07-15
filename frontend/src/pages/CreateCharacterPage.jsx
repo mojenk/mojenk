@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createCharacter } from '../utils/api';
+import { showInterstitialAd } from '../utils/ads';
 import { playClick, playMagic } from '../utils/sounds';
 import Particles from '../components/Particles';
 import { ScrollText, Check, Target, AlertTriangle, Swords, Sword } from 'lucide-react';
@@ -156,6 +157,7 @@ export default function CreateCharacterPage({ user }) {
         ...stats, background,
       });
       if (data.character) {
+        await showInterstitialAd();
         navigate('/', { replace: true, state: { createdCharacterId: data.character.id } });
       }
       else setError(data.error || 'Hata oluştu');

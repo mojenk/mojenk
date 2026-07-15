@@ -334,14 +334,14 @@ export default function SettingsPage({ isAdmin }) {
         )}
 
         {/* App info */}
-        <div className="stone-card" style={{ padding: '1.25rem', textAlign: 'center' }}>
+        <div className="stone-card" style={{ padding: '1.25rem', textAlign: 'center', marginBottom: '1rem' }}>
           <p
             style={{
               fontFamily: "'Crimson Text', serif",
               color: 'var(--text-dim)', fontSize: '0.9rem', margin: 0,
             }}
           >
-            Kader'in Sesi — v1.0
+            Kader'in Sesi — Firebase v1.1
           </p>
           <p
             style={{
@@ -351,6 +351,25 @@ export default function SettingsPage({ isAdmin }) {
           >
             AI destekli D&D macera oyunu
           </p>
+        </div>
+
+        {/* Legal */}
+        <div className="stone-card" style={{ padding: '1.25rem', textAlign: 'center' }}>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={() => { playClick(); navigate('/privacy-policy'); }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--gold)',
+              fontFamily: "'Cinzel', serif",
+              fontSize: '0.8rem',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+            }}
+          >
+            Gizlilik Politikası
+          </motion.button>
         </div>
       </div>
     </div>

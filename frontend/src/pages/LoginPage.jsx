@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { playClick, playMagic } from '../utils/sounds';
 import { useSound } from '../hooks/useSound';
 import Particles from '../components/Particles';
+import AnnouncementsBar from '../components/AnnouncementsBar';
 import { auth, googleProvider, signInWithPopup, signInAnonymously } from '../firebase';
 import { apiGetCurrentUser } from '../utils/api';
 
@@ -96,6 +97,8 @@ export default function LoginPage({ onLogin }) {
       }}
     >
       <Particles type="ember" count={15} />
+
+      <AnnouncementsBar />
 
       <motion.button
         whileTap={{ scale: 0.9 }}

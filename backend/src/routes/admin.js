@@ -2,13 +2,13 @@ const express = require('express');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 const { grantXpAndLevelUp } = require('../utils/leveling');
-const { getSetting } = require('../settings');
 const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 
 const router = express.Router();
 
 async function requireAdmin(req, res, next) {
-  const raw = (await getSetting('ADMIN_UIDS', 'ADMIN_UIDS')) || '';
+  const setting = await firestore.collection('appSettings').doc('ADMIN_UIDS').get();
+  const raw = setting.exists ? String(setting.data().value || '') : '';
   const adminUids = raw.split(',').map((value) => value.trim()).filter(Boolean);
   if (!adminUids.includes(req.firebaseUser.uid)) {
     return res.status(403).json({ error: 'Admin yetkisi gerekli' });

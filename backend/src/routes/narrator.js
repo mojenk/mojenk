@@ -21,9 +21,19 @@ async function getGenAI() {
   return genAI;
 }
 
-async function getModel(modelName = 'gemini-2.5-flash') {
+async function getModel(modelName = 'gemini-2.5-flash', systemInstruction = null, generationConfig = {}) {
   const ai = await getGenAI();
-  return ai.getGenerativeModel({ model: modelName });
+  const config = {
+    model: modelName,
+    generationConfig: {
+      maxOutputTokens: 2000,
+      ...generationConfig,
+    },
+  };
+  if (systemInstruction) {
+    config.systemInstruction = { parts: [{ text: systemInstruction }] };
+  }
+  return ai.getGenerativeModel(config);
 }
 
 const SUMMARY_INTERVAL = 10;
@@ -31,7 +41,7 @@ const RECENT_KEEP = 8;
 const AI_TIMEOUT_MS = 30000;
 const MAX_RETRIES = 1;
 
-function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = []) {
+async function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = []) {
   const mod = v => Math.floor((v - 10) / 2);
   const fmt = v => (v >= 0 ? '+' : '') + v;
 
@@ -69,6 +79,15 @@ function buildSystem(character, storySummary, sessionTitle, inventory, language 
     ? `\n## AKTİF GÖREVLER — title'ı BUNLARLA HARFİ HARFİNE AYNI YAZ (kopyala-yapıştır gibi düşün, tek bir harf bile farklı olamaz)\n${activeQuests.map(q => `- "${q.title}": ${q.description || ''}`).join('\n')}\nOyuncunun eylemi bu görevlerden birinin hedefini karşılıyorsa (istenen yere gitti, istenen kişiyle konuştu, istenen eşyayı buldu/getirdi, istenen düşmanı yendi vb.) GECİKMEDEN, AYNI yanıtta {"event":"quest_complete","title":"..."} event'ini yukarıdaki title ile HARFİ HARFİNE aynı şekilde ekle. Emin değilsen bile oyuncu mantıklı bir şekilde hedefi tamamladıysa görevi kapat, ertelemeyip oyuncuyu bekletme.\n`
     : '';
 
+  const activeWorldEvents = await loadActiveWorldEvents();
+  const worldEventBlock = activeWorldEvents.length > 0
+    ? `
+## CANLI DÜNYA OLAYLARI — HİKÂYEYE DOĞAL YANSIT
+Şu anda dünyada şu olaylar yaşanıyor. Uygunsa hikâyede bunlara atıfta bulun, atmosfere veya karşılaşmalara yansıt, ama oyuncuyu zorla bunlara çekme:
+${activeWorldEvents.map(e => `- **${e.title}** (${e.type}): ${e.description}`).join('\n')}
+`
+    : '';
+
   // Scenario-specific hints that guide AI tone and content
   const scenarioHints = {
     dungeon: 'Karanlık zindanlar, yeraltı labirentleri, tuzaklar, lanetli hazineler ve antik koruyucular. Atmosfer: nemli, loş, tehlikeli.',
@@ -103,7 +122,7 @@ Hikayedeki roller, sosyal tepkiler ve fiziksel yetenekler bu ırk özelliklerine
 
 ${character.background ? `## KARAKTER GEÇMİŞİ\n${character.background}\nBu geçmişi hikayenin akışına doğal yansıt: NPC'lerin tepkileri, geçmişle bağlantılı olaylar ve diyaloglar bu hikayeye göre şekillensin.\n` : ''}## SENARYO: ${sessionTitle || 'Bilinmeyen Macera'}
 ${scenarioHint}
-${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${storySummary}\n` : ''}${npcBlock}${followerBlock}${questBlock}
+${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${storySummary}\n` : ''}${npcBlock}${followerBlock}${questBlock}${worldEventBlock}
 
 ## SAVAŞ KURALLARI
 1. **Saldırı**: Oyuncu d20 atıyorsa → sonuç >= düşman AC ise İSABET, sonra silah hasarı hesapla. Aksi halde ISKALAMA.
@@ -192,9 +211,7 @@ function stripPlayerFacingText(text) {
 }
 
 async function callGemini(systemPrompt, rawHistory, userMessage) {
-  const chatModel = await getModel('gemini-2.5-flash');
-  chatModel.systemInstruction = { role: 'system', parts: [{ text: systemPrompt }] };
-  chatModel.generationConfig = { maxOutputTokens: 2000 };
+  const chatModel = await getModel('gemini-2.5-flash', systemPrompt);
 
   // Gemini'ye sadece tam user→model çiftlerini ver
   const pairs = [];
@@ -213,31 +230,28 @@ async function callGemini(systemPrompt, rawHistory, userMessage) {
     }
   }
 
-  const chat = chatModel.startChat({ history: pairs });
-
-  // Timeout + retry
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
+      const chat = chatModel.startChat({ history: pairs });
       const result = await Promise.race([
         chat.sendMessage(userMessage),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('AI_TIMEOUT')), AI_TIMEOUT_MS)
         ),
       ]);
-      return result.response.text();
+      const text = result.response.text().trim();
+      if (!text) throw new Error('AI_EMPTY_RESPONSE');
+      return text;
     } catch (err) {
-      if (attempt < MAX_RETRIES && (err.message === 'AI_TIMEOUT' || err.status === 503)) {
+      if (attempt < MAX_RETRIES && (err.message === 'AI_TIMEOUT' || err.message === 'AI_EMPTY_RESPONSE' || err.status === 429 || err.status === 503)) {
         await new Promise(r => setTimeout(r, 2000));
         continue;
       }
-      if (err.message === 'AI_TIMEOUT') {
-        return '';
-      }
       console.error('Gemini call failed:', err.message);
-      return '';
+      throw new Error('Anlatıcı yanıt vermedi, tekrar dene');
     }
   }
-  return '';
+  throw new Error('Anlatıcı yanıt vermedi, tekrar dene');
 }
 
 async function refreshSummary(sessionId, characterName, existing) {
@@ -258,14 +272,49 @@ async function refreshSummary(sessionId, characterName, existing) {
       ? `Mevcut özet:\n${truncatedExisting}\n\nYeni olaylar:\n${truncatedText}\n\nTümünü 200 kelimeyi geçmeyen tutarlı Türkçe özete dönüştür. Önemli olaylar, eşyalar, konumu belirt.`
       : `Aşağıdaki D&D oyun kayıtlarını 200 kelimeyi geçmeyen Türkçe özete dönüştür:\n${truncatedText}`;
 
-    const m = await getModel('gemini-2.5-flash');
-    m.systemInstruction = { role: 'system', parts: [{ text: 'Sen bir D&D hikaye özetleyicisisin. Kısa, bilgi yoğun özetler yazarsın.' }] };
-    m.generationConfig = { maxOutputTokens: 400 };
+    const m = await getModel('gemini-2.5-flash', 'Sen bir D&D hikaye özetleyicisisin. Kısa, bilgi yoğun özetler yazarsın.', { maxOutputTokens: 400 });
     const r = await m.generateContent(prompt);
     const summary = r.response.text().substring(0, 2000);
     await firestore.collection('sessions').doc(sessionId).update({ story_summary: summary, updated_at: serverTimestamp() });
   } catch (e) {
     console.error('Summary error:', e.message);
+  }
+}
+
+function summarizeScene(text) {
+  const lower = (text || '').toLowerCase();
+  if (lower.includes('zindan') || lower.includes('zind')) return 'dungeon';
+  if (lower.includes('orman')) return 'forest';
+  if (lower.includes('taverna') || lower.includes('han')) return 'tavern';
+  if (lower.includes('şehir') || lower.includes('sokak')) return 'city';
+  if (lower.includes('ejderha') || lower.includes('dağ')) return 'mountain';
+  if (lower.includes('deniz') || lower.includes('gemi') || lower.includes('korsan')) return 'sea';
+  if (lower.includes('çöl') || lower.includes('kervan')) return 'caravan';
+  return null;
+}
+
+function summarizeLastChoice(text) {
+  const t = (text || '').replace(/\{[^}]+\}/g, '').trim();
+  const sentences = t.split(/[.!?]+/).map(s => s.trim()).filter(Boolean);
+  return sentences.slice(0, 2).join('. ') || '';
+}
+
+async function updateSessionProgress(sessionId, character, recentReply, activeQuests = []) {
+  try {
+    const sessionRef = firestore.collection('sessions').doc(sessionId);
+    const session = docData(await sessionRef.get()) || {};
+    const scene = summarizeScene(recentReply) || session.current_scene || 'unknown';
+    const lastChoice = summarizeLastChoice(recentReply);
+    const turnCount = (session.turn_count || 0) + 1;
+    await sessionRef.update({
+      current_scene: scene,
+      last_choice_summary: lastChoice,
+      active_quest_titles: activeQuests.map((q) => q.title).slice(0, 10),
+      turn_count: turnCount,
+      updated_at: serverTimestamp(),
+    });
+  } catch (e) {
+    console.error('Session progress update error:', e.message);
   }
 }
 
@@ -540,13 +589,23 @@ router.post('/chat', async (req, res) => {
       ? `\n\n## AKTİF DÜNYA OLAYLARI\n${worldEvents.map((event) => `- ${event.title}: ${event.description}`).join('\n')}`
       : '';
 
-    let aiReply = await callGemini(
-      buildSystem(character, `${session.story_summary || ''}${worldEventContext}`, session.title, inventory, language || 'tr', knownNpcs, activeQuests),
-      history,
-      userContent
+    const systemPrompt = await buildSystem(
+      character,
+      `${session.story_summary || ''}${worldEventContext}`,
+      session.title,
+      inventory,
+      language || 'tr',
+      knownNpcs,
+      activeQuests
     );
-    if (!aiReply) {
-      aiReply = `${character.name} bir an duraksadı ve çevresini dikkatle inceledi. Ormanın içinden gelen hafif bir ses, maceranın sürdüğünü hatırlatıyordu.\n\n**A)** Sese doğru ilerle.\n**B)** Etrafı araştır.\n**C)** Geri çekil ve bekle.`;
+    let aiReply;
+    try {
+      aiReply = await callGemini(systemPrompt, history, userContent);
+    } catch (error) {
+      await userMessageRef.delete().catch((deleteError) => {
+        console.error('Failed user message cleanup error:', deleteError.message);
+      });
+      throw error;
     }
 
     const assistantMessageRef = sessionRef.collection('messages').doc();
@@ -586,6 +645,8 @@ router.post('/chat', async (req, res) => {
     if (messageCount.data().count % SUMMARY_INTERVAL === 0) {
       refreshSummary(sessionId, character.name, session.story_summary || '').catch(() => {});
     }
+
+    await updateSessionProgress(sessionId, character, aiReply, activeQuests);
 
     const updatedChar = docData(await characterRef.get());
     const cleanReply = stripPlayerFacingText(aiReply);
@@ -643,8 +704,8 @@ router.post('/start', async (req, res) => {
       ? `Begin with this scene and write a 4-5 sentence gripping opening. Set the atmosphere, draw the player in, and offer initial choices.\n\nScene: ${opening}`
       : `Bu sahneyle başla ve 4-5 cümlelik sürükleyici bir açılış yap. Havayı kur, oyuncuyu içine çek, ilk seçenekleri sun.\n\nSahne: ${opening}`;
 
-    const intro = (await callGemini(buildSystem(character, '', title, inventory, language || 'tr', existingNpcs), [], prompt))
-      || `${character.name} bilinmezliğe adım atıyor. Ormanın sessizliği arasında ilk adımlarını atarken, uzaklardan bir kıpırtı duyuluyor. Karşısında neyin onu beklediği belirsiz, ama yol artık başlamış durumda.\n\n**A)** Etrafı dikkatle incele.\n**B)** İleriye doğru sessizce ilerle.\n**C)** Geri dönüp izleri kontrol et.`;
+    const systemPrompt = await buildSystem(character, '', title, inventory, language || 'tr', existingNpcs);
+    const intro = await callGemini(systemPrompt, [], prompt);
 
     const messageRef = sessionRef.collection('messages').doc();
     const batch = firestore.batch();
@@ -658,6 +719,9 @@ router.post('/start', async (req, res) => {
     } catch (eventErr) {
       console.error('Start applyEvents error:', eventErr.message);
     }
+
+    await updateSessionProgress(sessionId, character, intro, []);
+
     const updatedChar = docData(await characterRef.get());
     const cleanReply = stripPlayerFacingText(intro);
     res.json({ reply: cleanReply, events, character: updatedChar });
@@ -674,9 +738,7 @@ async function generateFinalSummary(character, history) {
   const recent = history.slice(-12).map(h => `${h.role === 'user' ? 'Oyuncu' : 'Anlatıcı'}: ${h.content}`).join('\n');
   const prompt = `Aşağıdaki D&D karakterinin son 12 eylemini temel alarak, karakterin ölümüne kadar yaşadığı maceranın duygusal ve kısa bir final özetini yaz. 2-3 cümle, Türkçe. Karakter adı: ${character.name}, Irk: ${character.race}, Sınıf: ${character.class}, Seviye: ${character.level}.\n\n${recent}`;
   try {
-    const m = await getModel('gemini-2.5-flash');
-    m.systemInstruction = { role: 'system', parts: [{ text: 'Sen bir D&D hikaye anlatıcısısın. Dokunaklı, kısa ölüm özetleri yazarsın.' }] };
-    m.generationConfig = { maxOutputTokens: 300 };
+    const m = await getModel('gemini-2.5-flash', 'Sen bir D&D hikaye anlatıcısısın. Dokunaklı, kısa ölüm özetleri yazarsın.', { maxOutputTokens: 300 });
     const r = await m.generateContent(prompt);
     return r.response.text().trim();
   } catch (e) {
@@ -709,7 +771,7 @@ router.post('/final-death-save', async (req, res) => {
         await firestore.collection('sessions').doc(sessionId).update({ current_enemy: null, updated_at: serverTimestamp() });
       }
       const updatedChar = docData(await characterRef.get());
-      return res.json({ success: true, roll, total: roll, character: updatedChar });
+      return res.json({ success: true, roll, character: updatedChar });
     }
 
     const historySnapshot = sessionId
@@ -718,6 +780,10 @@ router.post('/final-death-save', async (req, res) => {
     const history = historySnapshot ? historySnapshot.docs.map(docData).reverse() : [];
     const summary = await generateFinalSummary(character, history);
     const finalMessage = `${character.name}'ın son nefesi göğüserken, kader onu sessizce aldı. Kahramanın adı anılarda yaşayacak.`;
+
+    const completedQuestsSnapshot = await characterRef.collection('quests').where('status', '==', 'completed').get();
+    const totalQuests = await characterRef.collection('quests').count().get();
+    const sessionDoc = sessionId ? docData(await firestore.collection('sessions').doc(sessionId).get()) : null;
 
     const fallenRef = firestore.collection('fallenHeroes').doc();
     await fallenRef.set({
@@ -729,14 +795,21 @@ router.post('/final-death-save', async (req, res) => {
       race: character.race,
       class: character.class,
       level: character.level,
+      gold: character.gold || 0,
       summary,
       final_message: finalMessage,
       portrait: character.portrait || null,
       died_at: serverTimestamp(),
+      scenario: sessionDoc?.scenario || character.last_scenario || 'unknown',
+      session_title: sessionDoc?.title || null,
+      turn_count: sessionDoc?.turn_count || 0,
+      completed_quests: completedQuestsSnapshot.size,
+      total_quests: totalQuests.data().count || 0,
+      last_scene: sessionDoc?.current_scene || null,
     });
 
     await deleteCharacterCascade(characterId, { keepFallenHeroRecord: true });
-    res.json({ success: false, roll, total: roll, summary, finalMessage });
+    res.json({ success: false, roll, summary, finalMessage });
   } catch (err) {
     console.error('Final death save error:', err.message);
     res.status(500).json({ error: 'Sunucu hatası' });
@@ -836,5 +909,20 @@ ${recentHistory ? `\nÖNCEKİ KONUŞMA ÖZETİ:\n${recentHistory}\n` : ''}`;
     res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
+
+async function loadActiveWorldEvents() {
+  try {
+    const snapshot = await firestore
+      .collection('worldEvents')
+      .where('active', '==', true)
+      .orderBy('created_at', 'desc')
+      .limit(10)
+      .get();
+    return snapshot.docs.map(docData);
+  } catch (err) {
+    console.error('loadActiveWorldEvents error:', err.message);
+    return [];
+  }
+}
 
 module.exports = router;

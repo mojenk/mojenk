@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest } from '../utils/api';
+import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward } from '../utils/api';
+import { showRewardedAd, showInterstitialAd } from '../utils/ads';
 import { useSound } from '../hooks/useSound';
 import TypewriterText from '../components/TypewriterText';
 import Particles from '../components/Particles';
+import AnnouncementsBar from '../components/AnnouncementsBar';
 import DiceRoll from '../components/DiceRoll';
 import QuestPanel from '../components/QuestPanel';
 import NpcDialogModal from '../components/NpcDialogModal';
@@ -33,12 +35,12 @@ function getFollowerRoleMeta(role) {
 }
 
 const STAT_COLS = [
-  ['STR', 'strength', StatIcon.strength],
-  ['DEX', 'dexterity', StatIcon.dexterity],
-  ['CON', 'constitution', StatIcon.constitution],
-  ['INT', 'intelligence', StatIcon.intelligence],
-  ['WIS', 'wisdom', StatIcon.wisdom],
-  ['CHA', 'charisma', StatIcon.charisma],
+  ['GÜÇ', 'strength', StatIcon.strength],
+  ['ÇEV', 'dexterity', StatIcon.dexterity],
+  ['DAY', 'constitution', StatIcon.constitution],
+  ['ZEK', 'intelligence', StatIcon.intelligence],
+  ['BİL', 'wisdom', StatIcon.wisdom],
+  ['KAR', 'charisma', StatIcon.charisma],
 ];
 
 const RACE_PORTRAITS = {
@@ -147,14 +149,45 @@ export default function GamePage({ user }) {
   const [combatSending, setCombatSending] = useState(false);
   const [currentEnemy, setCurrentEnemy] = useState(null); // first alive enemy for combat
   const [allEnemies, setAllEnemies] = useState([]); // all alive enemies for multi-bar UI
-  const [deathSaveResult, setDeathSaveResult] = useState(null);
   const [finalJourney, setFinalJourney] = useState(null);
+  const [reviveRoll, setReviveRoll] = useState(null);
+  const [reviveState, setReviveState] = useState('idle');
+  const [turnRewardDue, setTurnRewardDue] = useState(false);
+  const [turnAdLoading, setTurnAdLoading] = useState(false);
   const [sceneAmbience, setSceneAmbience] = useState(null);
+  const [session, setSession] = useState(null);
+  const [showRecap, setShowRecap] = useState(true);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const prevHpRef = useRef(null);
   const prevLevelRef = useRef(null);
+
+  const updateTurnProgress = (turnCount) => {
+    if (turnCount > 0 && turnCount % 15 === 0) {
+      const rewardKey = `dnd_turn_reward_${sessionId}_${turnCount}`;
+      if (!localStorage.getItem(rewardKey)) {
+        setTurnRewardDue(true);
+      }
+    }
+    setSession((previousSession) => previousSession
+      ? { ...previousSession, turn_count: turnCount }
+      : previousSession);
+  };
+
+  const registerTurn = () => {
+    setSession((previousSession) => {
+      if (!previousSession) return previousSession;
+      const nextTurnCount = (previousSession.turn_count || 0) + 1;
+      if (nextTurnCount > 0 && nextTurnCount % 15 === 0) {
+        const rewardKey = `dnd_turn_reward_${sessionId}_${nextTurnCount}`;
+        if (!localStorage.getItem(rewardKey)) {
+          setTurnRewardDue(true);
+        }
+      }
+      return { ...previousSession, turn_count: nextTurnCount };
+    });
+  };
 
   const parseEnemies = useCallback((raw) => {
     if (!raw) return [];
@@ -181,10 +214,12 @@ export default function GamePage({ user }) {
         setInventory(charData.inventory || []);
         prevHpRef.current = charData.character?.hp;
         prevLevelRef.current = charData.character?.level;
-        const enemies = parseEnemies(sessionData.session?.current_enemy);
+        const currentSession = sessionData.session || null;
+        setSession(currentSession);
+        const enemies = parseEnemies(currentSession?.current_enemy);
         setAllEnemies(enemies);
         setCurrentEnemy(enemies.length > 0 ? enemies[0] : null);
-        setSceneAmbience(mapScenarioToAmbience(sessionData.session?.scenario || scenario));
+        setSceneAmbience(mapScenarioToAmbience(currentSession?.scenario || scenario));
         const msgs = msgData.messages || [];
         setMessages(msgs);
         // Load NPCs
@@ -360,6 +395,10 @@ export default function GamePage({ user }) {
         playNarrator();
       }
       if (data.character) setCharacter(data.character);
+      const sessionData = await getSession(sessionId);
+      if (sessionData.session) {
+        updateTurnProgress(sessionData.session.turn_count || 0);
+      }
       // Handle scene_change event — update ambience dynamically
       const sceneEvent = Array.isArray(data.events)
         ? data.events.find((e) => e.event === 'scene_change' && e.scene)
@@ -607,6 +646,7 @@ export default function GamePage({ user }) {
         playNarrator();
       }
       if (data.character) setCharacter(data.character);
+      registerTurn();
     } catch (err) {
       setChatError(err.message || 'Mesaj gonderilemedi');
       playError();
@@ -639,6 +679,7 @@ export default function GamePage({ user }) {
         }}
       >
         <Particles type="ember" count={8} />
+        <AnnouncementsBar />
         <div
           style={{
             animation: 'spin 1.5s linear infinite',
@@ -697,6 +738,65 @@ export default function GamePage({ user }) {
         position: 'relative',
       }}
     >
+      <AnnouncementsBar />
+
+      <AnimatePresence>
+        {turnRewardDue && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 120,
+              background: 'rgba(0,0,0,0.82)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '1.25rem',
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 18 }}
+              animate={{ scale: 1, y: 0 }}
+              className="stone-card"
+              style={{ width: '100%', maxWidth: '360px', padding: '1.25rem', textAlign: 'center' }}
+            >
+              <Sparkles size={36} style={{ color: 'var(--gold)', marginBottom: '0.5rem' }} />
+              <h3 className="font-fantasy" style={{ color: 'var(--gold)', margin: '0 0 0.5rem' }}>
+                15 Hamle Tamamlandı
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", lineHeight: 1.5 }}>
+                Maceraya devam etmek için kısa reklamı izle. Reklam tamamlandığında 10 altın da kazanacaksın.
+              </p>
+              <div style={{ marginTop: '1rem' }}>
+                <button
+                  className="btn-gold"
+                  disabled={turnAdLoading}
+                  style={{ width: '100%', opacity: turnAdLoading ? 0.65 : 1 }}
+                  onClick={async () => {
+                    const currentTurn = session?.turn_count || 0;
+                    setTurnAdLoading(true);
+                    try {
+                      await showRewardedAd(async () => {
+                        const result = await applyAdReward(characterId, sessionId, currentTurn);
+                        setCharacter((previousCharacter) => previousCharacter
+                          ? { ...previousCharacter, gold: result.gold, xp: result.xp }
+                          : previousCharacter);
+                        localStorage.setItem(`dnd_turn_reward_${sessionId}_${currentTurn}`, 'claimed');
+                        setTurnRewardDue(false);
+                        setTurnAdLoading(false);
+                      });
+                    } catch {
+                      setTurnAdLoading(false);
+                    }
+                  }}
+                >
+                  {turnAdLoading ? 'Reklam Hazırlanıyor...' : 'Reklamı İzle ve Devam Et'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background dust particles */}
       <Particles type="dust" count={8} />
 
@@ -919,7 +1019,11 @@ export default function GamePage({ user }) {
           {/* Portrait + Back */}
           <motion.button
             whileTap={{ scale: 0.96 }}
-            onClick={() => { playClick(); navigate('/'); }}
+            onClick={async () => {
+              playClick();
+              await showInterstitialAd();
+              navigate('/');
+            }}
             style={{
               width: '2.6rem',
               height: '2.6rem',
@@ -1775,6 +1879,58 @@ export default function GamePage({ user }) {
         }}
       >
         <AnimatePresence initial={false}>
+          {/* Recap card when continuing an existing session */}
+          {showRecap && messages.length > 0 && session?.story_summary && (
+            <motion.div
+              key="recap"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, height: 0 }}
+              style={{
+                background: 'rgba(26,21,16,0.95)',
+                border: '1px solid rgba(201,150,58,0.35)',
+                borderRadius: '10px',
+                padding: '0.75rem 0.9rem',
+                marginBottom: '0.3rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                <span className="font-fantasy" style={{ color: 'var(--gold)', fontSize: '0.7rem', letterSpacing: '0.1em', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <ScrollText size={14} /> KALDIĞIN YER
+                </span>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowRecap(false)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: 0 }}
+                >
+                  <X size={16} />
+                </motion.button>
+              </div>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", fontSize: '0.88rem', lineHeight: 1.55 }}>
+                {session.story_summary}
+              </p>
+              {(session.current_scene || session.active_quest_titles?.length > 0 || session.last_choice_summary) && (
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                  {session.current_scene && session.current_scene !== 'unknown' && (
+                    <span style={{ background: 'rgba(201,150,58,0.12)', color: 'var(--gold)', fontSize: '0.65rem', padding: '0.15rem 0.45rem', borderRadius: '20px', fontFamily: "'Cinzel', serif" }}>
+                      {session.current_scene}
+                    </span>
+                  )}
+                  {session.active_quest_titles?.slice(0, 3).map((title) => (
+                    <span key={title} style={{ background: 'rgba(74,222,128,0.1)', color: '#7fd97f', fontSize: '0.65rem', padding: '0.15rem 0.45rem', borderRadius: '20px', fontFamily: "'Cinzel', serif" }}>
+                      {title}
+                    </span>
+                  ))}
+                  {session.turn_count > 0 && (
+                    <span style={{ background: 'rgba(92,74,42,0.2)', color: 'var(--text-dim)', fontSize: '0.65rem', padding: '0.15rem 0.45rem', borderRadius: '20px', fontFamily: "'Cinzel', serif" }}>
+                      Tur {session.turn_count}
+                    </span>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {/* Starting indicator */}
           {starting && (
             <motion.div
@@ -2138,9 +2294,20 @@ export default function GamePage({ user }) {
             )}
             <motion.button
               whileTap={{ scale: 0.96 }}
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/create-character')}
               className="btn-gold"
-              style={{ fontSize: '1rem', padding: '0.65rem 1.5rem', marginTop: '0.5rem' }}
+              style={{ fontSize: '1rem', padding: '0.65rem 1.5rem' }}
+            >
+              Yeni Kahraman Yarat
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              onClick={async () => {
+                await showInterstitialAd();
+                navigate('/create-character');
+              }}
+              className="btn-dark"
+              style={{ fontSize: '0.9rem', padding: '0.55rem 1.2rem' }}
             >
               Ana Menüye Dön
             </motion.button>
@@ -2148,7 +2315,7 @@ export default function GamePage({ user }) {
         )}
       </AnimatePresence>
 
-      {/* Death overlay — final death save */}
+      {/* Death overlay — single rebirth die */}
       <AnimatePresence>
         {character.status === 'dead' && !finalJourney && (
           <motion.div
@@ -2157,58 +2324,71 @@ export default function GamePage({ user }) {
             style={{
               position: 'fixed', inset: 0, zIndex: 90,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(0,0,0,0.85)', flexDirection: 'column', gap: '1rem',
+              background: 'rgba(0,0,0,0.9)', flexDirection: 'column', gap: '1rem', padding: '1.5rem',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--blood)' }}><Skull size={56} /></div>
-            <h2 className="font-fantasy" style={{ color: 'var(--blood)', fontSize: '1.8rem', letterSpacing: '0.12em', margin: 0 }}>
+            <h2 className="font-fantasy" style={{ color: 'var(--blood)', fontSize: '1.7rem', letterSpacing: '0.1em', margin: 0, textAlign: 'center' }}>
               KAHRAMANIN DÜŞTÜ
             </h2>
-            <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '1rem', textAlign: 'center', maxWidth: '300px' }}>
-              {character.name} ölümün eşiğinde. Son bir şans kaldı — kaderin seni bağışlayacak mı?
+            <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '1rem', textAlign: 'center', maxWidth: '320px' }}>
+              {character.name} ölümün kıyısında. Yeniden doğma zarında 10+ atarsan 1 canla dirilirsin.
             </p>
-            {deathSaveResult && (
+
+            {reviveRoll && (
               <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
+                initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 style={{
-                  background: 'rgba(20,14,8,0.9)', border: `1px solid ${deathSaveResult.success ? 'var(--gold)' : 'var(--blood)'}`,
-                  borderRadius: '0.5rem', padding: '0.75rem 1.25rem',
-                  color: deathSaveResult.success ? 'var(--gold)' : 'var(--blood)',
-                  fontFamily: "'Crimson Text', serif", fontSize: '1rem', textAlign: 'center',
+                  width: '3.2rem', height: '3.2rem', borderRadius: '10px',
+                  background: reviveRoll.success ? 'rgba(74,222,128,0.15)' : 'rgba(220,38,38,0.15)',
+                  border: `1px solid ${reviveRoll.success ? '#4ade80' : 'var(--blood)'}`,
+                  color: reviveRoll.success ? '#4ade80' : 'var(--blood)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: "'Cinzel', serif", fontSize: '1.3rem',
                 }}
               >
-                Zar: {deathSaveResult.roll} — {deathSaveResult.success ? 'Kahraman dirildi!' : 'Kader seni almaya geldi...'}
+                {reviveRoll.roll}
               </motion.div>
             )}
-            {!deathSaveResult && (
+
+            {reviveState === 'idle' && (
               <motion.button
                 whileTap={{ scale: 0.96 }}
                 onClick={async () => {
+                  setReviveState('rolling');
                   try {
                     const result = await finalDeathSave(characterId, sessionId);
-                    setDeathSaveResult(result);
+                    await new Promise((resolve) => setTimeout(resolve, 700));
+                    setReviveRoll({ roll: result.roll, success: result.success });
                     if (result.success) {
-                      setCharacter((c) => ({ ...c, status: 'alive', hp: 1, death_saves_success: 0, death_saves_fail: 0 }));
+                      setCharacter(result.character);
                       setCurrentEnemy(null);
+                      setMessages((currentMessages) => [
+                        ...currentMessages,
+                        { role: 'assistant', content: `${character.name} kaderin pençesinden kurtuldu! 1 canla yeniden doğdu.`, id: Date.now() },
+                      ]);
                       setTimeout(() => {
-                        setDeathSaveResult(null);
-                        setMessages((m) => [...m, { role: 'assistant', content: `${character.name} son kurtuluş zarını attı ve mucizevi biçimde ayağa kalktı! 1 canla savaşmaya devam ediyor.`, id: Date.now() }]);
+                        setReviveRoll(null);
+                        setReviveState('idle');
                       }, 2500);
                     } else {
-                      setTimeout(() => {
-                        setFinalJourney({ summary: result.summary, finalMessage: result.finalMessage });
-                      }, 2500);
+                      await showInterstitialAd();
+                      setFinalJourney({ summary: result.summary, finalMessage: result.finalMessage });
                     }
-                  } catch (err) {
-                    setDeathSaveResult({ roll: 0, success: false });
+                  } catch {
+                    setReviveState('failed');
                   }
                 }}
                 className="btn-gold"
-                style={{ fontSize: '1rem', padding: '0.65rem 1.5rem', marginTop: '0.5rem' }}
+                style={{ fontSize: '1rem', padding: '0.65rem 1.5rem' }}
               >
-                Son Kurtuluş Zarını At (d20)
+                Yeniden Doğma Zarını At
               </motion.button>
+            )}
+
+            {reviveState === 'rolling' && (
+              <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif" }}>Kader çarkı dönüyor...</span>
             )}
           </motion.div>
         )}

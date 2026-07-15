@@ -553,5 +553,48 @@ function getLevelUpHpGain(characterClass, constitutionModifier) {
   return Math.max(1, rollDie(HIT_DICE[characterClass] || 8) + constitutionModifier);
 }
 
+router.patch('/:id/reward', async (req, res) => {
+  try {
+    const character = await getOwnedCharacter(req, res, req.params.id);
+    if (!character) return;
+    const { sessionId, turnCount } = req.body;
+    if (!sessionId || !Number.isInteger(turnCount) || turnCount <= 0 || turnCount % 15 !== 0) {
+      return res.status(400).json({ error: 'Geçersiz hamle ödülü' });
+    }
+    const sessionRef = firestore.collection('sessions').doc(sessionId);
+    const session = docData(await sessionRef.get());
+    const sessionCharacterId = session?.character_id || session?.characterId;
+    if (!session || sessionCharacterId !== req.params.id || (session.turn_count || 0) < turnCount) {
+      return res.status(400).json({ error: 'Hamle ödülü doğrulanamadı' });
+    }
+    const claimRef = sessionRef.collection('rewardClaims').doc(`turn_${turnCount}`);
+    const characterRef = firestore.collection('characters').doc(req.params.id);
+    const newGold = Math.max(0, (character.gold || 0) + 10);
+    await firestore.runTransaction(async (transaction) => {
+      const claim = await transaction.get(claimRef);
+      if (claim.exists) {
+        const error = new Error('Ödül zaten alındı');
+        error.code = 'ALREADY_CLAIMED';
+        throw error;
+      }
+      transaction.update(characterRef, { gold: newGold, updated_at: serverTimestamp() });
+      transaction.set(claimRef, {
+        character_id: req.params.id,
+        turn_count: turnCount,
+        reward_gold: 10,
+        claimed_at: serverTimestamp(),
+      });
+    });
+    const newXp = character.xp || 0;
+    res.json({ ok: true, gold: newGold, xp: newXp });
+  } catch (err) {
+    if (err.code === 'ALREADY_CLAIMED') {
+      return res.status(409).json({ error: err.message });
+    }
+    console.error('Reward error:', err.message);
+    res.status(500).json({ error: 'Ödül uygulanamadı' });
+  }
+});
+
 module.exports = router;
 module.exports.getLevelUpHpGain = getLevelUpHpGain;

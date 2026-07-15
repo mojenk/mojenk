@@ -13,6 +13,7 @@ import SettingsPage from './pages/SettingsPage';
 import HallOfFamePage from './pages/HallOfFamePage';
 import ShopPage from './pages/ShopPage';
 import AdminPage from './pages/AdminPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import { playPageTransition } from './utils/sounds';
 import { apiGetCurrentUser, adminCheck } from './utils/api';
 
@@ -26,6 +27,8 @@ import { apiGetCurrentUser, adminCheck } from './utils/api';
   if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
   else document.documentElement.removeAttribute('data-theme');
 })();
+
+const PUBLIC_PATHS = ['/privacy-policy'];
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -115,6 +118,14 @@ function AnimatedRoutes({ user, onLogout, isAdmin }) {
             )
           }
         />
+        <Route
+          path="/privacy-policy"
+          element={
+            <motion.div {...pageVariants} style={{ flex: 1 }}>
+              <PrivacyPolicyPage />
+            </motion.div>
+          }
+        />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </AnimatePresence>
@@ -186,6 +197,25 @@ export default function App() {
       <div className="stone-bg" style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif" }}>Yükleniyor...</span>
       </div>
+    );
+  }
+
+  const currentPath = window.location.pathname;
+  if (!user && PUBLIC_PATHS.includes(currentPath)) {
+    return (
+      <AnimatePresence mode="wait">
+        <Routes>
+          <Route
+            path="/privacy-policy"
+            element={
+              <motion.div {...pageVariants} style={{ flex: 1 }}>
+                <PrivacyPolicyPage />
+              </motion.div>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </AnimatePresence>
     );
   }
 

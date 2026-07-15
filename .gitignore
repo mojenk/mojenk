@@ -2,6 +2,14 @@
 node_modules/
 backend/node_modules/
 frontend/node_modules/
+frontend/android/app/build/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/app/keystore.jks
+frontend/android/app/google-services.json
+frontend/android/captures/
+frontend/android/*.iml
+frontend/android/app/*.iml
 
 # Environment variables
 .env
@@ -14,13 +22,14 @@ backend/.service-account.local.json
 backend/.gemini-key.local
 backend/.env.*
 !backend/.env.example
+.verdent/uploads/*.json
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
 firestore-debug.log
 ui-debug.log
 
-# Build outputs
+# Build outputs (generated, do not commit)
 frontend/dist/
 backend/public/
 public/
