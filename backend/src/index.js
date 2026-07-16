@@ -61,6 +61,21 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
+app.get('/api/debug/models', async (req, res) => {
+  try {
+    const { getSetting } = require('./settings');
+    const apiKey = process.env.GEMINI_API_KEY || await getSetting('GEMINI_API_KEY');
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}&pageSize=200`);
+    const data = await r.json();
+    const names = (data.models || [])
+      .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+      .map(m => m.name.replace('models/', ''));
+    res.json({ names });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Serve React frontend static files.
 // The built frontend can end up in different locations depending on how the
 // app is run (local monorepo dev vs. the platform's Docker layout), so check
