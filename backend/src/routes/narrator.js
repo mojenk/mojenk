@@ -211,7 +211,8 @@ function stripPlayerFacingText(text) {
 }
 
 async function callGemini(systemPrompt, rawHistory, userMessage) {
-  const chatModel = await getModel('gemini-2.5-flash', systemPrompt);
+  const modelName = process.env.NARRATOR_MODEL || 'gemini-2.5-flash';
+  const chatModel = await getModel(modelName, systemPrompt);
 
   // Gemini'ye sadece tam user→model çiftlerini ver
   const pairs = [];
@@ -244,6 +245,7 @@ async function callGemini(systemPrompt, rawHistory, userMessage) {
       const usage = result.response.usageMetadata;
       if (usage) {
         console.log('GEMINI_USAGE', JSON.stringify({
+          model: modelName,
           promptTokens: usage.promptTokenCount,
           outputTokens: usage.candidatesTokenCount,
           totalTokens: usage.totalTokenCount,

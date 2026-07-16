@@ -12,6 +12,7 @@ exports.api = onRequest(
     minInstances: 0,
     maxInstances: 10,
     secrets: [geminiApiKey],
+    environmentVariables: { NARRATOR_MODEL: 'gemini-2.5-flash-lite' },
   },
   app
 );
