@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { signOut as firebaseSignOut } from 'firebase/auth';
 import { isSoundEnabled, toggleSound, getSoundVolume, setVolume, playClick } from '../utils/sounds';
 import { getLang, setLang } from '../utils/i18n';
-import { claimAdmin } from '../utils/api';
+import { claimAdmin, deleteAccount } from '../utils/api';
+import { auth } from '../firebase';
 import Particles from '../components/Particles';
 
 const TEXT_SIZES = [
@@ -38,6 +40,23 @@ export default function SettingsPage({ isAdmin }) {
   const [lang, setLangState] = useState(getLang);
   const [adminMsg, setAdminMsg] = useState('');
   const [claimingAdmin, setClaimingAdmin] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Hesabını ve tüm karakter/oyun verilerini kalıcı olarak silmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
+    if (!window.confirm('Son onay: Hesabın kalıcı olarak silinecek. Devam etmek istiyor musun?')) return;
+    setDeletingAccount(true);
+    setDeleteError('');
+    try {
+      await deleteAccount();
+      await firebaseSignOut(auth);
+      navigate('/');
+    } catch (err) {
+      setDeleteError(err.message || 'Hesap silinemedi, lütfen tekrar dene');
+      setDeletingAccount(false);
+    }
+  };
 
   const handleClaimAdmin = async () => {
     setClaimingAdmin(true);
@@ -370,6 +389,37 @@ export default function SettingsPage({ isAdmin }) {
           >
             Gizlilik Politikası
           </motion.button>
+        </div>
+
+        {/* Danger zone */}
+        <div className="stone-card" style={{ padding: '1.25rem', textAlign: 'center', marginTop: '1rem', borderColor: 'rgba(180,60,60,0.4)' }}>
+          <h2
+            className="font-fantasy"
+            style={{ color: '#c85454', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 0.75rem' }}
+          >
+            TEHLİKELİ BÖLGE
+          </h2>
+          <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', margin: '0 0 0.75rem' }}>
+            Hesabını ve tüm karakter, oturum ve oyun verilerini kalıcı olarak silersin. Bu işlem geri alınamaz.
+          </p>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={handleDeleteAccount}
+            disabled={deletingAccount}
+            style={{
+              padding: '0.55rem 1.1rem', borderRadius: '8px', minHeight: '44px',
+              background: 'rgba(180,60,60,0.15)', border: '1px solid #c85454',
+              color: '#e88', fontFamily: "'Cinzel', serif", fontSize: '0.85rem',
+              cursor: deletingAccount ? 'default' : 'pointer', opacity: deletingAccount ? 0.6 : 1,
+            }}
+          >
+            {deletingAccount ? 'Siliniyor...' : 'Hesabımı Sil'}
+          </motion.button>
+          {deleteError && (
+            <p style={{ fontFamily: "'Crimson Text', serif", color: '#e88', fontSize: '0.82rem', marginTop: '0.6rem' }}>
+              {deleteError}
+            </p>
+          )}
         </div>
       </div>
     </div>

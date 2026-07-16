@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
-const { firestore, docData, serverTimestamp } = require('../firestore');
+const { firestore, docData, serverTimestamp, deleteCharacterTree, admin } = require('../firestore');
 
 router.get('/me', verifyFirebaseToken, async (req, res) => {
   const { uid, email, name, picture } = req.firebaseUser;
@@ -32,6 +32,22 @@ router.get('/me', verifyFirebaseToken, async (req, res) => {
   } catch (err) {
     console.error('auth/me Firestore error:', err.stack || err.message);
     return res.status(500).json({ error: 'Firestore kullanıcı kaydı oluşturulamadı' });
+  }
+});
+
+router.delete('/me', verifyFirebaseToken, async (req, res) => {
+  const uid = req.firebaseUser.uid;
+  try {
+    const charsSnap = await firestore.collection('characters').where('user_id', '==', uid).get();
+    for (const charDoc of charsSnap.docs) {
+      await deleteCharacterTree(charDoc.id);
+    }
+    await firestore.collection('users').doc(uid).delete();
+    await admin.auth().deleteUser(uid);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('Account deletion error:', err.stack || err.message);
+    return res.status(500).json({ error: 'Hesap silinemedi' });
   }
 });
 

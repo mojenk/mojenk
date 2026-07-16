@@ -14,6 +14,7 @@ import HallOfFamePage from './pages/HallOfFamePage';
 import ShopPage from './pages/ShopPage';
 import AdminPage from './pages/AdminPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import AccountDeletionPage from './pages/AccountDeletionPage';
 import { playPageTransition } from './utils/sounds';
 import { apiGetCurrentUser, adminCheck } from './utils/api';
 
@@ -28,7 +29,7 @@ import { apiGetCurrentUser, adminCheck } from './utils/api';
   else document.documentElement.removeAttribute('data-theme');
 })();
 
-const PUBLIC_PATHS = ['/privacy-policy'];
+const PUBLIC_PATHS = ['/privacy-policy', '/hesap-silme'];
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -126,6 +127,14 @@ function AnimatedRoutes({ user, onLogout, isAdmin }) {
             </motion.div>
           }
         />
+        <Route
+          path="/hesap-silme"
+          element={
+            <motion.div {...pageVariants} style={{ flex: 1 }}>
+              <AccountDeletionPage />
+            </motion.div>
+          }
+        />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </AnimatePresence>
@@ -210,6 +219,14 @@ export default function App() {
             element={
               <motion.div {...pageVariants} style={{ flex: 1 }}>
                 <PrivacyPolicyPage />
+              </motion.div>
+            }
+          />
+          <Route
+            path="/hesap-silme"
+            element={
+              <motion.div {...pageVariants} style={{ flex: 1 }}>
+                <AccountDeletionPage />
               </motion.div>
             }
           />

@@ -50,6 +50,10 @@ export async function apiGetCurrentUser(token = '') {
   return r.json();
 }
 
+export async function deleteAccount() {
+  return safeFetch(`${API}/auth/me`, { method: 'DELETE' });
+}
+
 export async function loginUser(username) {
   return safeFetch(`${API}/auth/login`, {
     method: 'POST',
