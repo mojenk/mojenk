@@ -8,6 +8,7 @@ const { getSetting } = require('../settings');
 const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
+const { checkAndConsumeDailyTurn, claimDailyBonus } = require('../utils/dailyLimit');
 
 let genAI;
 async function getGenAI() {
@@ -569,6 +570,17 @@ router.post('/chat', async (req, res) => {
       return res.status(403).json({ reply: 'Kahramanın düştü. Bu macera sona erdi. Yeni bir kahraman yarat veya başka bir maceraya çık.', events: [], character });
     }
 
+    const dailyStatus = await checkAndConsumeDailyTurn(req.firebaseUser.uid);
+    if (!dailyStatus.allowed) {
+      return res.status(429).json({
+        error: 'DAILY_LIMIT_REACHED',
+        dailyUsed: dailyStatus.used,
+        dailyLimit: dailyStatus.limit,
+        bonusAdsUsed: dailyStatus.bonusAdsUsed,
+        maxBonusAds: dailyStatus.maxBonusAds,
+      });
+    }
+
     const [historySnapshot, inventorySnapshot, npcSnapshot, questSnapshot, worldEventSnapshot] = await Promise.all([
       sessionRef.collection('messages').orderBy('created_at', 'desc').limit(RECENT_KEEP).get(),
       characterRef.collection('inventory').get(),
@@ -670,6 +682,19 @@ router.post('/chat', async (req, res) => {
   }
 });
 
+router.post('/daily-bonus', async (req, res) => {
+  try {
+    const result = await claimDailyBonus(req.firebaseUser.uid);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    if (err.code === 'MAX_BONUS_REACHED') {
+      return res.status(409).json({ error: err.message });
+    }
+    console.error('Daily bonus error:', err.message);
+    res.status(500).json({ error: 'Ödül uygulanamadı' });
+  }
+});
+
 router.post('/start', async (req, res) => {
   const { sessionId, characterId, scenario, language } = req.body;
   try {
@@ -690,6 +715,18 @@ router.post('/start', async (req, res) => {
     if (character.status === 'dead' || character.status === 'unconscious' || character.hp <= 0) {
       return res.status(403).json({ error: 'Ölü veya baygın karakter macera başlatamaz' });
     }
+
+    const dailyStatus = await checkAndConsumeDailyTurn(req.firebaseUser.uid);
+    if (!dailyStatus.allowed) {
+      return res.status(429).json({
+        error: 'DAILY_LIMIT_REACHED',
+        dailyUsed: dailyStatus.used,
+        dailyLimit: dailyStatus.limit,
+        bonusAdsUsed: dailyStatus.bonusAdsUsed,
+        maxBonusAds: dailyStatus.maxBonusAds,
+      });
+    }
+
     const inventory = inventorySnapshot.docs.map(docData);
     const existingNpcs = npcSnapshot.docs.map(docData).filter((npc) => npc.npc_status !== 'dead');
 

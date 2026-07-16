@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward } from '../utils/api';
+import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward, claimDailyBonus } from '../utils/api';
 import { showRewardedAd, showInterstitialAd } from '../utils/ads';
 import { useSound } from '../hooks/useSound';
 import TypewriterText from '../components/TypewriterText';
@@ -154,6 +154,8 @@ export default function GamePage({ user }) {
   const [reviveState, setReviveState] = useState('idle');
   const [turnRewardDue, setTurnRewardDue] = useState(false);
   const [turnAdLoading, setTurnAdLoading] = useState(false);
+  const [dailyLimitInfo, setDailyLimitInfo] = useState(null);
+  const [dailyBonusLoading, setDailyBonusLoading] = useState(false);
   const [sceneAmbience, setSceneAmbience] = useState(null);
   const [session, setSession] = useState(null);
   const [showRecap, setShowRecap] = useState(true);
@@ -253,8 +255,17 @@ export default function GamePage({ user }) {
             setStarting(false);
           }).catch((err) => {
             setStarting(false);
-            setChatError(err.message || 'Macera başlatılamadı');
-            playError();
+            if (err.status === 429 && err.data?.error === 'DAILY_LIMIT_REACHED') {
+              setDailyLimitInfo({
+                used: err.data.dailyUsed,
+                limit: err.data.dailyLimit,
+                bonusAdsUsed: err.data.bonusAdsUsed,
+                maxBonusAds: err.data.maxBonusAds,
+              });
+            } else {
+              setChatError(err.message || 'Macera başlatılamadı');
+              playError();
+            }
           });
         }
       }
@@ -442,11 +453,19 @@ export default function GamePage({ user }) {
       getNpcs(characterId).then(d => setNpcs(d.npcs || [])).catch(() => {});
       getQuests(characterId).then(d => setQuests(d.quests || [])).catch(() => {});
     } catch (err) {
-      setChatError(err.message || 'Mesaj gönderilemedi');
-      setLastFailedSend({ text, diceResult: finalDice });
-      // Remove the user message that failed so it can be resent cleanly
       setMessages((m) => m.filter((msg) => msg.id !== userMsgId));
-      playError();
+      if (err.status === 429 && err.data?.error === 'DAILY_LIMIT_REACHED') {
+        setDailyLimitInfo({
+          used: err.data.dailyUsed,
+          limit: err.data.dailyLimit,
+          bonusAdsUsed: err.data.bonusAdsUsed,
+          maxBonusAds: err.data.maxBonusAds,
+        });
+      } else {
+        setChatError(err.message || 'Mesaj gönderilemedi');
+        setLastFailedSend({ text, diceResult: finalDice });
+        playError();
+      }
     }
     setLastDice(null);
     setLoading(false);
@@ -761,7 +780,7 @@ export default function GamePage({ user }) {
             >
               <Sparkles size={36} style={{ color: 'var(--gold)', marginBottom: '0.5rem' }} />
               <h3 className="font-fantasy" style={{ color: 'var(--gold)', margin: '0 0 0.5rem' }}>
-                15 Hamle Tamamlandı
+                10 Hamle Tamamlandı
               </h3>
               <p style={{ color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", lineHeight: 1.5 }}>
                 Maceraya devam etmek için kısa reklamı izle. Reklam tamamlandığında 10 altın da kazanacaksın.
@@ -790,6 +809,74 @@ export default function GamePage({ user }) {
                   }}
                 >
                   {turnAdLoading ? 'Reklam Hazırlanıyor...' : 'Reklamı İzle ve Devam Et'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {dailyLimitInfo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 120,
+              background: 'rgba(0,0,0,0.82)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '1.25rem',
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 18 }}
+              animate={{ scale: 1, y: 0 }}
+              className="stone-card"
+              style={{ width: '100%', maxWidth: '360px', padding: '1.25rem', textAlign: 'center' }}
+            >
+              <Sparkles size={36} style={{ color: 'var(--gold)', marginBottom: '0.5rem' }} />
+              <h3 className="font-fantasy" style={{ color: 'var(--gold)', margin: '0 0 0.5rem' }}>
+                Günlük Ücretsiz Hakkın Bitti
+              </h3>
+              {dailyLimitInfo.bonusAdsUsed < dailyLimitInfo.maxBonusAds ? (
+                <>
+                  <p style={{ color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", lineHeight: 1.5 }}>
+                    Bugünkü ücretsiz hamlelerin bitti. Kısa bir reklam izleyerek {15} ekstra hamle kazanabilirsin.
+                  </p>
+                  <div style={{ marginTop: '1rem' }}>
+                    <button
+                      className="btn-gold"
+                      disabled={dailyBonusLoading}
+                      style={{ width: '100%', opacity: dailyBonusLoading ? 0.65 : 1 }}
+                      onClick={async () => {
+                        setDailyBonusLoading(true);
+                        try {
+                          await showRewardedAd(async () => {
+                            await claimDailyBonus();
+                            setDailyLimitInfo(null);
+                            setDailyBonusLoading(false);
+                          });
+                        } catch {
+                          setDailyBonusLoading(false);
+                        }
+                      }}
+                    >
+                      {dailyBonusLoading ? 'Reklam Hazırlanıyor...' : 'Reklamı İzle ve +15 Hamle Kazan'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", lineHeight: 1.5 }}>
+                  Bugünlük bu kadar! Maceraya yarın tekrar devam edebilirsin.
+                </p>
+              )}
+              <div style={{ marginTop: '0.75rem' }}>
+                <button
+                  style={{ width: '100%', background: 'transparent', border: '1px solid var(--text-muted)', color: 'var(--text-muted)', borderRadius: '8px', padding: '0.6rem', fontFamily: "'Crimson Text', serif" }}
+                  onClick={() => setDailyLimitInfo(null)}
+                >
+                  Kapat
                 </button>
               </div>
             </motion.div>

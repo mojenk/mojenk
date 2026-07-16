@@ -27,7 +27,10 @@ async function safeFetch(url, options = {}) {
     const r = await fetch(url, { ...options, headers });
     if (!r.ok) {
       const data = await r.json().catch(() => ({}));
-      throw new Error(data.error || `Sunucu hatası (${r.status})`);
+      const error = new Error(data.error || `Sunucu hatası (${r.status})`);
+      error.status = r.status;
+      error.data = data;
+      throw error;
     }
     return r.json();
   } catch (err) {
@@ -109,6 +112,10 @@ export async function applyAdReward(characterId, sessionId, turnCount) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sessionId, turnCount }),
   });
+}
+
+export async function claimDailyBonus() {
+  return safeFetch(`${API}/narrator/daily-bonus`, { method: 'POST' });
 }
 
 export async function getSessions(characterId) {
