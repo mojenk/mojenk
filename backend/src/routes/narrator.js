@@ -241,6 +241,14 @@ async function callGemini(systemPrompt, rawHistory, userMessage) {
       ]);
       const text = result.response.text().trim();
       if (!text) throw new Error('AI_EMPTY_RESPONSE');
+      const usage = result.response.usageMetadata;
+      if (usage) {
+        console.log('GEMINI_USAGE', JSON.stringify({
+          promptTokens: usage.promptTokenCount,
+          outputTokens: usage.candidatesTokenCount,
+          totalTokens: usage.totalTokenCount,
+        }));
+      }
       return text;
     } catch (err) {
       if (attempt < MAX_RETRIES && (err.message === 'AI_TIMEOUT' || err.message === 'AI_EMPTY_RESPONSE' || err.status === 429 || err.status === 503)) {
