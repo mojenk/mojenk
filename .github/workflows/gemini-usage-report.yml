@@ -23,6 +23,14 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Fetch Gemini error logs
+        run: |
+          gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="api" AND (textPayload:"Gemini call failed" OR textPayload:"AI_EMPTY_RESPONSE" OR textPayload:"AI_TIMEOUT" OR severity>=ERROR)' \
+            --project=kaderin-sesi \
+            --freshness="${{ inputs.freshness }}" \
+            --limit=100 \
+            --format="value(timestamp,textPayload)"
+
       - name: Fetch Gemini usage logs
         run: |
           gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="api" AND textPayload:"GEMINI_USAGE"' \
