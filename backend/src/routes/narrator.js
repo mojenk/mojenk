@@ -222,9 +222,10 @@ async function callGemini(systemPrompt, rawHistory, userMessage) {
   while (i < hist.length && hist[i].role === 'assistant') i++;
   while (i < hist.length) {
     if (hist[i].role === 'user' && i + 1 < hist.length && hist[i + 1].role === 'assistant') {
+      const strippedModel = stripPlayerFacingText(hist[i + 1].content) || hist[i + 1].content;
       pairs.push(
         { role: 'user',  parts: [{ text: hist[i].content }] },
-        { role: 'model', parts: [{ text: hist[i + 1].content }] }
+        { role: 'model', parts: [{ text: strippedModel }] }
       );
       i += 2;
     } else {
