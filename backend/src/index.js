@@ -76,6 +76,23 @@ app.get('/api/debug/models', async (req, res) => {
   }
 });
 
+app.get('/api/debug/test-model', async (req, res) => {
+  try {
+    const { getSetting } = require('./settings');
+    const apiKey = process.env.GEMINI_API_KEY || await getSetting('GEMINI_API_KEY');
+    const model = req.query.model || 'gemini-flash-lite-latest';
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Merhaba, tek kelimeyle cevap ver: test' }] }] }),
+    });
+    const data = await r.json();
+    res.status(r.status).json({ status: r.status, model, data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Serve React frontend static files.
 // The built frontend can end up in different locations depending on how the
 // app is run (local monorepo dev vs. the platform's Docker layout), so check
