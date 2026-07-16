@@ -1,0 +1,65 @@
+name: Gemini Usage Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      freshness:
+        description: 'Log window (e.g. 1d, 12h)'
+        required: false
+        default: '1d'
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Fetch Gemini usage logs
+        run: |
+          gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="api" AND textPayload:"GEMINI_USAGE"' \
+            --project=kaderin-sesi \
+            --freshness="${{ inputs.freshness }}" \
+            --limit=5000 \
+            --format=json > logs.json
+          node -e "
+            const fs = require('fs');
+            const entries = JSON.parse(fs.readFileSync('logs.json', 'utf8'));
+            const rows = [];
+            for (const e of entries) {
+              const text = e.textPayload || '';
+              const idx = text.indexOf('{');
+              if (idx === -1) continue;
+              try {
+                const data = JSON.parse(text.slice(idx));
+                if (typeof data.promptTokens === 'number') rows.push(data);
+              } catch {}
+            }
+            if (rows.length === 0) {
+              console.log('No GEMINI_USAGE entries found in this window.');
+              process.exit(0);
+            }
+            const sum = (k) => rows.reduce((a, r) => a + (r[k] || 0), 0);
+            const avg = (k) => sum(k) / rows.length;
+            const max = (k) => rows.reduce((a, r) => Math.max(a, r[k] || 0), 0);
+            const min = (k) => rows.reduce((a, r) => Math.min(a, r[k] || Infinity), Infinity);
+            const n = rows.length;
+            const avgIn = avg('promptTokens');
+            const avgOut = avg('outputTokens');
+            const costPerCall = (avgIn * 0.30 + avgOut * 2.50) / 1e6;
+            console.log('=== Gemini Usage Report ===');
+            console.log('Calls:', n);
+            console.log('Prompt tokens  avg/min/max:', avgIn.toFixed(0), min('promptTokens'), max('promptTokens'));
+            console.log('Output tokens  avg/min/max:', avgOut.toFixed(0), min('outputTokens'), max('outputTokens'));
+            console.log('Total tokens sum:', sum('totalTokens'));
+            console.log('Estimated cost per call (USD):', costPerCall.toFixed(5));
+            console.log('Estimated cost for these', n, 'calls (USD):', (costPerCall * n).toFixed(4));
+          "
