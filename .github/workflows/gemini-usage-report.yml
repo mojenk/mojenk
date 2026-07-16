@@ -47,19 +47,32 @@ jobs:
               console.log('No GEMINI_USAGE entries found in this window.');
               process.exit(0);
             }
-            const sum = (k) => rows.reduce((a, r) => a + (r[k] || 0), 0);
-            const avg = (k) => sum(k) / rows.length;
-            const max = (k) => rows.reduce((a, r) => Math.max(a, r[k] || 0), 0);
-            const min = (k) => rows.reduce((a, r) => Math.min(a, r[k] || Infinity), Infinity);
-            const n = rows.length;
-            const avgIn = avg('promptTokens');
-            const avgOut = avg('outputTokens');
-            const costPerCall = (avgIn * 0.30 + avgOut * 2.50) / 1e6;
-            console.log('=== Gemini Usage Report ===');
-            console.log('Calls:', n);
-            console.log('Prompt tokens  avg/min/max:', avgIn.toFixed(0), min('promptTokens'), max('promptTokens'));
-            console.log('Output tokens  avg/min/max:', avgOut.toFixed(0), min('outputTokens'), max('outputTokens'));
-            console.log('Total tokens sum:', sum('totalTokens'));
-            console.log('Estimated cost per call (USD):', costPerCall.toFixed(5));
-            console.log('Estimated cost for these', n, 'calls (USD):', (costPerCall * n).toFixed(4));
+            const PRICING = {
+              'gemini-2.5-flash': { in: 0.30, out: 2.50 },
+              'gemini-2.5-flash-lite': { in: 0.10, out: 0.40 },
+            };
+            const groups = {};
+            for (const r of rows) {
+              const model = r.model || 'gemini-2.5-flash';
+              (groups[model] = groups[model] || []).push(r);
+            }
+            for (const [model, g] of Object.entries(groups)) {
+              const sum = (k) => g.reduce((a, r) => a + (r[k] || 0), 0);
+              const avg = (k) => sum(k) / g.length;
+              const max = (k) => g.reduce((a, r) => Math.max(a, r[k] || 0), 0);
+              const min = (k) => g.reduce((a, r) => Math.min(a, r[k] || Infinity), Infinity);
+              const n = g.length;
+              const avgIn = avg('promptTokens');
+              const avgOut = avg('outputTokens');
+              const price = PRICING[model] || PRICING['gemini-2.5-flash'];
+              const costPerCall = (avgIn * price.in + avgOut * price.out) / 1e6;
+              console.log('=== Gemini Usage Report:', model, '===');
+              console.log('Calls:', n);
+              console.log('Prompt tokens  avg/min/max:', avgIn.toFixed(0), min('promptTokens'), max('promptTokens'));
+              console.log('Output tokens  avg/min/max:', avgOut.toFixed(0), min('outputTokens'), max('outputTokens'));
+              console.log('Total tokens sum:', sum('totalTokens'));
+              console.log('Estimated cost per call (USD):', costPerCall.toFixed(5));
+              console.log('Estimated cost for these', n, 'calls (USD):', (costPerCall * n).toFixed(4));
+              console.log('');
+            }
           "
