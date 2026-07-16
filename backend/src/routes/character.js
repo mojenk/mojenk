@@ -558,7 +558,7 @@ router.patch('/:id/reward', async (req, res) => {
     const character = await getOwnedCharacter(req, res, req.params.id);
     if (!character) return;
     const { sessionId, turnCount } = req.body;
-    if (!sessionId || !Number.isInteger(turnCount) || turnCount <= 0 || turnCount % 15 !== 0) {
+    if (!sessionId || !Number.isInteger(turnCount) || turnCount <= 0 || turnCount % 10 !== 0) {
       return res.status(400).json({ error: 'Geçersiz hamle ödülü' });
     }
     const sessionRef = firestore.collection('sessions').doc(sessionId);

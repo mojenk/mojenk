@@ -164,7 +164,7 @@ export default function GamePage({ user }) {
   const prevLevelRef = useRef(null);
 
   const updateTurnProgress = (turnCount) => {
-    if (turnCount > 0 && turnCount % 15 === 0) {
+    if (turnCount > 0 && turnCount % 10 === 0) {
       const rewardKey = `dnd_turn_reward_${sessionId}_${turnCount}`;
       if (!localStorage.getItem(rewardKey)) {
         setTurnRewardDue(true);
@@ -179,7 +179,7 @@ export default function GamePage({ user }) {
     setSession((previousSession) => {
       if (!previousSession) return previousSession;
       const nextTurnCount = (previousSession.turn_count || 0) + 1;
-      if (nextTurnCount > 0 && nextTurnCount % 15 === 0) {
+      if (nextTurnCount > 0 && nextTurnCount % 10 === 0) {
         const rewardKey = `dnd_turn_reward_${sessionId}_${nextTurnCount}`;
         if (!localStorage.getItem(rewardKey)) {
           setTurnRewardDue(true);
