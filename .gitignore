@@ -33,8 +33,9 @@ ui-debug.log
 # Build outputs (generated, do not commit)
 frontend/dist/
 backend/public/
-public/
+/public/
 releases/
+*.aab
 
 # Logs
 *.log
