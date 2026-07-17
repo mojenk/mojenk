@@ -1,6 +1,7 @@
 const API = '/api';
 
 import { auth } from '../firebase';
+import { getLang } from './i18n';
 
 async function getAuthToken(explicitUser = null) {
   const user = explicitUser || auth.currentUser;
@@ -175,7 +176,7 @@ export async function rollDice(dice, count = 1, modifier = 0) {
 }
 
 export async function sendChat(sessionId, characterId, message, diceResult = null, language = null) {
-  const lang = language || (typeof localStorage !== 'undefined' ? localStorage.getItem('dnd_lang') || 'tr' : 'tr');
+  const lang = language || getLang();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 35000);
   try {
@@ -195,7 +196,7 @@ export async function sendChat(sessionId, characterId, message, diceResult = nul
 }
 
 export async function startAdventure(sessionId, characterId, scenario) {
-  const lang = typeof localStorage !== 'undefined' ? localStorage.getItem('dnd_lang') || 'tr' : 'tr';
+  const lang = getLang();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 35000);
   try {
@@ -261,7 +262,7 @@ export async function abandonQuest(characterId, questId) {
 }
 
 export async function npcTalk(characterId, sessionId, npcId, topic, freeText, language = null) {
-  const lang = language || (typeof localStorage !== 'undefined' ? localStorage.getItem('dnd_lang') || 'tr' : 'tr');
+  const lang = language || getLang();
   return safeFetch(`${API}/narrator/npc-talk`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

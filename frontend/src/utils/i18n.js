@@ -130,8 +130,21 @@ const EN = {
 
 const DICTS = { tr: TR, en: EN };
 
+function detectDefaultLang() {
+  try {
+    const nav = navigator.language || (navigator.languages && navigator.languages[0]) || 'tr';
+    return nav.toLowerCase().startsWith('tr') ? 'tr' : 'en';
+  } catch { return 'tr'; }
+}
+
 export function getLang() {
-  try { return localStorage.getItem('dnd_lang') || 'tr'; } catch { return 'tr'; }
+  try {
+    const saved = localStorage.getItem('dnd_lang');
+    if (saved) return saved;
+    const detected = detectDefaultLang();
+    localStorage.setItem('dnd_lang', detected);
+    return detected;
+  } catch { return 'tr'; }
 }
 
 export function setLang(lang) {
