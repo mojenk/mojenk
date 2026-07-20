@@ -737,20 +737,50 @@ router.post('/start', async (req, res) => {
       forest:  language === 'en' ? 'Mysterious Forest': 'Gizemli Orman',
       city:    language === 'en' ? 'City of Shadows' : 'Şehir Karanlığı',
       dragon:  language === 'en' ? 'Dragon Hunt'     : 'Ejderha Arayışı',
+      mountain: language === 'en' ? 'Call of the Mountains' : 'Dağların Çağrısı',
+      sea:     language === 'en' ? 'Sea Voyage'      : 'Deniz Yolculuğu',
+      caravan: language === 'en' ? 'Caravan Road'    : 'Kervan Yolu',
+      realistic: language === 'en' ? 'Realistic Adventure' : 'Gerçekçi Macera',
+      custom:  language === 'en' ? 'Free Adventure'  : 'Serbest Macera',
     };
     const openings = {
-      dungeon: `${character.name} kadim bir zindanın soğuk taş girişinde duruyor. Paslanmış demir kapıdan içeri süzülen küf kokusu ve uzaktan gelen metalik çarpma sesi tüylerini diken diken ediyor.`,
-      tavern:  `${character.name} loş ışıklı bir tavernaya giriyor. Ocaktaki ateşin titrediği alevler duvarlara uzun gölgeler düşürürken barmen tuhaf bir bakışla onu süzüyor.`,
-      forest:  `${character.name} kadim bir ormanın kıyısında duruyor. Dev meşe ağaçlarının arasından süzülen soluk ışık her şeyi mistik kılıyor; biraz önce duyduğu çığlık kesileli dakikalar oldu.`,
-      city:    `${character.name} büyük şehrin gece sokaklarına karışıyor. Uzaktan gelen çığlıklar, kaçan bir figürün gölgesi ve yerde bırakılan kanlı bir mektup...`,
-      dragon:  `${character.name} ejderhanın izini sürerek karlı dağ yamaçlarına ulaştı. Yanmış ağaçlar, devasa pençe izleri ve ufuktaki kızıl parıltı. Efsane gerçekmiş.`,
+      dungeon: language === 'en'
+        ? `${character.name} stands at the cold stone entrance of an ancient dungeon. The smell of mildew seeps through a rusted iron gate, and the distant metallic clash echoes from somewhere far below. Something waits in the dark.`
+        : `${character.name} kadim bir zindanın soğuk taş girişinde duruyor. Paslanmış demir kapıdan içeri süzülen küf kokusu ve uzaktan gelen metalik çarpma sesi tüylerini diken diken ediyor. Karanlıkta bir şey bekliyor.`,
+      tavern: language === 'en'
+        ? `${character.name} pushes open the heavy door of a dimly lit tavern. Firelight flickers against the walls while the bartender measures them with a suspicious gaze. A hooded figure at the corner table beckons subtly.`
+        : `${character.name} loş ışıklı bir tavernaya ağır kapıyı iterek giriyor. Ocaktaki ateşin titrediği alevler duvarlara uzun gölgeler düşürürken barmen şüpheli bakışlarla onu süzüyor. Köşedeki kapüşonlu figür hafifçe eliyle işaret ediyor.`,
+      forest: language === 'en'
+        ? `${character.name} pauses at the edge of an ancient forest. Pale light filters through towering oaks, painting everything in shades of silver and green. A scream cut through the silence only moments ago.`
+        : `${character.name} kadim bir ormanın kıyısında duraklıyor. Dev meşe ağaçlarının arasından süzülen soluk ışık her şeyi gümüş ve yeşil tonlarına boyuyor; biraz önce duyulan çığlık sessizliği yırtıp geçti.`,
+      city: language === 'en'
+        ? `${character.name} slips into the city's night-shrouded streets. Distant screams, the shadow of a fleeing figure, and a blood-stained letter left on the cobblestones mark the beginning of a dangerous trail.`
+        : `${character.name} büyük şehrin gece sarmış sokaklarına karışıyor. Uzaktan gelen çığlıklar, kaçan bir figürün gölgesi ve kaldırımların üzerinde bırakılmış kanlı bir mektup tehlikeli bir izin başlangıcı.`,
+      dragon: language === 'en'
+        ? `${character.name} reaches the snow-swept slopes where legend becomes truth. Scorched trees, massive claw marks, and a crimson glow on the horizon tell the tale of an ancient wyrm.`
+        : `${character.name} efsanenin gerçeğe dönüştüğü karlı dağ yamaçlarına ulaşıyor. Yanmış ağaçlar, devasa pençe izleri ve ufuktaki kızıl parıltı kadim bir ejderhanın hikayesini anlatıyor.`,
+      mountain: language === 'en'
+        ? `${character.name} climbs a narrow mountain pass where the wind howls like a wounded beast. Above, a forgotten temple clings to the peak, said to hold wisdom worth any hardship.`
+        : `${character.name} rüzgarın yaralı bir canavar gibi uluduğu dar bir dağ geçidinde tırmanıyor. Yukarıda, zirveye yapışmış unutulmuş bir tapınak duruyor; rivayete göre içinde her zorluğa değecek bilgelik var.`,
+      sea: language === 'en'
+        ? `${character.name} boards a weathered ship at dawn. Salt-crusted ropes creak overhead, and the captain's voice calls the crew to their posts. Beyond the harbor, the open sea hides sunken treasures and older secrets.`
+        : `${character.name} şafak vakti yıpranmış bir gemiye basıyor. Tuzla kaplı ipler başının üzerinde gıcırdıyor ve kaptanın sesi mürettebatı görevlerine çağırıyor. Limanın ötesinde açık deniz, batık hazineleri ve daha eski sırları gizliyor.`,
+      caravan: language === 'en'
+        ? `${character.name} joins a caravan winding through sun-scorched dunes. Merchants whisper of bandits in the pass ahead, and the setting sun paints the desert the color of old blood.`
+        : `${character.name} güneşle kavrulmuş kumullar arasında kıvrılan bir kervana katılıyor. Tüccarlar önlerindeki geçitte haydutların olduğunu fısıldıyor ve batan güneş çölü eski kan rengine boyuyor.`,
+      realistic: language === 'en'
+        ? `${character.name} enters a world where steel is steel, men are men, and no magic answers prayers. Power belongs to those who scheme, fight, or endure — and the game begins now.`
+        : `${character.name} çelik çelik, insan insan, büyünün hiçbir duaya yanıt vermediği bir dünyaya adım atıyor. Güç; entrika kuran, savaşan veya dayananlarındır — oyun şimdi başlıyor.`,
+      custom: language === 'en'
+        ? `${character.name} steps into the unknown. The path ahead is unwritten, shaped only by choices yet to be made.`
+        : `${character.name} bilinmezliğe adım atıyor. Önündeki yol yazılmamış, sadece verilecek seçimler tarafından şekillenecek.`,
     };
     const title = scenarioTitles[scenario] || (language === 'en' ? 'Free Adventure' : 'Serbest Macera');
-    const opening = openings[scenario] || `${character.name} bilinmezliğe adım atıyor.`;
+    const opening = openings[scenario] || (language === 'en' ? `${character.name} steps into the unknown.` : `${character.name} bilinmezliğe adım atıyor.`);
 
     const prompt = language === 'en'
-      ? `Begin with this scene and write a 4-5 sentence gripping opening. Set the atmosphere, draw the player in, and offer initial choices.\n\nScene: ${opening}`
-      : `Bu sahneyle başla ve 4-5 cümlelik sürükleyici bir açılış yap. Havayı kur, oyuncuyu içine çek, ilk seçenekleri sun.\n\nSahne: ${opening}`;
+      ? `Begin with this scene and write a gripping 4-5 sentence opening. Set the atmosphere, draw the player in, and end with 2-4 clear choices labeled **A)**, **B)**, **C)**. Do not break character or meta-comment.\n\nScene: ${opening}`
+      : `Bu sahneyle başla ve sürükleyici 4-5 cümlelik bir açılış yap. Havayı kur, oyuncuyu içine çek, sonunda **A)**, **B)**, **C)** formatında 2-4 net seçenek sun. Karakter dışına çıkma veya yorum yapma.\n\nSahne: ${opening}`;
 
     const systemPrompt = await buildSystem(character, '', title, inventory, language || 'tr', existingNpcs);
     const intro = await callGemini(systemPrompt, [], prompt);

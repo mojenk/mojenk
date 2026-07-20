@@ -27,60 +27,80 @@ const SCENARIOS = [
     icon: Landmark,
     name: 'Karanlık Zindan',
     desc: 'Tehlikeli zindanlar, tuzaklar ve lanetli hazineler',
+    tag: 'Klasik',
+    tagColor: '#9ca3af',
   },
   {
     id: 'forest',
     icon: TreePine,
     name: 'Gizemli Orman',
     desc: 'Antik büyüler, kayıp köyler ve mistik yaratıklar',
+    tag: 'Popüler',
+    tagColor: '#34d399',
   },
   {
     id: 'tavern',
     icon: Beer,
     name: 'Taverna Sırları',
     desc: 'Entrikalar, sırlar ve tehlikeli görevler',
+    tag: 'Sosyal',
+    tagColor: '#fbbf24',
   },
   {
     id: 'city',
     icon: Building2,
     name: 'Şehir Karanlığı',
     desc: 'Suç örgütleri, siyasi entrikalar ve gizem',
+    tag: 'Entrika',
+    tagColor: '#f87171',
   },
   {
     id: 'dragon',
     icon: Flame,
     name: 'Ejderha Arayışı',
     desc: 'Efsanevi canavara karşı ölüm kalım mücadelesi',
+    tag: 'Epik',
+    tagColor: '#f97316',
   },
   {
     id: 'mountain',
     icon: Mountain,
     name: 'Dağların Çağrısı',
     desc: 'Kayıp tapınaklar, fırtınalar ve zirvedeki ölümsüz bilge',
+    tag: 'Yolculuk',
+    tagColor: '#60a5fa',
   },
   {
     id: 'sea',
     icon: Ship,
     name: 'Deniz Yolculuğu',
     desc: 'Korsan gemileri, batık hazineler ve fırtınalı denizler',
+    tag: 'Açık Dünya',
+    tagColor: '#22d3ee',
   },
   {
     id: 'caravan',
     icon: Tent,
     name: 'Kervan Yolu',
     desc: 'Ticaret kervanı, yol haydutları ve çöl kasabaları',
+    tag: 'Yolculuk',
+    tagColor: '#d4d4d8',
   },
   {
     id: 'realistic',
     icon: BookOpen,
     name: 'Gerçekçi Macera',
     desc: 'Büyü yok, canavar yok — sadece insan dramı, siyaset ve hayatta kalma',
+    tag: 'Hardcore',
+    tagColor: '#a8a29e',
   },
   {
     id: 'custom',
     icon: Sparkles,
     name: 'Serbest Macera',
     desc: "AI'nın sürpriz senaryosuyla özgür keşif",
+    tag: 'Sürpriz',
+    tagColor: '#c084fc',
   },
 ];
 
@@ -204,10 +224,29 @@ export default function ScenarioPage({ user }) {
                   color: selected === s.id ? 'var(--gold2)' : 'var(--text)',
                   fontSize: '1rem',
                   fontWeight: 700,
-                  marginBottom: '0.2rem',
+                  marginBottom: '0.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
                 }}
               >
                 {s.name}
+                <span
+                  style={{
+                    fontSize: '0.6rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    padding: '0.15rem 0.4rem',
+                    borderRadius: '999px',
+                    color: '#fff',
+                    background: s.tagColor,
+                    boxShadow: '0 0 6px ' + s.tagColor + '66',
+                    fontFamily: "system-ui, sans-serif",
+                  }}
+                >
+                  {s.tag}
+                </span>
               </div>
               <div
                 style={{
