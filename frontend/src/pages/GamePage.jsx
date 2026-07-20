@@ -23,6 +23,7 @@ import {
   Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX, Backpack,
   Users, Store, BarChart3, ScrollText, Skull, X, AlertTriangle,
   CheckCircle2, XCircle, Dices, Zap, Wind, Send, Bomb, Sparkles, RotateCcw, Target, Wand2,
+  Crown,
 } from 'lucide-react';
 
 const FOLLOWER_ROLE_META = {
@@ -157,6 +158,7 @@ export default function GamePage({ user }) {
   const [turnAdLoading, setTurnAdLoading] = useState(false);
   const [dailyLimitInfo, setDailyLimitInfo] = useState(null);
   const [dailyBonusLoading, setDailyBonusLoading] = useState(false);
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [sceneAmbience, setSceneAmbience] = useState(null);
   const [session, setSession] = useState(null);
   const [showRecap, setShowRecap] = useState(true);
@@ -168,6 +170,7 @@ export default function GamePage({ user }) {
   const prevLevelRef = useRef(null);
 
   const updateTurnProgress = (turnCount) => {
+    if (isPremiumUser) return;
     if (turnCount > 0 && turnCount % 10 === 0) {
       const rewardKey = `dnd_turn_reward_${sessionId}_${turnCount}`;
       if (!localStorage.getItem(rewardKey)) {
@@ -180,6 +183,12 @@ export default function GamePage({ user }) {
   };
 
   const registerTurn = () => {
+    if (isPremiumUser) {
+      setSession((previousSession) => previousSession
+        ? { ...previousSession, turn_count: (previousSession.turn_count || 0) + 1 }
+        : previousSession);
+      return;
+    }
     setSession((previousSession) => {
       if (!previousSession) return previousSession;
       const nextTurnCount = (previousSession.turn_count || 0) + 1;
@@ -209,6 +218,13 @@ export default function GamePage({ user }) {
       setCurrentEnemy(enemies.length > 0 ? enemies[0] : null);
     } catch (_) {}
   }, [sessionId]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('dnd_user') || '{}');
+      setIsPremiumUser(Boolean(saved?.is_premium));
+    } catch { setIsPremiumUser(false); }
+  }, []);
 
   useEffect(() => {
     if (!characterId) return;
@@ -1124,7 +1140,7 @@ export default function GamePage({ user }) {
             whileTap={{ scale: 0.96 }}
             onClick={async () => {
               playClick();
-              await showInterstitialAd();
+              if (!isPremiumUser) await showInterstitialAd();
               navigate('/');
             }}
             style={{
@@ -1176,6 +1192,27 @@ export default function GamePage({ user }) {
               >
                 Sv.{character.level}
               </span>
+              {isPremiumUser && (
+                <span
+                  title="Premium"
+                  style={{
+                    color: '#fff',
+                    background: 'var(--gold)',
+                    fontSize: '0.55rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    padding: '0.12rem 0.35rem',
+                    borderRadius: '999px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.15rem',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Crown size={9} /> Premium
+                </span>
+              )}
             </div>
             <div
               style={{
@@ -2406,7 +2443,7 @@ export default function GamePage({ user }) {
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={async () => {
-                await showInterstitialAd();
+                if (!isPremiumUser) await showInterstitialAd();
                 navigate('/create-character');
               }}
               className="btn-dark"
@@ -2476,7 +2513,7 @@ export default function GamePage({ user }) {
                         setReviveState('idle');
                       }, 2500);
                     } else {
-                      await showInterstitialAd();
+                      if (!isPremiumUser) await showInterstitialAd();
                       setFinalJourney({ summary: result.summary, finalMessage: result.finalMessage });
                     }
                   } catch {

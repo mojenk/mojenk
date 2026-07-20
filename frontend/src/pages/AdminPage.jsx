@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   adminListCharacters, adminCheatCharacter, adminUpdateCharacter,
-  adminDeleteCharacter, adminListUsers,
+  adminDeleteCharacter, adminListUsers, adminToggleUserPremium,
   adminListAnnouncements, adminCreateAnnouncement, adminToggleAnnouncement, adminDeleteAnnouncement,
   adminListWorldEvents, adminCreateWorldEvent, adminToggleWorldEvent, adminDeleteWorldEvent,
 } from '../utils/api';
@@ -11,6 +11,7 @@ import { playClick, playMagic } from '../utils/sounds';
 import {
   Shield, Users, Megaphone, Globe, Search, Trash2, Save, Plus,
   ChevronLeft, Power, Skull, Heart, Coins, Star, Sword, Package,
+  Crown, Calendar,
 } from 'lucide-react';
 
 const RACES = ['İnsan', 'Elf', 'Cüce', 'Yarı-Ork', 'Hobit', 'İblissoyu'];
@@ -498,16 +499,32 @@ function CharacterTab({ characters, users, search, setSearch, filters, setFilter
 }
 
 function UsersTab({ users }) {
+  const [loadingId, setLoadingId] = useState(null);
+  const [localUsers, setLocalUsers] = useState(users);
+  useEffect(() => setLocalUsers(users), [users]);
+
+  const togglePremium = async (u) => {
+    setLoadingId(u.id);
+    try {
+      const next = !u.is_premium;
+      await adminToggleUserPremium(u.id, next);
+      setLocalUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, is_premium: next } : x)));
+    } catch (err) {
+      alert(err.message);
+    }
+    setLoadingId(null);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-      {users.map((u) => (
+      {localUsers.map((u) => (
         <div
           key={u.id}
           style={{
             padding: '0.85rem',
             borderRadius: '10px',
             background: 'rgba(0,0,0,0.2)',
-            border: '1px solid var(--border)',
+            border: `1px solid ${u.is_premium ? 'rgba(201,150,58,0.55)' : 'var(--border)'}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -515,17 +532,42 @@ function UsersTab({ users }) {
           }}
         >
           <div style={{ minWidth: 0 }}>
-            <div className="font-fantasy" style={{ color: 'var(--gold2)', fontSize: '0.92rem' }}>{u.username || 'İsimsiz'}</div>
+            <div className="font-fantasy" style={{ color: u.is_premium ? 'var(--gold2)' : 'var(--text)', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              {u.username || 'İsimsiz'}
+              {u.is_premium && <Crown size={14} color="var(--gold)" />}
+            </div>
             <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif" }}>
               {u.email || 'E-posta yok'} · Misafir: {u.isGuest ? 'Evet' : 'Hayır'}
             </div>
           </div>
-          <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: 'monospace', background: 'rgba(0,0,0,0.25)', padding: '0.25rem 0.45rem', borderRadius: '6px' }}>
-            {u.firebase_uid?.slice(0, 12)}...
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: 'monospace', background: 'rgba(0,0,0,0.25)', padding: '0.25rem 0.45rem', borderRadius: '6px' }}>
+              {u.firebase_uid?.slice(0, 12)}...
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => togglePremium(u)}
+              disabled={loadingId === u.id}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                padding: '0.4rem 0.55rem',
+                borderRadius: '7px',
+                border: `1px solid ${u.is_premium ? 'rgba(180,40,30,0.5)' : 'var(--gold)'}`,
+                background: u.is_premium ? 'rgba(180,40,30,0.12)' : 'rgba(201,150,58,0.12)',
+                color: u.is_premium ? '#ff9a8a' : 'var(--gold)',
+                cursor: 'pointer',
+                fontSize: '0.72rem',
+                fontFamily: "'Cinzel', serif",
+              }}
+            >
+              {u.is_premium ? <><Power size={11} /> Kaldır</> : <><Crown size={11} /> Premium</>}
+            </motion.button>
           </div>
         </div>
       ))}
-      {users.length === 0 && <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '2rem' }}>Kullanıcı bulunmuyor.</div>}
+      {localUsers.length === 0 && <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '2rem' }}>Kullanıcı bulunmuyor.</div>}
     </div>
   );
 }

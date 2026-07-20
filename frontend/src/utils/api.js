@@ -318,6 +318,16 @@ export async function adminListUsers() {
   return safeFetch(`${API}/admin/users`);
 }
 
+export async function adminToggleUserPremium(uid, isPremium, expiresAt = null) {
+  const body = { isPremium };
+  if (expiresAt) body.expiresAt = expiresAt;
+  return safeFetch(`${API}/admin/users/${uid}/premium`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function adminListAnnouncements() {
   return safeFetch(`${API}/admin/announcements`);
 }

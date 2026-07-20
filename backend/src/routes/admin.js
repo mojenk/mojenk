@@ -132,6 +132,29 @@ router.get('/users', async (req, res) => {
   }
 });
 
+router.patch('/users/:uid/premium', async (req, res) => {
+  try {
+    const { isPremium, expiresAt } = req.body;
+    const userRef = firestore.collection('users').doc(req.params.uid);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    const updates = {
+      is_premium: Boolean(isPremium),
+      premium_updated_at: serverTimestamp(),
+      premium_updated_by: req.firebaseUser.uid,
+    };
+    if (expiresAt) {
+      updates.premium_until = new Date(expiresAt);
+    } else if (isPremium === false) {
+      updates.premium_until = null;
+    }
+    await userRef.update(updates);
+    return res.json({ ok: true, user: docData(await userRef.get()) });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/announcements', async (req, res) => {
   const snapshot = await firestore.collection('announcements').orderBy('created_at', 'desc').limit(100).get();
   res.json({ announcements: snapshot.docs.map(docData) });

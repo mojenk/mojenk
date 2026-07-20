@@ -1,4 +1,5 @@
 const { firestore } = require('../firestore');
+const { isPremium } = require('./premium');
 
 // Balance: generous enough for a full free session per day, but caps worst-case
 // Gemini cost exposure per user. Extra turns are unlocked via rewarded ads.
@@ -11,8 +12,11 @@ function getTodayIstanbul() {
 }
 
 // Atomically checks whether the user still has daily turns left, and if so
-// consumes one. Returns { allowed, used, limit, bonusAdsUsed, maxBonusAds }.
+// consumes one. Premium users bypass the limit entirely.
 async function checkAndConsumeDailyTurn(uid) {
+  if (await isPremium(uid)) {
+    return { allowed: true, used: 0, limit: Infinity, bonusAdsUsed: 0, maxBonusAds: MAX_BONUS_ADS_PER_DAY, premium: true };
+  }
   const userRef = firestore.collection('users').doc(uid);
   const today = getTodayIstanbul();
   return firestore.runTransaction(async (transaction) => {
@@ -45,7 +49,13 @@ async function checkAndConsumeDailyTurn(uid) {
 }
 
 // Grants a rewarded-ad bonus of extra daily turns, up to MAX_BONUS_ADS_PER_DAY per day.
+// Premium users do not need rewarded ads.
 async function claimDailyBonus(uid) {
+  if (await isPremium(uid)) {
+    const error = new Error('Premium kullanıcılar reklama ihtiyaç duymaz');
+    error.code = 'PREMIUM_NO_ADS';
+    throw error;
+  }
   const userRef = firestore.collection('users').doc(uid);
   const today = getTodayIstanbul();
   return firestore.runTransaction(async (transaction) => {

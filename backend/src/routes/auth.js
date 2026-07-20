@@ -3,6 +3,8 @@ const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp, deleteCharacterTree, admin } = require('../firestore');
 
+const { isPremium } = require('../utils/premium');
+
 router.get('/me', verifyFirebaseToken, async (req, res) => {
   const { uid, email, name, picture } = req.firebaseUser;
   const fallbackUsername = (name || email?.split('@')[0] || `kahraman_${uid.slice(0, 6)}`)
@@ -23,6 +25,7 @@ router.get('/me', verifyFirebaseToken, async (req, res) => {
       email: email || existing?.email || null,
       picture: picture || existing?.picture || null,
       isGuest: !email,
+      is_premium: await isPremium(uid),
       created_at: existing?.created_at || serverTimestamp(),
       updated_at: serverTimestamp(),
     };
