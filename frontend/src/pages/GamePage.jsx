@@ -484,6 +484,16 @@ export default function GamePage({ user }) {
         else playSwordMiss();
         setTimeout(() => setFollowerAssistMsg(null), 3800);
       }
+      // Refresh inventory if the story consumed an item
+      const itemUsedEvent = Array.isArray(data.events)
+        ? data.events.find((e) => e.event === 'item_used' && e.name)
+        : null;
+      if (itemUsedEvent) {
+        getCharacter(characterId).then((d) => {
+          if (d.character) setCharacter(d.character);
+          if (d.inventory) setInventory(d.inventory);
+        }).catch(() => {});
+      }
       // Refresh NPC + quest lists after AI reply
       getNpcs(characterId).then(d => setNpcs(d.npcs || [])).catch(() => {});
       getQuests(characterId).then(d => setQuests(d.quests || [])).catch(() => {});

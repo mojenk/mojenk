@@ -164,6 +164,10 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    {"event":"enemy_spawn","name":"Goblin","max_hp":15,"ac":15}
    {"event":"enemy_damage","value":-5}
    {"event":"enemy_dead"}
+   {"event":"enemy_dead","name":"Goblin"}
+   {"event":"item_used","name":"Mana İksiri"}
+   enemy_dead: Düşman öldüğünde, kaçtığında, teslim olduğunda, barış yapıldığında veya dost edinildiğinde MUTLAKA kullan. İsim belirtilirse sadece o düşmanı kaldırır, isimsiz tüm aktif düşmanları kaldırır.
+   item_used: Hikâyede karakter bir iksir veya tüketilebilir eşya kullandığında (örn: "Mana İksiri içtin") MUTLAKA kullan. Envanterden o eşyayı düşürür. İsim, envanterdeki eşya adıyla büyük/küçük harf duyarsız eşleşmeli.
    {"event":"scene_change","scene":"cave"}
    scene_change: Oyuncu farklı bir bölgeye/ortama geçtiğinde MUTLAKA kullan. Atmosfer sesi otomatik değişir. Kullanılabilir sahneler: forest, dungeon, tavern, city, cave, swamp, ocean, mountain, temple, camp, ruins, storm, desert. Oyuncu bir ormandan mağaraya girerse scene=cave, bir tavernaya girerse scene=tavern, denize açılırsa scene=ocean, fırtına koparsa scene=storm, çölde yürüyorsa scene=desert, bir tapınağa girerse scene=temple, gece kamp kurarsa scene=camp, harabelere girerse scene=ruins, bataklıktan geçerse scene=swamp, dağlara çıkarsa scene=mountain yaz. Bölge gerçekten değiştiğinde event gönder, her yanıtta değil.
    {"event":"npc_meet","name":"NPC Adı","description":"Kısa fiziksel/kişilik tanımı","relationship":"friendly"}
@@ -426,6 +430,23 @@ async function applyEvents(aiReply, characterId, sessionId) {
       moraleEvents.forEach((entry) => events.push(entry));
     }
 
+    if (event.event === 'item_used' && event.name) {
+      const inventorySnapshot = await characterRef.collection('inventory').get();
+      const potions = inventorySnapshot.docs.map(docData).filter((item) => item.type === 'potion');
+      const usedName = String(event.name).toLocaleLowerCase('tr');
+      const matchedItem = potions.find((item) => String(item.name || '').toLocaleLowerCase('tr') === usedName)
+        || potions.find((item) => String(item.name || '').toLocaleLowerCase('tr').includes(usedName))
+        || potions.find((item) => usedName.includes(String(item.name || '').toLocaleLowerCase('tr')));
+      if (matchedItem) {
+        const matchedRef = characterRef.collection('inventory').doc(matchedItem.id);
+        if ((matchedItem.quantity || 1) > 1) {
+          await matchedRef.update({ quantity: matchedItem.quantity - 1, updated_at: serverTimestamp() });
+        } else {
+          await matchedRef.delete();
+        }
+      }
+    }
+
     if (event.event === 'xp_gain' && typeof event.value === 'number') {
       const result = await grantXpAndLevelUp(characterId, Math.max(0, Math.min(100, Math.round(event.value))));
       result.followerEvents?.forEach((entry) => events.push(entry));
@@ -467,6 +488,15 @@ async function applyEvents(aiReply, characterId, sessionId) {
         if (event.event === 'npc_update') {
           updates.notes = (event.notes || '').substring(0, 500);
           if (event.relationship) updates.relationship = event.relationship;
+          // Dost edinilen NPC aynı zamanda aktif düşman ise savaş UI'sini kapat
+          if (event.relationship === 'friendly' && sessionRef) {
+            const session = docData(await sessionRef.get());
+            const enemies = Array.isArray(session?.current_enemy) ? session.current_enemy : [];
+            const remaining = enemies.filter((enemy) => String(enemy.name || '').toLocaleLowerCase('tr') !== String(event.name || '').toLocaleLowerCase('tr'));
+            if (remaining.length !== enemies.length) {
+              await sessionRef.update({ current_enemy: remaining.length ? remaining : null, updated_at: serverTimestamp() });
+            }
+          }
         }
         if (event.event === 'npc_hireable' && !existing.data.is_follower) {
           updates.hire_cost = Math.max(1, Math.min(parseInt(event.hire_cost, 10) || 20, 500));
