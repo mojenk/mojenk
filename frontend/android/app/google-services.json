@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "103499453593",
+    "project_id": "kaderin-sesi",
+    "storage_bucket": "kaderin-sesi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:103499453593:android:3fdc2bb084cab8091c1408",
+        "android_client_info": {
+          "package_name": "com.kaderinsesi.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAi0yxA4IMk40xPBwBzboaX3bOB4JCx1Hs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
