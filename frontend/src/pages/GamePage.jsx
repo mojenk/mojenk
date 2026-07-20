@@ -235,6 +235,12 @@ export default function GamePage({ user }) {
   }, []);
 
   useEffect(() => {
+    if (showBag && (currentEnemy || (character && character.hp <= 0))) {
+      setShowBag(false);
+    }
+  }, [currentEnemy, character?.hp, showBag]);
+
+  useEffect(() => {
     if (!characterId) return;
     Promise.all([getCharacter(characterId), getMessages(sessionId), getSession(sessionId)]).then(
       ([charData, msgData, sessionData]) => {
@@ -1286,7 +1292,13 @@ export default function GamePage({ user }) {
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
-              onClick={() => { playClick(); setShowBag((s) => !s); }}
+              onClick={() => {
+                playClick();
+                if (character.hp <= 0) return;
+                if (currentEnemy) return;
+                setShowBag((s) => !s);
+              }}
+              title={character.hp <= 0 ? 'Baygınken envantere erişilemez' : currentEnemy ? 'Savaşta envantere erişilemez' : 'Çanta'}
               style={{
                 width: '2.1rem',
                 height: '2.1rem',
@@ -1299,7 +1311,8 @@ export default function GamePage({ user }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer',
+                cursor: character.hp <= 0 || currentEnemy ? 'not-allowed' : 'pointer',
+                opacity: character.hp <= 0 || currentEnemy ? 0.45 : 1,
                 position: 'relative',
               }}
             >
@@ -1906,6 +1919,7 @@ export default function GamePage({ user }) {
                     const ItemIconComp = ItemIcon[item.type] || ItemIcon.misc;
                     const canUse = item.type === 'potion';
                     const canEquip = ['weapon', 'armor'].includes(item.type);
+                    const itemLocked = character.hp <= 0 || Boolean(currentEnemy);
                     return (
                       <div
                         key={item.id}
@@ -1949,16 +1963,17 @@ export default function GamePage({ user }) {
                         <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
                           {canUse && (
                             <motion.button
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => handleUseItem(item.id)}
+                              whileTap={itemLocked ? {} : { scale: 0.9 }}
+                              onClick={() => !itemLocked && handleUseItem(item.id)}
+                              disabled={itemLocked}
                               style={{
-                                background: 'rgba(74,222,128,0.15)',
-                                border: '1px solid rgba(74,222,128,0.4)',
-                                color: '#4ade80',
+                                background: itemLocked ? 'rgba(92,74,42,0.15)' : 'rgba(74,222,128,0.15)',
+                                border: `1px solid ${itemLocked ? 'rgba(92,74,42,0.3)' : 'rgba(74,222,128,0.4)'}`,
+                                color: itemLocked ? 'var(--text-dim)' : '#4ade80',
                                 borderRadius: '6px',
                                 fontSize: '0.65rem',
                                 padding: '0.25rem 0.45rem',
-                                cursor: 'pointer',
+                                cursor: itemLocked ? 'not-allowed' : 'pointer',
                                 fontFamily: "'Cinzel', serif",
                               }}
                             >
@@ -1967,16 +1982,17 @@ export default function GamePage({ user }) {
                           )}
                           {canEquip && (
                             <motion.button
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => handleEquipItem(item.id)}
+                              whileTap={itemLocked ? {} : { scale: 0.9 }}
+                              onClick={() => !itemLocked && handleEquipItem(item.id)}
+                              disabled={itemLocked}
                               style={{
-                                background: item.equipped ? 'rgba(122,21,21,0.15)' : 'rgba(201,150,58,0.12)',
-                                border: `1px solid ${item.equipped ? 'rgba(122,21,21,0.4)' : 'rgba(201,150,58,0.4)'}`,
-                                color: item.equipped ? 'var(--blood)' : 'var(--gold)',
+                                background: itemLocked ? 'rgba(92,74,42,0.15)' : item.equipped ? 'rgba(122,21,21,0.15)' : 'rgba(201,150,58,0.12)',
+                                border: `1px solid ${itemLocked ? 'rgba(92,74,42,0.3)' : item.equipped ? 'rgba(122,21,21,0.4)' : 'rgba(201,150,58,0.4)'}`,
+                                color: itemLocked ? 'var(--text-dim)' : item.equipped ? 'var(--blood)' : 'var(--gold)',
                                 borderRadius: '6px',
                                 fontSize: '0.65rem',
                                 padding: '0.25rem 0.45rem',
-                                cursor: 'pointer',
+                                cursor: itemLocked ? 'not-allowed' : 'pointer',
                                 fontFamily: "'Cinzel', serif",
                               }}
                             >
@@ -1984,16 +2000,17 @@ export default function GamePage({ user }) {
                             </motion.button>
                           )}
                           <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleDropItem(item.id)}
+                            whileTap={itemLocked ? {} : { scale: 0.9 }}
+                            onClick={() => !itemLocked && handleDropItem(item.id)}
+                            disabled={itemLocked}
                             style={{
-                              background: 'rgba(92,74,42,0.1)',
-                              border: '1px solid rgba(92,74,42,0.3)',
-                              color: 'var(--text-dim)',
+                              background: itemLocked ? 'rgba(92,74,42,0.1)' : 'rgba(92,74,42,0.1)',
+                              border: `1px solid ${itemLocked ? 'rgba(92,74,42,0.2)' : 'rgba(92,74,42,0.3)'}`,
+                              color: itemLocked ? 'var(--text-dim)' : 'var(--text-dim)',
                               borderRadius: '6px',
                               fontSize: '0.65rem',
                               padding: '0.25rem 0.4rem',
-                              cursor: 'pointer',
+                              cursor: itemLocked ? 'not-allowed' : 'pointer',
                               fontFamily: "'Cinzel', serif",
                               display: 'flex',
                               alignItems: 'center',

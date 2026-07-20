@@ -370,7 +370,7 @@ async function applyEvents(aiReply, characterId, sessionId) {
     if (event.event === 'hp_change' && typeof event.value === 'number') {
       event.value = Math.max(-30, Math.min(30, Math.round(event.value)));
       const hp = Math.max(0, Math.min(character.max_hp, character.hp + event.value));
-      await characterRef.update({ hp, status: hp <= 0 ? 'unconscious' : character.status, updated_at: serverTimestamp() });
+      await characterRef.update({ hp, status: hp <= 0 ? 'dead' : 'alive', updated_at: serverTimestamp() });
     }
 
     if (event.event === 'gold_change' && typeof event.value === 'number') {
