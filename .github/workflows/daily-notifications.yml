@@ -1,0 +1,35 @@
+name: Daily Push Notifications
+
+on:
+  schedule:
+    # Every day at 09:00 UTC (12:00 Istanbul time in winter, 13:00 in summer)
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+
+      - name: Send daily notifications
+        run: node backend/scripts/sendDailyNotifications.js

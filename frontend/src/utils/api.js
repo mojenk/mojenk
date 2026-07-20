@@ -55,6 +55,18 @@ export async function deleteAccount() {
   return safeFetch(`${API}/auth/me`, { method: 'DELETE' });
 }
 
+export async function sendHeartbeat() {
+  return safeFetch(`${API}/auth/heartbeat`, { method: 'POST' });
+}
+
+export async function registerFcmToken(token, platform = 'web') {
+  return safeFetch(`${API}/auth/fcm-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, platform }),
+  });
+}
+
 export async function loginUser(username) {
   return safeFetch(`${API}/auth/login`, {
     method: 'POST',

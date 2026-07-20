@@ -26,6 +26,7 @@ router.get('/me', verifyFirebaseToken, async (req, res) => {
       picture: picture || existing?.picture || null,
       isGuest: !email,
       is_premium: await isPremium(uid),
+      last_active_at: serverTimestamp(),
       created_at: existing?.created_at || serverTimestamp(),
       updated_at: serverTimestamp(),
     };
@@ -35,6 +36,39 @@ router.get('/me', verifyFirebaseToken, async (req, res) => {
   } catch (err) {
     console.error('auth/me Firestore error:', err.stack || err.message);
     return res.status(500).json({ error: 'Firestore kullanıcı kaydı oluşturulamadı' });
+  }
+});
+
+router.post('/heartbeat', verifyFirebaseToken, async (req, res) => {
+  try {
+    const ref = firestore.collection('users').doc(req.firebaseUser.uid);
+    await ref.set({ last_active_at: serverTimestamp() }, { merge: true });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('auth/heartbeat error:', err.message);
+    return res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+router.post('/fcm-token', verifyFirebaseToken, async (req, res) => {
+  const { token, platform } = req.body;
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ error: 'FCM token gerekli' });
+  }
+  try {
+    const ref = firestore.collection('users').doc(req.firebaseUser.uid);
+    await ref.set({
+      fcm_tokens: admin.firestore.FieldValue.arrayUnion({
+        token,
+        platform: platform || 'unknown',
+        created_at: serverTimestamp(),
+      }),
+      last_active_at: serverTimestamp(),
+    }, { merge: true });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('auth/fcm-token error:', err.message);
+    return res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 

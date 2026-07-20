@@ -4,6 +4,8 @@ const { firestore, docData, serverTimestamp } = require('../firestore');
 const { grantXpAndLevelUp } = require('../utils/leveling');
 const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 
+const { sendNotificationToAll } = require('../utils/notifications');
+
 const router = express.Router();
 
 async function requireAdmin(req, res, next) {
@@ -161,7 +163,7 @@ router.get('/announcements', async (req, res) => {
 });
 
 router.post('/announcements', async (req, res) => {
-  const { title, content, type = 'info', expiresAt = null } = req.body;
+  const { title, content, type = 'info', expiresAt = null, sendPush = false } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'Başlık ve içerik gerekli' });
   const ref = firestore.collection('announcements').doc();
   await ref.set({
@@ -175,7 +177,11 @@ router.post('/announcements', async (req, res) => {
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
   });
-  return res.json({ announcement: docData(await ref.get()) });
+  let pushResult = { sent: 0 };
+  if (sendPush) {
+    pushResult = await sendNotificationToAll({ title, body: content });
+  }
+  return res.json({ announcement: docData(await ref.get()), pushResult });
 });
 
 router.patch('/announcements/:id', async (req, res) => {

@@ -1,6 +1,7 @@
 // Firebase configuration — auto-generated from Firebase Console
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 // Firebase Web API key is a public client identifier (not a secret — see
 // https://firebase.google.com/docs/projects/api-keys), safety is enforced via
@@ -21,6 +22,7 @@ const firebaseConfig = {
 let app = null;
 let auth = null;
 let googleProvider = null;
+let messaging = null;
 let firebaseInitError = null;
 
 try {
@@ -30,10 +32,15 @@ try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   googleProvider = new GoogleAuthProvider();
+  try {
+    messaging = getMessaging(app);
+  } catch (msgErr) {
+    console.warn('Firebase Messaging başlatılamadı:', msgErr.message);
+  }
 } catch (err) {
   console.error('Firebase başlatılamadı:', err);
   firebaseInitError = err?.message || 'Firebase başlatılırken bilinmeyen bir hata oluştu.';
 }
 
-export { auth, googleProvider, signInWithPopup, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, firebaseInitError };
+export { auth, googleProvider, messaging, getToken, onMessage, signInWithPopup, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, firebaseInitError };
 export default app;

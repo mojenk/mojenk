@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward, claimDailyBonus } from '../utils/api';
+import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward, claimDailyBonus, sendHeartbeat } from '../utils/api';
 import { showRewardedAd, showInterstitialAd } from '../utils/ads';
 import { useSound } from '../hooks/useSound';
 import TypewriterText from '../components/TypewriterText';
@@ -224,6 +224,14 @@ export default function GamePage({ user }) {
       const saved = JSON.parse(localStorage.getItem('dnd_user') || '{}');
       setIsPremiumUser(Boolean(saved?.is_premium));
     } catch { setIsPremiumUser(false); }
+  }, []);
+
+  useEffect(() => {
+    sendHeartbeat().catch(() => {});
+    const id = setInterval(() => {
+      sendHeartbeat().catch(() => {});
+    }, 60000);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {

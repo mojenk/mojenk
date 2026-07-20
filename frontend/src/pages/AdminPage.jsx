@@ -36,6 +36,23 @@ const TABS = [
   { id: 'world-events', label: 'Dünya Olayları', icon: Globe },
 ];
 
+function formatLastActive(isoString) {
+  if (!isoString) return 'Hiç aktif değil';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return 'Bilinmiyor';
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return 'Şimdi aktif';
+  if (diffMins < 60) return `${diffMins} dk önce`;
+  if (diffHours < 24) return `${diffHours} sa önce`;
+  if (diffDays < 7) return `${diffDays} gün önce`;
+  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+    d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function AdminPage({ user }) {
   const navigate = useNavigate();
   const [characters, setCharacters] = useState([]);
@@ -49,7 +66,7 @@ export default function AdminPage({ user }) {
   const [filters, setFilters] = useState({ race: '', class: '', status: '', minLevel: '' });
   const [announcements, setAnnouncements] = useState([]);
   const [worldEvents, setWorldEvents] = useState([]);
-  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', type: 'info' });
+  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', type: 'info', sendPush: false });
   const [worldEventForm, setWorldEventForm] = useState({ title: '', description: '', type: 'event' });
 
   const showMessage = (text, isError = false) => {
@@ -92,9 +109,10 @@ export default function AdminPage({ user }) {
   const handleCreateAnnouncement = async () => {
     if (!announcementForm.title.trim() || !announcementForm.content.trim()) return;
     try {
-      await adminCreateAnnouncement(announcementForm);
-      setAnnouncementForm({ title: '', content: '', type: 'info' });
-      showMessage('Duyuru yayınlandı');
+      const result = await adminCreateAnnouncement(announcementForm);
+      setAnnouncementForm({ title: '', content: '', type: 'info', sendPush: false });
+      const sent = result?.pushResult?.sent || 0;
+      showMessage(`Duyuru yayınlandı${sent > 0 ? ` · ${sent} cihaza bildirim gönderildi` : ''}`);
       await loadAdminContent();
     } catch (err) { showMessage(err.message, true); }
   };
@@ -303,6 +321,8 @@ export default function AdminPage({ user }) {
             bodyKey="content"
             bodyPlaceholder="Tüm oyunculara gösterilecek duyuru..."
             submitLabel="Duyuruyu Yayınla"
+            pushKey="sendPush"
+            pushLabel="Tüm oyunculara push bildirimi de gönder"
             onSubmit={handleCreateAnnouncement}
             items={announcements}
             onToggle={async (item) => { await adminToggleAnnouncement(item.id, !item.active); await loadAdminContent(); }}
@@ -539,6 +559,9 @@ function UsersTab({ users }) {
             <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif" }}>
               {u.email || 'E-posta yok'} · Misafir: {u.isGuest ? 'Evet' : 'Hayır'}
             </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--gold)', fontFamily: "'Crimson Text', serif", marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <Calendar size={10} /> Son aktif: {formatLastActive(u.last_active_at)}
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
             <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: 'monospace', background: 'rgba(0,0,0,0.25)', padding: '0.25rem 0.45rem', borderRadius: '6px' }}>
@@ -572,7 +595,7 @@ function UsersTab({ users }) {
   );
 }
 
-function ContentTab({ title, form, setForm, bodyKey, bodyPlaceholder, submitLabel, onSubmit, items, onToggle, onDelete }) {
+function ContentTab({ title, form, setForm, bodyKey, bodyPlaceholder, submitLabel, pushKey, pushLabel, onSubmit, items, onToggle, onDelete }) {
   return (
     <div>
       <div
@@ -598,6 +621,28 @@ function ContentTab({ title, form, setForm, bodyKey, bodyPlaceholder, submitLabe
           rows={4}
           style={{ ...inputStyle, width: '100%', resize: 'vertical', marginBottom: '0.6rem' }}
         />
+        {pushKey && (
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              color: 'var(--gold)',
+              fontSize: '0.8rem',
+              fontFamily: "'Crimson Text', serif",
+              marginBottom: '0.7rem',
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={Boolean(form[pushKey])}
+              onChange={(e) => setForm((prev) => ({ ...prev, [pushKey]: e.target.checked }))}
+              style={{ accentColor: 'var(--gold)', cursor: 'pointer' }}
+            />
+            {pushLabel}
+          </label>
+        )}
         <motion.button
           whileTap={{ scale: 0.96 }}
           onClick={onSubmit}

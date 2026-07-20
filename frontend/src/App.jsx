@@ -17,6 +17,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import AccountDeletionPage from './pages/AccountDeletionPage';
 import { playPageTransition } from './utils/sounds';
 import { apiGetCurrentUser, adminCheck } from './utils/api';
+import { initPush } from './utils/push';
 
 // Apply saved text size and theme on startup
 (function () {
@@ -160,6 +161,7 @@ export default function App() {
           const current = await apiGetCurrentUser(token);
           setUser(current.user);
           try { localStorage.setItem('dnd_user', JSON.stringify(current.user)); } catch {}
+          initPush().catch(() => {});
         } catch (err) {
           console.error('Failed to sync user:', err);
           setUser(null);
