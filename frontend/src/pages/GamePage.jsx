@@ -11,6 +11,7 @@ import DiceRoll from '../components/DiceRoll';
 import QuestPanel from '../components/QuestPanel';
 import NpcDialogModal from '../components/NpcDialogModal';
 import SkillTreeModal from '../components/SkillTreeModal';
+import TutorialModal from '../components/TutorialModal';
 import {
   playClick, playDiceRoll, playDiceResult, playNat1, playDamage,
   playHeal, playLevelUp, playGold, playNarrator, playSend,
@@ -159,6 +160,7 @@ export default function GamePage({ user }) {
   const [sceneAmbience, setSceneAmbience] = useState(null);
   const [session, setSession] = useState(null);
   const [showRecap, setShowRecap] = useState(true);
+  const [showTutorial, setShowTutorial] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -229,6 +231,9 @@ export default function GamePage({ user }) {
         // Load quests
         getQuests(characterId).then(d => setQuests(d.quests || [])).catch(() => {});
         if (msgs.length === 0) {
+          const tutorialKey = `dnd_tutorial_${characterId}`;
+          const alreadySeen = localStorage.getItem(tutorialKey);
+          if (!alreadySeen) setShowTutorial(true);
           setStarting(true);
           startAdventure(sessionId, characterId, scenario).then((data) => {
             if (data.reply) {
@@ -758,6 +763,17 @@ export default function GamePage({ user }) {
       }}
     >
       <AnnouncementsBar />
+
+      <AnimatePresence>
+        {showTutorial && (
+          <TutorialModal
+            onClose={() => {
+              try { localStorage.setItem(`dnd_tutorial_${characterId}`, '1'); } catch {}
+              setShowTutorial(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {turnRewardDue && (
