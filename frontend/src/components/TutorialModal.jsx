@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { t } from '../utils/i18n';
 import {
-  ScrollText, ListOrdered, Send, Dices, Coins, Menu, ChevronRight, ChevronLeft,
+  ScrollText, ListOrdered, Send, Dices, Coins, Menu, CircleDot, Palette, ChevronRight, ChevronLeft,
 } from 'lucide-react';
 
 const ICONS = [
@@ -12,6 +12,8 @@ const ICONS = [
   Dices,
   Coins,
   Menu,
+  CircleDot,
+  Palette,
 ];
 
 export default function TutorialModal({ onClose }) {
@@ -23,6 +25,8 @@ export default function TutorialModal({ onClose }) {
     { titleKey: 'tutorial_step4_title', textKey: 'tutorial_step4_text' },
     { titleKey: 'tutorial_step5_title', textKey: 'tutorial_step5_text' },
     { titleKey: 'tutorial_step6_title', textKey: 'tutorial_step6_text' },
+    { titleKey: 'tutorial_step7_title', textKey: 'tutorial_step7_text' },
+    { titleKey: 'tutorial_step8_title', textKey: 'tutorial_step8_text' },
   ];
 
   const CurrentIcon = ICONS[step];
