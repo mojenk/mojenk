@@ -3,7 +3,8 @@ const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 const { grantXpAndLevelUp } = require('../utils/leveling');
 const { applyLoot } = require('../utils/loot');
-const { claimWheelTurns, isPremium } = require('../utils/dailyLimit');
+const { claimWheelTurns } = require('../utils/dailyLimit');
+const { isPremium } = require('../utils/premium');
 
 const router = express.Router();
 

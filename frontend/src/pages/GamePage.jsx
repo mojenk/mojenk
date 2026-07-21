@@ -23,7 +23,7 @@ import {
   Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX, Backpack,
   Users, Store, BarChart3, ScrollText, Skull, X, AlertTriangle,
   CheckCircle2, XCircle, Dices, Zap, Wind, Send, Bomb, Sparkles, RotateCcw, Target, Wand2,
-  Crown, CircleDot,
+  Crown,
 } from 'lucide-react';
 
 const FOLLOWER_ROLE_META = {
@@ -55,6 +55,16 @@ const RACE_PORTRAITS = {
 };
 function getRacePortrait(race) {
   return RACE_PORTRAITS[race] || '/races/insan.svg';
+}
+
+function WheelIcon({ size = 18, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="3" fill={color} />
+      <path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+    </svg>
+  );
 }
 
 // SVG arc helpers for the wheel of fate
@@ -1358,7 +1368,7 @@ export default function GamePage({ user }) {
                     color: remaining > 0 ? 'var(--gold)' : 'var(--text-dim)',
                   }}
                 >
-                  <CircleDot size={18} />
+                  <WheelIcon size={18} />
                 </motion.button>
               );
             })()}
