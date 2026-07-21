@@ -3165,45 +3165,39 @@ export default function GamePage({ user }) {
                   style={{ width: '100%', height: '100%' }}
                 >
                   <svg viewBox="0 0 200 200" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-                    <defs>
-                      {WHEEL_SEGMENTS.map((_, i) => (
-                        <path
-                          key={i}
-                          id={`wheel-arc-${i}`}
-                          d={describeArc(100, 100, 82, i * 40, (i + 1) * 40)}
-                          fill="none"
-                        />
-                      ))}
-                    </defs>
                     {WHEEL_SEGMENTS.map((seg, i) => {
                       const start = i * 40;
                       const end = (i + 1) * 40;
+                      const mid = (start + end) / 2;
                       const outer = describeArc(100, 100, 96, start, end);
-                      const inner = describeArc(100, 100, 24, end, start);
+                      const r = 68;
+                      const rad = (mid - 90) * Math.PI / 180;
+                      const x = 100 + r * Math.cos(rad);
+                      const y = 100 + r * Math.sin(rad);
                       return (
-                        <path
-                          key={`slice-${i}`}
-                          d={`${outer} L 100 100 Z`}
-                          fill={seg.color}
-                          stroke="#0d0a05"
-                          strokeWidth="1.5"
-                        />
+                        <g key={`slice-${i}`}>
+                          <path
+                            d={`${outer} L 100 100 Z`}
+                            fill={seg.color}
+                            stroke="#0d0a05"
+                            strokeWidth="1.5"
+                          />
+                          <text
+                            x={x}
+                            y={y}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fontSize="9"
+                            fontWeight="800"
+                            fill="#0d0a05"
+                            transform={`rotate(${mid + 90}, ${x}, ${y})`}
+                            style={{ textShadow: '0 0 2px rgba(255,255,255,0.35)', userSelect: 'none' }}
+                          >
+                            {seg.label}
+                          </text>
+                        </g>
                       );
                     })}
-                    {WHEEL_SEGMENTS.map((seg, i) => (
-                      <text
-                        key={`text-${i}`}
-                        fontSize="8"
-                        fontWeight="700"
-                        fill="#0d0a05"
-                        textAnchor="middle"
-                        style={{ textShadow: '0 0 2px rgba(255,255,255,0.35)' }}
-                      >
-                        <textPath href={`#wheel-arc-${i}`} startOffset="50%">
-                          {seg.label}
-                        </textPath>
-                      </text>
-                    ))}
                   </svg>
                 </motion.div>
                 <div
