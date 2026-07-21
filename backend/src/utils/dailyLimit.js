@@ -89,9 +89,41 @@ async function claimDailyBonus(uid) {
   });
 }
 
+// Grants a wheel-spin bonus of extra daily turns.
+async function claimWheelTurns(uid, amount) {
+  if (await isPremium(uid)) {
+    // Premium users do not consume daily turns, so no bonus storage is needed.
+    return { used: 0, limit: Infinity, bonusAdsUsed: 0, maxBonusAds: MAX_BONUS_ADS_PER_DAY, premium: true };
+  }
+  const userRef = firestore.collection('users').doc(uid);
+  const today = getTodayIstanbul();
+  return firestore.runTransaction(async (transaction) => {
+    const doc = await transaction.get(userRef);
+    const data = doc.exists ? doc.data() : {};
+    const isNewDay = data.dailyTurnDate !== today;
+    const used = isNewDay ? 0 : (data.dailyTurnsUsed || 0);
+    const bonusTurns = isNewDay ? 0 : (data.dailyBonusTurns || 0);
+    const bonusAdsUsed = isNewDay ? 0 : (data.dailyBonusAdsUsed || 0);
+    const newBonusTurns = bonusTurns + Math.max(1, Math.min(amount, 20));
+    transaction.set(userRef, {
+      dailyTurnDate: today,
+      dailyTurnsUsed: used,
+      dailyBonusTurns: newBonusTurns,
+      dailyBonusAdsUsed: bonusAdsUsed,
+    }, { merge: true });
+    return {
+      used,
+      limit: FREE_DAILY_TURNS + newBonusTurns,
+      bonusAdsUsed,
+      maxBonusAds: MAX_BONUS_ADS_PER_DAY,
+    };
+  });
+}
+
 module.exports = {
   checkAndConsumeDailyTurn,
   claimDailyBonus,
+  claimWheelTurns,
   FREE_DAILY_TURNS,
   BONUS_PER_AD,
   MAX_BONUS_ADS_PER_DAY,

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward, claimDailyBonus, sendHeartbeat } from '../utils/api';
+import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward, claimDailyBonus, sendHeartbeat, spinWheel } from '../utils/api';
 import { showRewardedAd, showInterstitialAd } from '../utils/ads';
 import { useSound } from '../hooks/useSound';
 import TypewriterText from '../components/TypewriterText';
@@ -23,7 +23,7 @@ import {
   Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX, Backpack,
   Users, Store, BarChart3, ScrollText, Skull, X, AlertTriangle,
   CheckCircle2, XCircle, Dices, Zap, Wind, Send, Bomb, Sparkles, RotateCcw, Target, Wand2,
-  Crown,
+  Crown, CircleDot,
 } from 'lucide-react';
 
 const FOLLOWER_ROLE_META = {
@@ -163,6 +163,10 @@ export default function GamePage({ user }) {
   const [session, setSession] = useState(null);
   const [showRecap, setShowRecap] = useState(true);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showWheel, setShowWheel] = useState(false);
+  const [wheelSpinning, setWheelSpinning] = useState(false);
+  const [wheelResult, setWheelResult] = useState(null);
+  const [wheelError, setWheelError] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -600,6 +604,28 @@ export default function GamePage({ user }) {
       playError();
       setItemMsg(err.message || 'Kullanılamadı');
       setTimeout(() => setItemMsg(''), 2000);
+    }
+  };
+
+  const handleSpinWheel = async () => {
+    if (wheelSpinning || !characterId) return;
+    setWheelSpinning(true);
+    setWheelResult(null);
+    setWheelError('');
+    playDiceRoll();
+    try {
+      const data = await spinWheel(characterId);
+      setTimeout(() => {
+        if (data.character) setCharacter(data.character);
+        if (data.inventory) setInventory(data.inventory);
+        setWheelResult(data);
+        playMagic();
+        setWheelSpinning(false);
+      }, 1500);
+    } catch (err) {
+      setWheelError(err.message || 'Çark çevrilemedi');
+      playError();
+      setWheelSpinning(false);
     }
   };
 
@@ -1281,6 +1307,27 @@ export default function GamePage({ user }) {
             >
               <Star size={14} />{Math.min(100, Math.round(((character.experience ?? 0) / 300) * 100))}%
             </span>
+            {/* Wheel of Fate button */}
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              onClick={() => { playClick(); setShowWheel(true); }}
+              title="Kader Çarkı"
+              style={{
+                width: '2.1rem',
+                height: '2.1rem',
+                borderRadius: '8px',
+                background: 'rgba(92,74,42,0.2)',
+                border: '1px solid var(--border)',
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: character?.last_wheel_spin_date ? 'var(--text-dim)' : 'var(--gold)',
+              }}
+            >
+              <CircleDot size={18} />
+            </motion.button>
             {/* Sound toggle */}
             <motion.button
               whileTap={{ scale: 0.96 }}
@@ -3044,6 +3091,199 @@ export default function GamePage({ user }) {
           <Send size={18} />
         </motion.button>
       </div>
+
+      {/* Wheel of Fate Modal */}
+      <AnimatePresence>
+        {showWheel && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !wheelSpinning && setShowWheel(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.75)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 100,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1rem',
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: 'min(22rem, 100%)',
+                background: 'linear-gradient(180deg, #1a1410 0%, #0d0a05 100%)',
+                border: '1px solid var(--border)',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                textAlign: 'center',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+              }}
+            >
+              <h3 style={{ margin: '0 0 0.5rem', color: 'var(--gold)', fontFamily: "'Cinzel Decorative', serif" }}>
+                Kader Çarkı
+              </h3>
+              <p style={{ margin: '0 0 1rem', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+                Her gün bir kez çevir. Altın, iksir, ekstra hamle veya nadir eşya kazan.
+              </p>
+
+              <div style={{ position: 'relative', width: '16rem', height: '16rem', margin: '0 auto 1.5rem' }}>
+                <motion.div
+                  animate={{ rotate: wheelSpinning ? 1440 + Math.random() * 360 : 0 }}
+                  transition={{ duration: 1.5, ease: 'easeOut' }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    background: `conic-gradient(
+                      #c9a73a 0deg 40deg,
+                      #e5b94a 40deg 80deg,
+                      #ffd700 80deg 120deg,
+                      #4ade80 120deg 160deg,
+                      #60a5fa 160deg 200deg,
+                      #f472b6 200deg 240deg,
+                      #f87171 240deg 280deg,
+                      #a78bfa 280deg 320deg,
+                      #fbbf24 320deg 360deg
+                    )`,
+                    border: '3px solid var(--gold)',
+                    boxShadow: '0 0 24px rgba(201,167,58,0.25)',
+                    position: 'relative',
+                  }}
+                >
+                  {[
+                    '15 Altın', '30 Altın', '50 Altın',
+                    'İksir', 'Mana', '+5 Hamle',
+                    '+2 Güç', '+2 Çevik', 'Tılsım'
+                  ].map((label, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: `rotate(${i * 40 + 20}deg) translateY(-5.5rem)`,
+                        transformOrigin: '0 0',
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        color: '#0d0a05',
+                        textShadow: '0 0 2px rgba(255,255,255,0.4)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </motion.div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '3.5rem',
+                    height: '3.5rem',
+                    borderRadius: '50%',
+                    background: '#0d0a05',
+                    border: '2px solid var(--gold)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.65rem',
+                    color: 'var(--gold)',
+                    fontWeight: 700,
+                    boxShadow: '0 0 16px rgba(0,0,0,0.8)',
+                  }}
+                >
+                  KADER
+                </div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '-0.5rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 0,
+                    height: 0,
+                    borderLeft: '10px solid transparent',
+                    borderRight: '10px solid transparent',
+                    borderTop: '16px solid var(--blood)',
+                    zIndex: 2,
+                  }}
+                />
+              </div>
+
+              {wheelResult && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    marginBottom: '1rem',
+                    padding: '0.75rem',
+                    borderRadius: '10px',
+                    background: 'rgba(201,167,58,0.12)',
+                    border: '1px solid var(--gold)',
+                    color: 'var(--gold)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {wheelResult.message}
+                </motion.div>
+              )}
+
+              {wheelError && (
+                <div style={{ marginBottom: '1rem', color: 'var(--blood)', fontSize: '0.85rem' }}>
+                  {wheelError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleSpinWheel}
+                  disabled={wheelSpinning || character?.last_wheel_spin_date}
+                  style={{
+                    padding: '0.7rem 1.4rem',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: character?.last_wheel_spin_date ? 'rgba(92,74,42,0.3)' : 'linear-gradient(135deg, var(--gold), #b8942a)',
+                    color: '#0d0a05',
+                    fontWeight: 700,
+                    cursor: character?.last_wheel_spin_date ? 'not-allowed' : 'pointer',
+                    opacity: character?.last_wheel_spin_date ? 0.5 : 1,
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  {wheelSpinning ? 'Çevriliyor...' : character?.last_wheel_spin_date ? 'Bugün Çevrildi' : 'Çevir'}
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setShowWheel(false)}
+                  disabled={wheelSpinning}
+                  style={{
+                    padding: '0.7rem 1.2rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border)',
+                    background: 'transparent',
+                    color: 'var(--text)',
+                    cursor: wheelSpinning ? 'not-allowed' : 'pointer',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  Kapat
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Skill Tree Modal */}
       {showSkillTree && (

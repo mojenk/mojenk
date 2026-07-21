@@ -115,6 +115,14 @@ export async function combatAttack(characterId, targetAC, sessionId) {
   });
 }
 
+export async function spinWheel(characterId) {
+  return safeFetch(`${API}/game/wheel-spin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ characterId }),
+  });
+}
+
 export async function updateCharacterHP(id, hp, userId) {
   return safeFetch(`${API}/characters/${id}/hp`, {
     method: 'PATCH',

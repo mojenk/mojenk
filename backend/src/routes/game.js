@@ -3,6 +3,7 @@ const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 const { grantXpAndLevelUp } = require('../utils/leveling');
 const { applyLoot } = require('../utils/loot');
+const { claimWheelTurns } = require('../utils/dailyLimit');
 
 const router = express.Router();
 
@@ -248,6 +249,91 @@ router.post('/combat/attack', async (req, res) => {
   } catch (err) {
     console.error('Combat Firestore error:', err.stack || err.message);
     return res.status(500).json({ error: 'Savaş işlemi tamamlanamadı' });
+  }
+});
+
+const WHEEL_REWARDS = [
+  { id: 'gold_15', type: 'gold', value: 15, weight: 22, label: '15 Altın', icon: 'coins' },
+  { id: 'gold_30', type: 'gold', value: 30, weight: 14, label: '30 Altın', icon: 'coins' },
+  { id: 'gold_50', type: 'gold', value: 50, weight: 8, label: '50 Altın', icon: 'coins' },
+  { id: 'potion_heal', type: 'item', item: { name: 'Küçük İyileşme İksiri', type: 'potion', description: '2d4+2 HP iyileştirir.', quantity: 1 }, weight: 16, label: 'İyileşme İksiri', icon: 'potion' },
+  { id: 'potion_mana', type: 'item', item: { name: 'Mana İksiri', type: 'potion', description: 'Bir büyü slotunu yeniler.', quantity: 1 }, weight: 10, label: 'Mana İksiri', icon: 'potion' },
+  { id: 'extra_turns_5', type: 'turns', value: 5, weight: 18, label: '+5 Hamle Hakkı', icon: 'turns' },
+  { id: 'temp_boost_str', type: 'temp_stat', stat: 'strength', value: 2, durationHours: 1, weight: 6, label: '+2 Güç (1 saat)', icon: 'stat' },
+  { id: 'temp_boost_dex', type: 'temp_stat', stat: 'dexterity', value: 2, durationHours: 1, weight: 4, label: '+2 Çeviklik (1 saat)', icon: 'stat' },
+  { id: 'rare_amulet', type: 'item', item: { name: 'Kader Tılsımı', type: 'misc', description: 'Kaderin sana gülümsediği anlarda parlar.' }, weight: 2, label: 'Kader Tılsımı', icon: 'rare' },
+];
+
+function getTodayIstanbul() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+}
+
+function pickWheelReward() {
+  const total = WHEEL_REWARDS.reduce((sum, reward) => sum + reward.weight, 0);
+  let roll = Math.random() * total;
+  for (const reward of WHEEL_REWARDS) {
+    if (roll < reward.weight) return reward;
+    roll -= reward.weight;
+  }
+  return WHEEL_REWARDS[WHEEL_REWARDS.length - 1];
+}
+
+router.post('/wheel-spin', async (req, res) => {
+  const { characterId } = req.body;
+  if (!characterId) return res.status(400).json({ error: 'characterId gerekli' });
+
+  try {
+    const character = await ownedCharacter(req.firebaseUser.uid, characterId);
+    if (!character) return res.status(404).json({ error: 'Karakter bulunamadı' });
+
+    const characterRef = firestore.collection('characters').doc(characterId);
+    const today = getTodayIstanbul();
+    if (character.last_wheel_spin_date === today) {
+      return res.status(429).json({ error: 'Bugün zaten Kader Çarkı\'nı çevirdin', nextSpin: 'yarın' });
+    }
+
+    const reward = pickWheelReward();
+    const batch = firestore.batch();
+    batch.update(characterRef, { last_wheel_spin_date: today, updated_at: serverTimestamp() });
+
+    let appliedMessage = '';
+    if (reward.type === 'gold') {
+      batch.update(characterRef, { gold: (character.gold || 0) + reward.value });
+      appliedMessage = `${reward.value} altın kazandın!`;
+    } else if (reward.type === 'item') {
+      const itemRef = characterRef.collection('inventory').doc();
+      batch.set(itemRef, {
+        id: itemRef.id,
+        name: reward.item.name,
+        type: reward.item.type,
+        description: reward.item.description,
+        quantity: reward.item.quantity || 1,
+        equipped: 0,
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+      });
+      appliedMessage = `${reward.item.name} envanterine eklendi!`;
+    } else if (reward.type === 'turns') {
+      const turnStatus = await claimWheelTurns(req.firebaseUser.uid, reward.value);
+      appliedMessage = `Bugün ${reward.value} ekstra hamle kazandın!`;
+      if (turnStatus.premium) appliedMessage = 'Premium kullanıcılar için ekstra hamle kaydedildi.';
+    } else if (reward.type === 'temp_stat') {
+      const expiresAt = new Date(Date.now() + reward.durationHours * 60 * 60 * 1000);
+      const tempBoosts = character.temp_stat_boosts || {};
+      tempBoosts[reward.stat] = { value: reward.value, expires_at: expiresAt.toISOString() };
+      batch.update(characterRef, { temp_stat_boosts: tempBoosts });
+      appliedMessage = `${reward.stat} +${reward.value} (1 saat)!`;
+    }
+
+    await batch.commit();
+    const updatedCharacter = docData(await characterRef.get());
+    const inventorySnapshot = await characterRef.collection('inventory').get();
+    const inventory = inventorySnapshot.docs.map(docData);
+
+    return res.json({ ok: true, reward, message: appliedMessage, character: updatedCharacter, inventory });
+  } catch (err) {
+    console.error('Wheel spin error:', err.stack || err.message);
+    return res.status(500).json({ error: 'Çark çevrilemedi' });
   }
 });
 
