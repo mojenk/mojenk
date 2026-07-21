@@ -349,7 +349,7 @@ router.post('/wheel-spin', async (req, res) => {
     return res.json({ ok: true, reward, message: appliedMessage, character: updatedCharacter, inventory, spinsUsed: spinsUsed + 1, maxSpins });
   } catch (err) {
     console.error('Wheel spin error:', err.stack || err.message);
-    return res.status(500).json({ error: 'Çark çevrilemedi' });
+    return res.status(500).json({ error: `Çark çevrilemedi: ${err.message || 'Bilinmeyen hata'}` });
   }
 });
 
