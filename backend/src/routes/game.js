@@ -3,7 +3,7 @@ const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 const { grantXpAndLevelUp } = require('../utils/leveling');
 const { applyLoot } = require('../utils/loot');
-const { claimWheelTurns } = require('../utils/dailyLimit');
+const { claimWheelTurns, isPremium } = require('../utils/dailyLimit');
 
 const router = express.Router();
 
@@ -288,13 +288,28 @@ router.post('/wheel-spin', async (req, res) => {
 
     const characterRef = firestore.collection('characters').doc(characterId);
     const today = getTodayIstanbul();
-    if (character.last_wheel_spin_date === today) {
-      return res.status(429).json({ error: 'Bugün zaten Kader Çarkı\'nı çevirdin', nextSpin: 'yarın' });
+    const premium = await isPremium(req.firebaseUser.uid);
+    const maxSpins = premium ? 3 : 1;
+    const spinDate = character.wheel_spin_date;
+    const spinsUsed = spinDate === today ? (character.wheel_spins_used || 0) : 0;
+
+    if (spinsUsed >= maxSpins) {
+      return res.status(429).json({
+        error: premium ? 'Bugünlük 3 Kader Çarkı hakkını kullandın' : 'Bugün zaten Kader Çarkı\'nı çevirdin',
+        nextSpin: 'yarın',
+        spinsUsed,
+        maxSpins,
+      });
     }
 
     const reward = pickWheelReward();
     const batch = firestore.batch();
-    batch.update(characterRef, { last_wheel_spin_date: today, updated_at: serverTimestamp() });
+    batch.update(characterRef, {
+      wheel_spin_date: today,
+      wheel_spins_used: spinsUsed + 1,
+      last_wheel_spin_date: today,
+      updated_at: serverTimestamp(),
+    });
 
     let appliedMessage = '';
     if (reward.type === 'gold') {
@@ -330,7 +345,7 @@ router.post('/wheel-spin', async (req, res) => {
     const inventorySnapshot = await characterRef.collection('inventory').get();
     const inventory = inventorySnapshot.docs.map(docData);
 
-    return res.json({ ok: true, reward, message: appliedMessage, character: updatedCharacter, inventory });
+    return res.json({ ok: true, reward, message: appliedMessage, character: updatedCharacter, inventory, spinsUsed: spinsUsed + 1, maxSpins });
   } catch (err) {
     console.error('Wheel spin error:', err.stack || err.message);
     return res.status(500).json({ error: 'Çark çevrilemedi' });

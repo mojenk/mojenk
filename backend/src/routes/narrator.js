@@ -42,7 +42,7 @@ const RECENT_KEEP = 8;
 const AI_TIMEOUT_MS = 30000;
 const MAX_RETRIES = 1;
 
-async function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = []) {
+async function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = [], narratorTone = null) {
   const mod = v => Math.floor((v - 10) / 2);
   const fmt = v => (v >= 0 ? '+' : '') + v;
 
@@ -105,7 +105,26 @@ ${activeWorldEvents.map(e => `- **${e.title}** (${e.type}): ${e.description}`).j
   const scenarioKey = (sessionTitle || '').toLowerCase().replace(/[^a-z]/g, '');
   const scenarioHint = scenarioHints[scenarioKey] || Object.entries(scenarioHints).find(([k]) => scenarioKey.includes(k))?.[1] || '';
 
+  const toneInstructions = {
+    dramatic: language === 'en'
+      ? 'Narration should be emotionally charged, tense, and theatrical. Use vivid descriptions, dramatic pauses, and heightened stakes. NPCs speak with passion and subtext.'
+      : 'Anlatım duygusal, gerilimli ve tiyatsal olsun. Canlı betimlemeler, dramatik duruşlar ve yüksek riskler kullan. NPC\'ler tutku ve ima dolu konuşsun.',
+    comedic: language === 'en'
+      ? 'Narration should be light, witty, and humorous. Exaggerate absurd moments, allow NPCs to be sarcastic or playful, and keep the tone fun and breezy.'
+      : 'Anlatım hafif, esprili ve mizahi olsun. Saçma anları abart, NPC\'lerin alaycı veya neşeli olmasına izin ver, ton keyifli ve rahat kalsın.',
+    dark: language === 'en'
+      ? 'Narration should be grim, ominous, and gritty. Highlight danger, decay, and moral ambiguity. The world feels harsh and unforgiving.'
+      : 'Anlatım kasvetli, uğursuz ve sert olsun. Tehlike, çürüme ve ahlaki belirsizliği öne çıkar. Dünya acımasız ve sert hissettirsin.',
+    epic: language === 'en'
+      ? 'Narration should be grand, heroic, and mythic. Describe deeds as legendary, use elevated language, and make the player feel like a protagonist of destiny.'
+      : 'Anlatım görkemli, kahramanlık ve destansı olsun. Eylemleri efsanevi olarak betimle, yüksek üslup kullan ve oyuncuyu kaderin kahramanı gibi hissettir.',
+  };
+  const toneBlock = narratorTone && toneInstructions[narratorTone]
+    ? `## ANLATICI TONU — ${narratorTone.toUpperCase()}\n${toneInstructions[narratorTone]}\n`
+    : '';
+
   return `Sen "Kader'in Sesi" adlı efsanevi bir D&D Dungeon Master'sın. ${language === 'en' ? 'You speak ONLY in English. ALL narration, NPC dialogue, and choices (A/B/C) must be in English. Never write in Turkish.' : 'SADECE Türkçe konuşuyorsun. Tüm yanıtlar Türkçe olmalı.'}
+${toneBlock}
 
 ## AKTİF KARAKTER
 İsim: ${character.name} | Irk: ${character.race} | Sınıf: ${character.class} | Seviye: ${character.level}
@@ -649,7 +668,8 @@ router.post('/chat', async (req, res) => {
       inventory,
       language || 'tr',
       knownNpcs,
-      activeQuests
+      activeQuests,
+      character.narrator_tone
     );
     let aiReply;
     try {
@@ -812,7 +832,7 @@ router.post('/start', async (req, res) => {
       ? `Begin with this scene and write a gripping 4-5 sentence opening. Set the atmosphere, draw the player in, and end with 2-4 clear choices labeled **A)**, **B)**, **C)**. Do not break character or meta-comment.\n\nScene: ${opening}`
       : `Bu sahneyle başla ve sürükleyici 4-5 cümlelik bir açılış yap. Havayı kur, oyuncuyu içine çek, sonunda **A)**, **B)**, **C)** formatında 2-4 net seçenek sun. Karakter dışına çıkma veya yorum yapma.\n\nSahne: ${opening}`;
 
-    const systemPrompt = await buildSystem(character, '', title, inventory, language || 'tr', existingNpcs);
+    const systemPrompt = await buildSystem(character, '', title, inventory, language || 'tr', existingNpcs, [], character.narrator_tone);
     const intro = await callGemini(systemPrompt, [], prompt);
 
     const messageRef = sessionRef.collection('messages').doc();

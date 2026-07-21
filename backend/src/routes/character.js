@@ -596,5 +596,26 @@ router.patch('/:id/reward', async (req, res) => {
   }
 });
 
+router.patch('/:id/settings', async (req, res) => {
+  const { id } = req.params;
+  const { narrator_tone } = req.body;
+  const validTones = ['dramatic', 'comedic', 'dark', 'epic'];
+  try {
+    const character = await getOwnedCharacter(req, res, id);
+    if (!character) return;
+    if (!validTones.includes(narrator_tone)) {
+      return res.status(400).json({ error: 'Geçersiz anlatıcı tonu' });
+    }
+    await firestore.collection('characters').doc(id).update({
+      narrator_tone,
+      updated_at: serverTimestamp(),
+    });
+    res.json({ ok: true, narrator_tone });
+  } catch (err) {
+    console.error('Character settings error:', err.message);
+    res.status(500).json({ error: 'Ayar güncellenemedi' });
+  }
+});
+
 module.exports = router;
 module.exports.getLevelUpHpGain = getLevelUpHpGain;

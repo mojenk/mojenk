@@ -167,6 +167,14 @@ export async function levelUpStat(characterId, stat) {
   });
 }
 
+export async function updateCharacterSettings(characterId, settings) {
+  return safeFetch(`${API}/characters/${characterId}/settings`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  });
+}
+
 export async function finalDeathSave(characterId, sessionId) {
   return safeFetch(`${API}/narrator/final-death-save`, {
     method: 'POST',

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward, claimDailyBonus, sendHeartbeat, spinWheel } from '../utils/api';
+import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward, claimDailyBonus, sendHeartbeat, spinWheel, updateCharacterSettings } from '../utils/api';
 import { showRewardedAd, showInterstitialAd } from '../utils/ads';
 import { useSound } from '../hooks/useSound';
 import TypewriterText from '../components/TypewriterText';
@@ -23,7 +23,7 @@ import {
   Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX, Backpack,
   Users, Store, BarChart3, ScrollText, Skull, X, AlertTriangle,
   CheckCircle2, XCircle, Dices, Zap, Wind, Send, Bomb, Sparkles, RotateCcw, Target, Wand2,
-  Crown, CircleDot,
+  Crown, CircleDot, Palette,
 } from 'lucide-react';
 
 const FOLLOWER_ROLE_META = {
@@ -191,6 +191,8 @@ export default function GamePage({ user }) {
   const [wheelSpinning, setWheelSpinning] = useState(false);
   const [wheelResult, setWheelResult] = useState(null);
   const [wheelError, setWheelError] = useState('');
+  const [showToneSettings, setShowToneSettings] = useState(false);
+  const [selectedTone, setSelectedTone] = useState(character?.narrator_tone || 'dramatic');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -274,6 +276,7 @@ export default function GamePage({ user }) {
       ([charData, msgData, sessionData]) => {
         setCharacter(charData.character);
         setInventory(charData.inventory || []);
+        setSelectedTone(charData.character?.narrator_tone || 'dramatic');
         prevHpRef.current = charData.character?.hp;
         prevLevelRef.current = charData.character?.level;
         const currentSession = sessionData.session || null;
@@ -650,6 +653,19 @@ export default function GamePage({ user }) {
       setWheelError(err.message || 'Çark çevrilemedi');
       playError();
       setWheelSpinning(false);
+    }
+  };
+
+  const handleToneChange = async (tone) => {
+    if (!characterId || tone === character?.narrator_tone) return;
+    setSelectedTone(tone);
+    try {
+      await updateCharacterSettings(characterId, { narrator_tone: tone });
+      setCharacter((prev) => ({ ...prev, narrator_tone: tone }));
+      playClick();
+    } catch (err) {
+      setSelectedTone(character?.narrator_tone || 'dramatic');
+      playError();
     }
   };
 
@@ -1332,10 +1348,40 @@ export default function GamePage({ user }) {
               <Star size={14} />{Math.min(100, Math.round(((character.experience ?? 0) / 300) * 100))}%
             </span>
             {/* Wheel of Fate button */}
+            {(() => {
+              const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+              const spinDate = character?.wheel_spin_date;
+              const spinsUsed = spinDate === today ? (character?.wheel_spins_used || 0) : 0;
+              const maxSpins = isPremiumUser ? 3 : 1;
+              const remaining = Math.max(0, maxSpins - spinsUsed);
+              return (
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => { playClick(); setShowWheel(true); }}
+                  title={`Kader Çarkı — ${remaining} hakkın kaldı`}
+                  style={{
+                    width: '2.1rem',
+                    height: '2.1rem',
+                    borderRadius: '8px',
+                    background: 'rgba(92,74,42,0.2)',
+                    border: '1px solid var(--border)',
+                    fontSize: '0.9rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: remaining > 0 ? 'var(--gold)' : 'var(--text-dim)',
+                  }}
+                >
+                  <CircleDot size={18} />
+                </motion.button>
+              );
+            })()}
+            {/* Narrator tone button */}
             <motion.button
               whileTap={{ scale: 0.96 }}
-              onClick={() => { playClick(); setShowWheel(true); }}
-              title="Kader Çarkı"
+              onClick={() => { playClick(); setShowToneSettings(true); }}
+              title="Anlatıcı Tonu"
               style={{
                 width: '2.1rem',
                 height: '2.1rem',
@@ -1347,10 +1393,10 @@ export default function GamePage({ user }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                color: character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }) ? 'var(--text-dim)' : 'var(--gold)',
+                color: 'var(--gold)',
               }}
             >
-              <CircleDot size={18} />
+              <Palette size={18} />
             </motion.button>
             {/* Sound toggle */}
             <motion.button
@@ -3155,7 +3201,14 @@ export default function GamePage({ user }) {
                 Kader Çarkı
               </h3>
               <p style={{ margin: '0 0 1rem', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
-                Her gün bir kez çevir. Altın, iksir, ekstra hamle veya nadir eşya kazan.
+                {(() => {
+                  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+                  const spinDate = character?.wheel_spin_date;
+                  const spinsUsed = spinDate === today ? (character?.wheel_spins_used || 0) : 0;
+                  const maxSpins = isPremiumUser ? 3 : 1;
+                  const remaining = Math.max(0, maxSpins - spinsUsed);
+                  return `Bugün ${remaining}/${maxSpins} çark hakkın kaldı. Altın, iksir, ekstra hamle veya nadir eşya kazan.`;
+                })()}
               </p>
 
               <div style={{ position: 'relative', width: 'min(16rem, 80vw)', height: 'min(16rem, 80vw)', margin: '0 auto 1.5rem' }}>
@@ -3263,41 +3316,151 @@ export default function GamePage({ user }) {
               )}
 
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  onClick={handleSpinWheel}
-                  disabled={wheelSpinning || character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' })}
-                  style={{
-                    padding: '0.7rem 1.4rem',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }) ? 'rgba(92,74,42,0.3)' : 'linear-gradient(135deg, var(--gold), #b8942a)',
-                    color: '#0d0a05',
-                    fontWeight: 700,
-                    cursor: character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }) ? 'not-allowed' : 'pointer',
-                    opacity: character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }) ? 0.5 : 1,
-                    fontSize: '0.9rem',
-                  }}
-                >
-                  {wheelSpinning ? 'Çevriliyor...' : character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }) ? 'Bugün Çevrildi' : 'Çevir'}
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => setShowWheel(false)}
-                  disabled={wheelSpinning}
-                  style={{
-                    padding: '0.7rem 1.2rem',
-                    borderRadius: '10px',
-                    border: '1px solid var(--border)',
-                    background: 'transparent',
-                    color: 'var(--text)',
-                    cursor: wheelSpinning ? 'not-allowed' : 'pointer',
-                    fontSize: '0.9rem',
-                  }}
-                >
-                  Kapat
-                </motion.button>
+                {(() => {
+                  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+                  const spinDate = character?.wheel_spin_date;
+                  const spinsUsed = spinDate === today ? (character?.wheel_spins_used || 0) : 0;
+                  const maxSpins = isPremiumUser ? 3 : 1;
+                  const remaining = Math.max(0, maxSpins - spinsUsed);
+                  const canSpin = remaining > 0;
+                  return (
+                    <>
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        onClick={handleSpinWheel}
+                        disabled={wheelSpinning || !canSpin}
+                        style={{
+                          padding: '0.7rem 1.4rem',
+                          borderRadius: '10px',
+                          border: 'none',
+                          background: canSpin ? 'linear-gradient(135deg, var(--gold), #b8942a)' : 'rgba(92,74,42,0.3)',
+                          color: '#0d0a05',
+                          fontWeight: 700,
+                          cursor: canSpin ? 'pointer' : 'not-allowed',
+                          opacity: canSpin ? 1 : 0.5,
+                          fontSize: '0.9rem',
+                        }}
+                      >
+                        {wheelSpinning ? 'Çevriliyor...' : canSpin ? `Çevir (${remaining})` : 'Bugün Çevrildi'}
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => setShowWheel(false)}
+                        disabled={wheelSpinning}
+                        style={{
+                          padding: '0.7rem 1.2rem',
+                          borderRadius: '10px',
+                          border: '1px solid var(--border)',
+                          background: 'transparent',
+                          color: 'var(--text)',
+                          cursor: wheelSpinning ? 'not-allowed' : 'pointer',
+                          fontSize: '0.9rem',
+                        }}
+                      >
+                        Kapat
+                      </motion.button>
+                    </>
+                  );
+                })()}
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Narrator Tone Modal */}
+      <AnimatePresence>
+        {showToneSettings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowToneSettings(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.75)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 100,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1rem',
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: 'min(22rem, 100%)',
+                background: 'linear-gradient(180deg, #1a1410 0%, #0d0a05 100%)',
+                border: '1px solid var(--border)',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+              }}
+            >
+              <h3 style={{ margin: '0 0 0.5rem', color: 'var(--gold)', fontFamily: "'Cinzel Decorative', serif", textAlign: 'center' }}>
+                Anlatıcı Tonu
+              </h3>
+              <p style={{ margin: '0 0 1rem', color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center' }}>
+                AI anlatıcısının hikayeyi nasıl anlatacağını seç. Bir sonraki mesajından itibaren geçerli olur.
+              </p>
+              {[
+                { key: 'dramatic', label: 'Dramatik', desc: 'Duygusal, gerilimli ve tiyatsal' },
+                { key: 'comedic', label: 'Mizahi', desc: 'Hafif, esprili ve neşeli' },
+                { key: 'dark', label: 'Karanlık', desc: 'Kasvetli, sert ve acımasız' },
+                { key: 'epic', label: 'Epik', desc: 'Görkemli, kahramanlık ve destansı' },
+              ].map((tone) => (
+                <motion.button
+                  key={tone.key}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleToneChange(tone.key)}
+                  style={{
+                    width: '100%',
+                    padding: '0.9rem 1rem',
+                    marginBottom: '0.6rem',
+                    borderRadius: '10px',
+                    border: selectedTone === tone.key ? '1px solid var(--gold)' : '1px solid var(--border)',
+                    background: selectedTone === tone.key ? 'rgba(201,150,58,0.12)' : 'rgba(0,0,0,0.25)',
+                    color: 'var(--text)',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontFamily: "'Cinzel', serif", fontWeight: 700, color: selectedTone === tone.key ? 'var(--gold)' : 'var(--text)' }}>
+                      {tone.label}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.15rem' }}>
+                      {tone.desc}
+                    </div>
+                  </div>
+                  {selectedTone === tone.key && <Sparkles size={18} color="var(--gold)" />}
+                </motion.button>
+              ))}
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setShowToneSettings(false)}
+                style={{
+                  width: '100%',
+                  padding: '0.7rem',
+                  marginTop: '0.5rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                }}
+              >
+                Kapat
+              </motion.button>
             </motion.div>
           </motion.div>
         )}
