@@ -1323,7 +1323,7 @@ export default function GamePage({ user }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                color: character?.last_wheel_spin_date ? 'var(--text-dim)' : 'var(--gold)',
+                color: character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }) ? 'var(--text-dim)' : 'var(--gold)',
               }}
             >
               <CircleDot size={18} />
@@ -3248,20 +3248,20 @@ export default function GamePage({ user }) {
                 <motion.button
                   whileTap={{ scale: 0.96 }}
                   onClick={handleSpinWheel}
-                  disabled={wheelSpinning || character?.last_wheel_spin_date}
+                  disabled={wheelSpinning || character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' })}
                   style={{
                     padding: '0.7rem 1.4rem',
                     borderRadius: '10px',
                     border: 'none',
-                    background: character?.last_wheel_spin_date ? 'rgba(92,74,42,0.3)' : 'linear-gradient(135deg, var(--gold), #b8942a)',
+                    background: character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }) ? 'rgba(92,74,42,0.3)' : 'linear-gradient(135deg, var(--gold), #b8942a)',
                     color: '#0d0a05',
                     fontWeight: 700,
-                    cursor: character?.last_wheel_spin_date ? 'not-allowed' : 'pointer',
-                    opacity: character?.last_wheel_spin_date ? 0.5 : 1,
+                    cursor: character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }) ? 'not-allowed' : 'pointer',
+                    opacity: character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }) ? 0.5 : 1,
                     fontSize: '0.9rem',
                   }}
                 >
-                  {wheelSpinning ? 'Çevriliyor...' : character?.last_wheel_spin_date ? 'Bugün Çevrildi' : 'Çevir'}
+                  {wheelSpinning ? 'Çevriliyor...' : character?.last_wheel_spin_date === new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' }) ? 'Bugün Çevrildi' : 'Çevir'}
                 </motion.button>
                 <motion.button
                   whileTap={{ scale: 0.96 }}
