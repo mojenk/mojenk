@@ -57,6 +57,30 @@ function getRacePortrait(race) {
   return RACE_PORTRAITS[race] || '/races/insan.svg';
 }
 
+// SVG arc helpers for the wheel of fate
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+function describeArc(cx, cy, r, startAngle, endAngle) {
+  const start = polarToCartesian(cx, cy, r, endAngle);
+  const end = polarToCartesian(cx, cy, r, startAngle);
+  const largeArc = endAngle - startAngle <= 180 ? 0 : 1;
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`;
+}
+
+const WHEEL_SEGMENTS = [
+  { label: '15 Altın', color: '#c9a73a' },
+  { label: '30 Altın', color: '#e5b94a' },
+  { label: '50 Altın', color: '#ffd700' },
+  { label: 'İyileşme', color: '#4ade80' },
+  { label: 'Büyü', color: '#60a5fa' },
+  { label: '+5 Hamle', color: '#f472b6' },
+  { label: '+2 Güç', color: '#f87171' },
+  { label: '+2 Çevik', color: '#a78bfa' },
+  { label: 'Tılsım', color: '#fbbf24' },
+];
+
 function stripEvents(text) {
   return (text || '').replace(/\{[^{}]*"event"[^{}]*\}/g, '').trim();
 }
@@ -3134,53 +3158,53 @@ export default function GamePage({ user }) {
                 Her gün bir kez çevir. Altın, iksir, ekstra hamle veya nadir eşya kazan.
               </p>
 
-              <div style={{ position: 'relative', width: '16rem', height: '16rem', margin: '0 auto 1.5rem' }}>
+              <div style={{ position: 'relative', width: 'min(16rem, 80vw)', height: 'min(16rem, 80vw)', margin: '0 auto 1.5rem' }}>
                 <motion.div
-                  animate={{ rotate: wheelSpinning ? 1440 + Math.random() * 360 : 0 }}
-                  transition={{ duration: 1.5, ease: 'easeOut' }}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: '50%',
-                    background: `conic-gradient(
-                      #c9a73a 0deg 40deg,
-                      #e5b94a 40deg 80deg,
-                      #ffd700 80deg 120deg,
-                      #4ade80 120deg 160deg,
-                      #60a5fa 160deg 200deg,
-                      #f472b6 200deg 240deg,
-                      #f87171 240deg 280deg,
-                      #a78bfa 280deg 320deg,
-                      #fbbf24 320deg 360deg
-                    )`,
-                    border: '3px solid var(--gold)',
-                    boxShadow: '0 0 24px rgba(201,167,58,0.25)',
-                    position: 'relative',
-                  }}
+                  animate={{ rotate: wheelSpinning ? 1800 + Math.random() * 360 : 0 }}
+                  transition={{ duration: 1.8, ease: 'easeOut' }}
+                  style={{ width: '100%', height: '100%' }}
                 >
-                  {[
-                    '15 Altın', '30 Altın', '50 Altın',
-                    'İksir', 'Mana', '+5 Hamle',
-                    '+2 Güç', '+2 Çevik', 'Tılsım'
-                  ].map((label, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        position: 'absolute',
-                        left: '50%',
-                        top: '50%',
-                        transform: `rotate(${i * 40 + 20}deg) translateY(-5.5rem)`,
-                        transformOrigin: '0 0',
-                        fontSize: '0.6rem',
-                        fontWeight: 700,
-                        color: '#0d0a05',
-                        textShadow: '0 0 2px rgba(255,255,255,0.4)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {label}
-                    </span>
-                  ))}
+                  <svg viewBox="0 0 200 200" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                    <defs>
+                      {WHEEL_SEGMENTS.map((_, i) => (
+                        <path
+                          key={i}
+                          id={`wheel-arc-${i}`}
+                          d={describeArc(100, 100, 82, i * 40, (i + 1) * 40)}
+                          fill="none"
+                        />
+                      ))}
+                    </defs>
+                    {WHEEL_SEGMENTS.map((seg, i) => {
+                      const start = i * 40;
+                      const end = (i + 1) * 40;
+                      const outer = describeArc(100, 100, 96, start, end);
+                      const inner = describeArc(100, 100, 24, end, start);
+                      return (
+                        <path
+                          key={`slice-${i}`}
+                          d={`${outer} L 100 100 Z`}
+                          fill={seg.color}
+                          stroke="#0d0a05"
+                          strokeWidth="1.5"
+                        />
+                      );
+                    })}
+                    {WHEEL_SEGMENTS.map((seg, i) => (
+                      <text
+                        key={`text-${i}`}
+                        fontSize="8"
+                        fontWeight="700"
+                        fill="#0d0a05"
+                        textAnchor="middle"
+                        style={{ textShadow: '0 0 2px rgba(255,255,255,0.35)' }}
+                      >
+                        <textPath href={`#wheel-arc-${i}`} startOffset="50%">
+                          {seg.label}
+                        </textPath>
+                      </text>
+                    ))}
+                  </svg>
                 </motion.div>
                 <div
                   style={{
@@ -3207,7 +3231,7 @@ export default function GamePage({ user }) {
                 <div
                   style={{
                     position: 'absolute',
-                    top: '-0.5rem',
+                    top: '-0.4rem',
                     left: '50%',
                     transform: 'translateX(-50%)',
                     width: 0,
