@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { isSoundEnabled, toggleSound, getSoundVolume, setVolume, playClick } from '../utils/sounds';
 import { getLang, setLang } from '../utils/i18n';
-import { claimAdmin, deleteAccount } from '../utils/api';
+import { claimAdmin, deleteAccount, updateCharacterSettings } from '../utils/api';
 import { auth } from '../firebase';
 import Particles from '../components/Particles';
+import { Sparkles } from 'lucide-react';
 
 const TEXT_SIZES = [
   { key: 'small', label: 'Küçük', px: '13px' },
@@ -29,6 +30,13 @@ const LANGUAGES = [
   { key: 'en', label: 'English', flag: '🇬🇧', note: 'English narration' },
 ];
 
+const TONES = [
+  { key: 'dramatic', label: 'Dramatik', desc: 'Duygusal, gerilimli ve tiyatsal' },
+  { key: 'comedic', label: 'Mizahi', desc: 'Hafif, esprili ve neşeli' },
+  { key: 'dark', label: 'Karanlık', desc: 'Kasvetli, sert ve acımasız' },
+  { key: 'epic', label: 'Epik', desc: 'Görkemli, kahramanlık ve destansı' },
+];
+
 export default function SettingsPage({ isAdmin }) {
   const navigate = useNavigate();
   const [sound, setSound] = useState(isSoundEnabled());
@@ -42,6 +50,18 @@ export default function SettingsPage({ isAdmin }) {
   const [claimingAdmin, setClaimingAdmin] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [tone, setTone] = useState(() => {
+    try { return localStorage.getItem('dnd_narrator_tone') || 'dramatic'; } catch { return 'dramatic'; }
+  });
+  const [activeCharacterId, setActiveCharacterId] = useState(null);
+  const [toneSaving, setToneSaving] = useState(false);
+
+  useEffect(() => {
+    try {
+      const id = localStorage.getItem('dnd_active_character_id');
+      if (id) setActiveCharacterId(id);
+    } catch {}
+  }, []);
 
   const handleDeleteAccount = async () => {
     if (!window.confirm('Hesabını ve tüm karakter/oyun verilerini kalıcı olarak silmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
@@ -100,6 +120,23 @@ export default function SettingsPage({ isAdmin }) {
   const handleLang = (key) => {
     setLang(key);
     setLangState(key);
+    playClick();
+  };
+
+  const handleTone = async (key) => {
+    if (key === tone) return;
+    setTone(key);
+    try { localStorage.setItem('dnd_narrator_tone', key); } catch {}
+    if (activeCharacterId) {
+      setToneSaving(true);
+      try {
+        await updateCharacterSettings(activeCharacterId, { narrator_tone: key });
+      } catch (err) {
+        console.error('Tone save failed:', err);
+      } finally {
+        setToneSaving(false);
+      }
+    }
     playClick();
   };
 
@@ -319,6 +356,58 @@ export default function SettingsPage({ isAdmin }) {
           {lang === 'tr' && (
             <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.65rem', textAlign: 'center' }}>
               Anlatıcı bir sonraki mesajınızdan itibaren Türkçe konuşacak.
+            </p>
+          )}
+        </div>
+
+        {/* Narrator Tone */}
+        <div className="stone-card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
+          <h2
+            className="font-fantasy"
+            style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 1rem' }}
+          >
+            ANLATICI TONU
+          </h2>
+          <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', margin: '0 0 0.75rem' }}>
+            AI'nin hikayeyi nasıl anlatacağını seç. Bir sonraki mesajından itibaren geçerli olur.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {TONES.map((t) => (
+              <motion.button
+                key={t.key}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleTone(t.key)}
+                disabled={toneSaving}
+                style={{
+                  width: '100%',
+                  padding: '0.85rem 1rem',
+                  borderRadius: '10px',
+                  border: tone === t.key ? '1px solid var(--gold)' : '1px solid var(--border)',
+                  background: tone === t.key ? 'rgba(201,150,58,0.12)' : 'rgba(0,0,0,0.25)',
+                  color: 'var(--text)',
+                  textAlign: 'left',
+                  cursor: toneSaving ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  opacity: toneSaving ? 0.7 : 1,
+                }}
+              >
+                <div>
+                  <div style={{ fontFamily: "'Cinzel', serif", fontWeight: 700, color: tone === t.key ? 'var(--gold)' : 'var(--text)' }}>
+                    {t.label}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.15rem' }}>
+                    {t.desc}
+                  </div>
+                </div>
+                {tone === t.key && <Sparkles size={18} color="var(--gold)" />}
+              </motion.button>
+            ))}
+          </div>
+          {toneSaving && (
+            <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '0.6rem', textAlign: 'center' }}>
+              Kaydediliyor...
             </p>
           )}
         </div>
