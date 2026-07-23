@@ -4,4 +4,5 @@
     <string name="title_activity_main">Kaderin Sesi</string>
     <string name="package_name">com.kaderinsesi.app</string>
     <string name="custom_url_scheme">com.kaderinsesi.app</string>
+    <string name="server_client_id">103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com</string>
 </resources>

@@ -6,10 +6,11 @@
     "dev": "vite --port 5174 --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "android": "npm run build && npx cap run android",
-    "android:open": "npm run build && npx cap open android",
-    "android:sync": "npm run build && npx cap sync android",
-    "android:build": "npm run build && npx cap sync android && cd android && ./gradlew bundleRelease"
+    "build:android": "vite build --mode android",
+    "android": "npm run build:android && npx cap run android",
+    "android:open": "npm run build:android && npx cap open android",
+    "android:sync": "npm run build:android && npx cap sync android",
+    "android:build": "npm run build:android && npx cap sync android && cd android && ./gradlew bundleRelease"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
@@ -17,6 +18,7 @@
     "@capacitor/android": "^8.4.2",
     "@capacitor/cli": "^8.4.2",
     "@capacitor/core": "^8.4.2",
+    "@codetrix-studio/capacitor-google-auth": "^3.4.0",
     "firebase": "^12.15.0",
     "framer-motion": "^10.18.0",
     "lucide-react": "^0.309.0",

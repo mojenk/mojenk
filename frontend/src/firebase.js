@@ -1,6 +1,6 @@
 // Firebase configuration — auto-generated from Firebase Console
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, signInWithCredential } from 'firebase/auth';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 // Firebase Web API key is a public client identifier (not a secret — see
@@ -42,5 +42,5 @@ try {
   firebaseInitError = err?.message || 'Firebase başlatılırken bilinmeyen bir hata oluştu.';
 }
 
-export { auth, googleProvider, messaging, getToken, onMessage, signInWithPopup, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, firebaseInitError };
+export { auth, googleProvider, messaging, getToken, onMessage, signInWithPopup, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, signInWithCredential, GoogleAuthProvider, firebaseInitError };
 export default app;

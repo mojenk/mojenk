@@ -4,7 +4,9 @@ import { playClick, playMagic } from '../utils/sounds';
 import { useSound } from '../hooks/useSound';
 import Particles from '../components/Particles';
 import AnnouncementsBar from '../components/AnnouncementsBar';
-import { auth, googleProvider, signInWithPopup, signInAnonymously } from '../firebase';
+import { auth, googleProvider, signInWithPopup, signInAnonymously, signInWithCredential, GoogleAuthProvider } from '../firebase';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { apiGetCurrentUser } from '../utils/api';
 import { Swords, ScrollText, Globe } from 'lucide-react';
 
@@ -48,7 +50,16 @@ export default function LoginPage({ onLogin }) {
     setLoading(true);
     setError('');
     try {
-      const cred = await signInWithPopup(auth, googleProvider);
+      let cred;
+      if (Capacitor.isNativePlatform()) {
+        // Android: Native Google Sign-In (avoids Chrome Custom Tab sessionStorage issue)
+        const googleUser = await GoogleAuth.signIn();
+        const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+        cred = await signInWithCredential(auth, credential);
+      } else {
+        // Web: Firebase popup flow
+        cred = await signInWithPopup(auth, googleProvider);
+      }
       await finalizeLogin(cred);
       playMagic();
     } catch (err) {
