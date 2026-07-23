@@ -18,7 +18,7 @@
     "@capacitor/android": "^8.4.2",
     "@capacitor/cli": "^8.4.2",
     "@capacitor/core": "^8.4.2",
-    "@codetrix-studio/capacitor-google-auth": "^3.4.0",
+    "@codetrix-studio/capacitor-google-auth": "^3.3.6",
     "firebase": "^12.15.0",
     "framer-motion": "^10.18.0",
     "lucide-react": "^0.309.0",
