@@ -22,16 +22,16 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Android SDK kur
         uses: android-actions/setup-android@v3
 
-      - name: npm paketleri yükle
+      - name: npm paketleri yÃ¼kle
         working-directory: frontend
         run: npm install --legacy-peer-deps
 
-      - name: Android için Vite build
+      - name: Android iÃ§in Vite build
         working-directory: frontend
         run: npm run build:android
 
@@ -39,7 +39,7 @@ jobs:
         working-directory: frontend
         run: npx cap sync android
 
-      - name: Keystore dosyasını oluştur
+      - name: Keystore dosyasÄ±nÄ± oluÅtur
         working-directory: frontend/android
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore.jks
 
@@ -51,7 +51,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: AAB dosyasını yükle
+      - name: AAB dosyasÄ±nÄ± yÃ¼kle
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
