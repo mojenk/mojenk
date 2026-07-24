@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "103499453593-5jdob3nrh16ipdtanmm11isikfnvp707.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kaderinsesi.app",
+            "certificate_hash": "104c47e83b7d633d04efda71b8d950fa68bf12b0"
+          }
+        },
+        {
           "client_id": "103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com",
           "client_type": 3
         }
