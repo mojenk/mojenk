@@ -1,66 +1,65 @@
 name: Android Build
 
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+    on:
+    push:
+      branches: [main]
+    workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    jobs:
+    build:
+      runs-on: ubuntu-latest
 
-    steps:
-      - name: Kodu al
-        uses: actions/checkout@v4
+      steps:
+        - name: Kodu al
+          uses: actions/checkout@v4
 
-      - name: Node.js kur
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+        - name: Node.js kur
+          uses: actions/setup-node@v4
+          with:
+            node-version: '22'
 
-      - name: Java kur
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
+        - name: Java kur
+          uses: actions/setup-java@v4
+          with:
+            distribution: 'temurin'
+            java-version: '21'
 
-      - name: Android SDK kur
-        uses: android-actions/setup-android@v3
+        - name: Android SDK kur
+          uses: android-actions/setup-android@v3
 
-      - name: npm paketleri yukle
-        working-directory: frontend
-        run: npm install --legacy-peer-deps
+        - name: npm paketleri yukle
+          working-directory: frontend
+          run: npm install --legacy-peer-deps
 
-      - name: Android icin Vite build
-        working-directory: frontend
-        run: npm run build:android
+        - name: Android icin Vite build
+          working-directory: frontend
+          run: npm run build:android
 
-      - name: Capacitor sync
-        working-directory: frontend
-        run: npx cap sync android
+        - name: Capacitor sync
+          working-directory: frontend
+          run: npx cap sync android
 
-      - name: Keystore SHA-1 goster
+        - name: Keystore SHA-1 goster
           run: |
             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/temp.jks
-            keytool -keystore /tmp/temp.jks -list -v \
-              -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-              -alias "${{ secrets.KEY_ALIAS }}" | grep "SHA1:"
+            keytool -keystore /tmp/temp.jks -list -v -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -alias "${{ secrets.KEY_ALIAS }}" | grep "SHA1:"
 
-          - name: Keystore olustur
-        working-directory: frontend/android
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore.jks
+        - name: Keystore olustur
+          working-directory: frontend/android
+          run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore.jks
 
-      - name: AAB build Release
-        working-directory: frontend/android
-        run: ./gradlew bundleRelease
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        - name: AAB build Release
+          working-directory: frontend/android
+          run: ./gradlew bundleRelease
+          env:
+            KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+            KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+            KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: AAB yukle
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-aab
-          path: frontend/android/app/build/outputs/bundle/release/app-release.aab
-          retention-days: 7
+        - name: AAB yukle
+          uses: actions/upload-artifact@v4
+          with:
+            name: app-release-aab
+            path: frontend/android/app/build/outputs/bundle/release/app-release.aab
+            retention-days: 7
+    
