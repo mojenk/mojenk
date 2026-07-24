@@ -39,7 +39,14 @@ jobs:
         working-directory: frontend
         run: npx cap sync android
 
-      - name: Keystore olustur
+      - name: Keystore SHA-1 goster
+          run: |
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/temp.jks
+            keytool -keystore /tmp/temp.jks -list -v \
+              -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+              -alias "${{ secrets.KEY_ALIAS }}" | grep "SHA1:"
+
+          - name: Keystore olustur
         working-directory: frontend/android
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore.jks
 
