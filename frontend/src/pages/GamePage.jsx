@@ -2625,7 +2625,7 @@ export default function GamePage({ user }) {
                   setReviveState('rolling');
                   try {
                     const result = await finalDeathSave(characterId, sessionId);
-                    await new Promise((resolve) => setTimeout(resolve, 700));
+                    await new Promise((resolve) => setTimeout(resolve, 1600));
                     setReviveRoll({ roll: result.roll, success: result.success });
                     if (result.success) {
                       setCharacter(result.character);
