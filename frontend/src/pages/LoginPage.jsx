@@ -37,6 +37,7 @@ export default function LoginPage({ onLogin }) {
   const [password, setPassword] = useState('');
 
   const googleBtnRef = useRef(null);
+  const gisInitialized = useRef(false);
 
   // ── Web: Google Identity Services butonu ──
   useEffect(() => {
@@ -44,10 +45,29 @@ export default function LoginPage({ onLogin }) {
       setLoading(false);
       return;
     }
+    if (gisInitialized.current) return;
+
+    const handleGoogleCredential = async (response) => {
+      if (!response?.credential) return;
+      setLoading(true);
+      setError('');
+      try {
+        const credential = GoogleAuthProvider.credential(response.credential);
+        const cred = await signInWithCredential(auth, credential);
+        await finalizeLogin(cred);
+        playMagic();
+      } catch (err) {
+        console.error('Google sign-in failed:', err);
+        setError(mapAuthError(err));
+      } finally {
+        setLoading(false);
+      }
+    };
 
     const initGis = () => {
-      if (!window.google?.accounts?.id) return;
+      if (!window.google?.accounts?.id || gisInitialized.current) return;
       try {
+        gisInitialized.current = true;
         window.google.accounts.id.initialize({
           client_id: GOOGLE_WEB_CLIENT_ID,
           callback: handleGoogleCredential,
@@ -55,6 +75,7 @@ export default function LoginPage({ onLogin }) {
           cancel_on_tap_outside: true,
         });
         if (googleBtnRef.current) {
+          googleBtnRef.current.innerHTML = '';
           window.google.accounts.id.renderButton(googleBtnRef.current, {
             theme: 'filled_black',
             size: 'large',
@@ -66,6 +87,7 @@ export default function LoginPage({ onLogin }) {
         }
       } catch (err) {
         console.error('GIS init failed:', err);
+        gisInitialized.current = false;
       } finally {
         setLoading(false);
       }
@@ -109,24 +131,6 @@ export default function LoginPage({ onLogin }) {
     onLogin(fallbackUser);
     try { localStorage.setItem('dnd_user', JSON.stringify(fallbackUser)); } catch {}
   };
-
-  // ── Web: Google'dan gelen JWT ile Firebase girişi ──
-  async function handleGoogleCredential(response) {
-    if (!response?.credential) return;
-    setLoading(true);
-    setError('');
-    try {
-      const credential = GoogleAuthProvider.credential(response.credential);
-      const cred = await signInWithCredential(auth, credential);
-      await finalizeLogin(cred);
-      playMagic();
-    } catch (err) {
-      console.error('Google sign-in failed:', err);
-      setError(mapAuthError(err));
-    } finally {
-      setLoading(false);
-    }
-  }
 
   // ── Email / Password ──
   const handleEmailAuth = async (e) => {

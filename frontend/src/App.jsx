@@ -39,7 +39,7 @@ const pageVariants = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
 };
 
-function AnimatedRoutes({ user, onLogout, isAdmin }) {
+function AnimatedRoutes({ user, onLogout, isAdmin, onUserUpdate }) {
   const location = useLocation();
 
   return (
@@ -247,5 +247,5 @@ export default function App() {
 
   if (!user) return <LoginPage onLogin={setUser} firebaseUser={firebaseUser} />;
 
-  return <AnimatedRoutes user={user} onLogout={handleLogout} isAdmin={isAdmin} />;
+  return <AnimatedRoutes user={user} onLogout={handleLogout} isAdmin={isAdmin} onUserUpdate={handleUserUpdate} />;
 }
