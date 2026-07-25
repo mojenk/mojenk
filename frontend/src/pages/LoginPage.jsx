@@ -4,7 +4,14 @@ import { playClick, playMagic } from '../utils/sounds';
 import { useSound } from '../hooks/useSound';
 import Particles from '../components/Particles';
 import AnnouncementsBar from '../components/AnnouncementsBar';
-import { auth, signInAnonymously, signInWithCredential, GoogleAuthProvider } from '../firebase';
+import {
+  auth,
+  signInAnonymously,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+} from '../firebase';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { apiGetCurrentUser } from '../utils/api';
@@ -17,42 +24,33 @@ const FEATURES_KEYS = [
   { icon: Globe, titleKey: 'feature_world_title', descKey: 'feature_world_desc' },
 ];
 
+const GOOGLE_WEB_CLIENT_ID = '103499453593-9ljq15ebsf4hi7aunppcirqhmaijf0ec.apps.googleusercontent.com';
+
 export default function LoginPage({ onLogin }) {
-  const [error, setError] = useState('');
   useLang();
-  const [loading, setLoading] = useState(!Capacitor.isNativePlatform());
   const { soundOn, toggleSound } = useSound();
 
-  // Web'de Google girişi: Google Identity Services (GIS) Sign In With Google
-  // butonu kullan. Kullanıcı hesabını seçince credential (JWT) callback ile
-  // geliyor, bunu Firebase signInWithCredential'a veriyoruz. Sayfa
-  // yönlendirmesi olmuyor.
+  const [loading, setLoading] = useState(!Capacitor.isNativePlatform());
+  const [error, setError] = useState('');
+  const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
   const googleBtnRef = useRef(null);
+
+  // ── Web: Google Identity Services butonu ──
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       setLoading(false);
       return;
     }
-    const init = () => {
+
+    const initGis = () => {
       if (!window.google?.accounts?.id) return;
       try {
         window.google.accounts.id.initialize({
-          client_id: '103499453593-9ljq15ebsf4hi7aunppcirqhmaijf0ec.apps.googleusercontent.com',
-          callback: async (response) => {
-            if (!response?.credential) return;
-            setLoading(true);
-            try {
-              const credential = GoogleAuthProvider.credential(response.credential);
-              const cred = await signInWithCredential(auth, credential);
-              await finalizeLogin(cred);
-              playMagic();
-            } catch (err) {
-              console.error('GIS sign-in failed:', err);
-              setError('Google girişi başarısız: ' + (err.message || 'Bilinmeyen hata'));
-            } finally {
-              setLoading(false);
-            }
-          },
+          client_id: GOOGLE_WEB_CLIENT_ID,
+          callback: handleGoogleCredential,
           auto_select: false,
           cancel_on_tap_outside: true,
         });
@@ -67,23 +65,26 @@ export default function LoginPage({ onLogin }) {
           });
         }
       } catch (err) {
-        console.error('Google Identity Services init failed:', err);
+        console.error('GIS init failed:', err);
       } finally {
         setLoading(false);
       }
     };
+
     if (document.readyState === 'complete' || window.google?.accounts?.id) {
-      init();
+      initGis();
     } else {
-      window.addEventListener('load', init);
-      return () => window.removeEventListener('load', init);
+      window.addEventListener('load', initGis);
+      return () => window.removeEventListener('load', initGis);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Giriş sonrası backend senkronizasyonu ──
   const finalizeLogin = async (credential) => {
     const authUser = credential?.user || auth.currentUser;
     if (!authUser) throw new Error('Firebase kullanıcısı alınamadı');
+
     try {
       const token = await authUser.getIdToken();
       const current = await apiGetCurrentUser(token);
@@ -95,51 +96,59 @@ export default function LoginPage({ onLogin }) {
     } catch (syncErr) {
       console.error('syncUser failed:', syncErr);
     }
+
     const fallbackUser = {
       id: authUser.uid,
+      uid: authUser.uid,
       firebase_uid: authUser.uid,
       username: authUser.displayName || authUser.email?.split('@')[0] || `kahraman_${authUser.uid.slice(0, 6)}`,
       email: authUser.email || null,
+      picture: authUser.photoURL || null,
+      isGuest: !authUser.email,
     };
     onLogin(fallbackUser);
     try { localStorage.setItem('dnd_user', JSON.stringify(fallbackUser)); } catch {}
   };
 
-  const handleGoogle = async () => {
-    playClick();
-    if (!Capacitor.isNativePlatform()) {
-      // Web: Google Identity Services One Tap / hesap seçim penceresi aç
-      if (window.google?.accounts?.id) {
-        window.google.accounts.id.prompt();
-      }
-      return;
-    }
+  // ── Web: Google'dan gelen JWT ile Firebase girişi ──
+  async function handleGoogleCredential(response) {
+    if (!response?.credential) return;
     setLoading(true);
     setError('');
-    const timeoutMs = 20000;
-    let timedOut = false;
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      setLoading(false);
-      setError('Google girişi zaman aşımına uğradı. Lütfen internet bağlantını kontrol edip tekrar dene.');
-    }, timeoutMs);
     try {
-      // Android: Native Google Sign-In (avoids Chrome Custom Tab sessionStorage issue)
-      const googleUser = await GoogleAuth.signIn();
-      const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+      const credential = GoogleAuthProvider.credential(response.credential);
       const cred = await signInWithCredential(auth, credential);
-      if (timedOut) return;
       await finalizeLogin(cred);
       playMagic();
     } catch (err) {
-      console.error(err);
-      if (!timedOut) setError('Google girişi başarısız: ' + (err.message || 'Bilinmeyen hata'));
+      console.error('Google sign-in failed:', err);
+      setError(mapAuthError(err));
     } finally {
-      clearTimeout(timeoutId);
+      setLoading(false);
     }
-    if (!timedOut) setLoading(false);
+  }
+
+  // ── Email / Password ──
+  const handleEmailAuth = async (e) => {
+    e.preventDefault();
+    playClick();
+    setLoading(true);
+    setError('');
+    try {
+      const cred = mode === 'login'
+        ? await signInWithEmailAndPassword(auth, email, password)
+        : await createUserWithEmailAndPassword(auth, email, password);
+      await finalizeLogin(cred);
+      playMagic();
+    } catch (err) {
+      console.error('Email auth failed:', err);
+      setError(mapAuthError(err));
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // ── Misafir girişi ──
   const handleAnonymous = async () => {
     playClick();
     setLoading(true);
@@ -149,10 +158,44 @@ export default function LoginPage({ onLogin }) {
       await finalizeLogin(cred);
       playMagic();
     } catch (err) {
-      console.error(err);
-      setError('Misafir girişi başarısız: ' + (err.message || 'Bilinmeyen hata'));
+      console.error('Anonymous login failed:', err);
+      setError(mapAuthError(err));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  // ── Native Android: Capacitor Google Auth ──
+  const handleNativeGoogle = async () => {
+    playClick();
+    setLoading(true);
+    setError('');
+    const timeoutMs = 20000;
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      setLoading(false);
+      setError(t('google_timeout'));
+    }, timeoutMs);
+    try {
+      const googleUser = await GoogleAuth.signIn();
+      const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+      const cred = await signInWithCredential(auth, credential);
+      if (timedOut) return;
+      await finalizeLogin(cred);
+      playMagic();
+    } catch (err) {
+      console.error(err);
+      if (!timedOut) setError(mapAuthError(err));
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    if (!timedOut) setLoading(false);
+  };
+
+  const handleGoogle = Capacitor.isNativePlatform() ? handleNativeGoogle : () => {
+    playClick();
+    if (window.google?.accounts?.id) window.google.accounts.id.prompt();
   };
 
   return (
@@ -238,6 +281,7 @@ export default function LoginPage({ onLogin }) {
         <div className="rune-divider" style={{ marginBottom: '1.5rem' }} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          {/* Google Sign In */}
           <motion.div
             whileTap={{ scale: 0.96 }}
             whileHover={{ boxShadow: '0 0 18px rgba(201,150,58,0.25)' }}
@@ -247,14 +291,82 @@ export default function LoginPage({ onLogin }) {
               width: '100%', padding: '0.55rem', borderRadius: '10px',
               background: 'linear-gradient(135deg, #1a1410, #0d0a05)', color: 'var(--gold)',
               border: '1px solid rgba(201,150,58,0.55)',
-              fontFamily: "'Cinzel', serif", fontSize: '0.85rem', fontWeight: 700,
               cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
-              transition: 'box-shadow 0.2s ease',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               minHeight: '48px',
+              transition: 'box-shadow 0.2s ease',
             }}
           />
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '0.25rem 0', opacity: 0.6 }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: "'Cinzel', serif" }}>VEYA</span>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+          </div>
+
+          {/* Email / Password */}
+          <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+            <input
+              type="email"
+              placeholder={t('email_placeholder')}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading}
+              style={{
+                width: '100%', padding: '0.85rem', borderRadius: '8px',
+                background: 'rgba(0,0,0,0.35)', color: 'var(--text)',
+                border: '1px solid var(--border)',
+                fontFamily: "'Crimson Text', serif", fontSize: '0.95rem',
+                outline: 'none',
+              }}
+            />
+            <input
+              type="password"
+              placeholder={t('password_placeholder')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              disabled={loading}
+              style={{
+                width: '100%', padding: '0.85rem', borderRadius: '8px',
+                background: 'rgba(0,0,0,0.35)', color: 'var(--text)',
+                border: '1px solid var(--border)',
+                fontFamily: "'Crimson Text', serif", fontSize: '0.95rem',
+                outline: 'none',
+              }}
+            />
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%', padding: '0.9rem', borderRadius: '10px',
+                background: 'rgba(201,150,58,0.18)', color: 'var(--gold)',
+                border: '1px solid rgba(201,150,58,0.45)',
+                fontFamily: "'Cinzel', serif", fontSize: '0.8rem', fontWeight: 700,
+                cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+              }}
+            >
+              {mode === 'login' ? t('login_btn') : t('register_btn')}
+            </motion.button>
+          </form>
+
+          <button
+            type="button"
+            onClick={() => { playClick(); setMode(mode === 'login' ? 'register' : 'login'); }}
+            disabled={loading}
+            style={{
+              background: 'transparent', border: 'none', color: 'var(--text-dim)',
+              fontFamily: "'Crimson Text', serif", fontSize: '0.85rem', cursor: 'pointer',
+              textAlign: 'center', textDecoration: 'underline',
+            }}
+          >
+            {mode === 'login' ? t('goto_register') : t('goto_login')}
+          </button>
+
+          {/* Guest */}
           <motion.button
             whileTap={{ scale: 0.96 }}
             disabled={loading}
@@ -328,3 +440,34 @@ export default function LoginPage({ onLogin }) {
   );
 }
 
+function mapAuthError(err) {
+  const code = err?.code || err?.message || '';
+  if (code.includes('auth/invalid-credential') || code.includes('auth/wrong-password') || code.includes('auth/user-not-found')) {
+    return 'E-posta veya şifre hatalı.';
+  }
+  if (code.includes('auth/email-already-in-use')) {
+    return 'Bu e-posta adresi zaten kayıtlı. Giriş yapmayı dene.';
+  }
+  if (code.includes('auth/invalid-email')) {
+    return 'Geçerli bir e-posta adresi gir.';
+  }
+  if (code.includes('auth/weak-password')) {
+    return 'Şifre en az 6 karakter olmalı.';
+  }
+  if (code.includes('auth/popup-closed-by-user')) {
+    return 'Google giriş penceresi kapatıldı.';
+  }
+  if (code.includes('auth/cancelled-popup-request')) {
+    return 'Birden fazla giriş denemesi yapıldı.';
+  }
+  if (code.includes('auth/network-request-failed')) {
+    return 'İnternet bağlantını kontrol et.';
+  }
+  if (code.includes('origin_mismatch')) {
+    return 'Google Cloud OAuth JavaScript origin ayarı hatalı. Geliştirici kontrol etmeli.';
+  }
+  if (code.includes('redirect_uri_mismatch')) {
+    return 'Google Cloud OAuth redirect URI ayarı hatalı. Geliştirici kontrol etmeli.';
+  }
+  return err?.message || 'Giriş başarısız, tekrar dene.';
+}

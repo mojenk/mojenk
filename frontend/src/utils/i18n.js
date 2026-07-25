@@ -102,6 +102,13 @@ const TR = {
   google_login: 'Google ile Giriş Yap',
   guest_login: 'Misafir Olarak Devam Et',
   login_loading: '⏳ Kapılar Açılıyor...',
+  email_placeholder: 'E-posta adresin',
+  password_placeholder: 'Şifren',
+  login_btn: 'Giriş Yap',
+  register_btn: 'Hesap Oluştur',
+  goto_register: 'Hesabın yok mu? Kaydol',
+  goto_login: 'Zaten hesabın var mı? Giriş yap',
+  google_timeout: 'Google girişi zaman aşımına uğradı. Tekrar dene.',
 
   // Game page
   send: 'Gönder',
@@ -369,6 +376,13 @@ const EN = {
   google_login: 'Sign in with Google',
   guest_login: 'Continue as Guest',
   login_loading: '⏳ Gates Opening...',
+  email_placeholder: 'Your email address',
+  password_placeholder: 'Your password',
+  login_btn: 'Sign In',
+  register_btn: 'Create Account',
+  goto_register: "Don't have an account? Register",
+  goto_login: 'Already have an account? Sign in',
+  google_timeout: 'Google sign-in timed out. Please try again.',
 
   // Game page
   send: 'Send',
