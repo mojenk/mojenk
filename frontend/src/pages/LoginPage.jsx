@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { playClick, playMagic } from '../utils/sounds';
 import { useSound } from '../hooks/useSound';
 import Particles from '../components/Particles';
 import AnnouncementsBar from '../components/AnnouncementsBar';
-import { auth, googleProvider, signInWithPopup, signInAnonymously, signInWithCredential, GoogleAuthProvider } from '../firebase';
+import { auth, googleProvider, signInWithRedirect, getRedirectResult, signInAnonymously, signInWithCredential, GoogleAuthProvider } from '../firebase';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { apiGetCurrentUser } from '../utils/api';
@@ -20,8 +20,29 @@ const FEATURES_KEYS = [
 export default function LoginPage({ onLogin }) {
   const [error, setError] = useState('');
   useLang();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!Capacitor.isNativePlatform());
   const { soundOn, toggleSound } = useSound();
+
+  // Web'de Google girişi tam sayfa yönlendirme (redirect) ile yapılıyor.
+  // Sayfa geri döndüğünde sonucu burada yakalıyoruz.
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) return;
+    (async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          await finalizeLogin(result);
+          playMagic();
+        }
+      } catch (err) {
+        console.error('Redirect sign-in failed:', err);
+        setError('Google girişi başarısız: ' + (err.message || 'Bilinmeyen hata'));
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const finalizeLogin = async (credential) => {
     const authUser = credential?.user || auth.currentUser;
@@ -51,6 +72,19 @@ export default function LoginPage({ onLogin }) {
     playClick();
     setLoading(true);
     setError('');
+    if (!Capacitor.isNativePlatform()) {
+      // Web: tam sayfa yönlendirme kullan (popup mobil tarayıcılarda
+      // üçüncü taraf depolama/pop-up engelleri yüzünden güvenilir çalışmıyor,
+      // boş/siyah ekranda takılı kalmaya sebep oluyordu)
+      try {
+        await signInWithRedirect(auth, googleProvider);
+      } catch (err) {
+        console.error(err);
+        setError('Google girişi başarısız: ' + (err.message || 'Bilinmeyen hata'));
+        setLoading(false);
+      }
+      return;
+    }
     const timeoutMs = 20000;
     let timedOut = false;
     const timeoutId = setTimeout(() => {
@@ -59,16 +93,10 @@ export default function LoginPage({ onLogin }) {
       setError('Google girişi zaman aşımına uğradı. Lütfen internet bağlantını kontrol edip tekrar dene.');
     }, timeoutMs);
     try {
-      let cred;
-      if (Capacitor.isNativePlatform()) {
-        // Android: Native Google Sign-In (avoids Chrome Custom Tab sessionStorage issue)
-        const googleUser = await GoogleAuth.signIn();
-        const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
-        cred = await signInWithCredential(auth, credential);
-      } else {
-        // Web: Firebase popup flow
-        cred = await signInWithPopup(auth, googleProvider);
-      }
+      // Android: Native Google Sign-In (avoids Chrome Custom Tab sessionStorage issue)
+      const googleUser = await GoogleAuth.signIn();
+      const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+      const cred = await signInWithCredential(auth, credential);
       if (timedOut) return;
       await finalizeLogin(cred);
       playMagic();
