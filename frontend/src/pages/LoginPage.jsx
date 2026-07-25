@@ -4,7 +4,7 @@ import { playClick, playMagic } from '../utils/sounds';
 import { useSound } from '../hooks/useSound';
 import Particles from '../components/Particles';
 import AnnouncementsBar from '../components/AnnouncementsBar';
-import { auth, googleProvider, signInWithRedirect, getRedirectResult, signInAnonymously, signInWithCredential, GoogleAuthProvider } from '../firebase';
+import { auth, signInAnonymously, signInWithCredential, GoogleAuthProvider } from '../firebase';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { apiGetCurrentUser } from '../utils/api';
@@ -23,19 +23,32 @@ export default function LoginPage({ onLogin }) {
   const [loading, setLoading] = useState(!Capacitor.isNativePlatform());
   const { soundOn, toggleSound } = useSound();
 
-  // Web'de Google girişi tam sayfa yönlendirme (redirect) ile yapılıyor.
-  // Sayfa geri döndüğünde sonucu burada yakalıyoruz.
+  // Web'de Google girişi: mobil Chrome'un pop-up/sessionStorage kısıtlamalarını
+  // aşmak için doğrudan Google OAuth implicit flow kullanıyoruz. Google,
+  // kullanıcıyı geri yönlendirdikten sonra URL hash'inde id_token gönderiyor.
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) return;
+    if (Capacitor.isNativePlatform()) {
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-          await finalizeLogin(result);
-          playMagic();
+        const hash = window.location.hash;
+        if (hash.includes('id_token=')) {
+          const params = new URLSearchParams(hash.replace(/^#/, ''));
+          const idToken = params.get('id_token');
+          if (idToken) {
+            const credential = GoogleAuthProvider.credential(idToken);
+            const cred = await signInWithCredential(auth, credential);
+            await finalizeLogin(cred);
+            playMagic();
+            // Temiz URL
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            return;
+          }
         }
       } catch (err) {
-        console.error('Redirect sign-in failed:', err);
+        console.error('Google id_token sign-in failed:', err);
         setError('Google girişi başarısız: ' + (err.message || 'Bilinmeyen hata'));
       } finally {
         setLoading(false);
@@ -73,16 +86,15 @@ export default function LoginPage({ onLogin }) {
     setLoading(true);
     setError('');
     if (!Capacitor.isNativePlatform()) {
-      // Web: tam sayfa yönlendirme kullan (popup mobil tarayıcılarda
-      // üçüncü taraf depolama/pop-up engelleri yüzünden güvenilir çalışmıyor,
-      // boş/siyah ekranda takılı kalmaya sebep oluyordu)
-      try {
-        await signInWithRedirect(auth, googleProvider);
-      } catch (err) {
-        console.error(err);
-        setError('Google girişi başarısız: ' + (err.message || 'Bilinmeyen hata'));
-        setLoading(false);
-      }
+      // Web: mobil Chrome'da pop-up ve sessionStorage kısıtlamalarını aşmak
+      // için doğrudan Google OAuth implicit flow yönlendirmesi yap.
+      const redirectUri = window.location.origin + window.location.pathname;
+      const clientId = '103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com';
+      const scope = encodeURIComponent('openid email profile');
+      const state = Math.random().toString(36).slice(2);
+      try { sessionStorage.setItem('google_oauth_state', state); } catch {}
+      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=id_token&scope=${scope}&nonce=${state}&state=${state}&prompt=select_account`;
+      window.location.href = url;
       return;
     }
     const timeoutMs = 20000;
