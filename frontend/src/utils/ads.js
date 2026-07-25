@@ -34,19 +34,82 @@ export async function showRewardedAd(onReward) {
     return;
   }
   await initializeAdMob();
+
+  const handles = [];
+  const cleanup = () => {
+    handles.forEach((h) => h?.remove?.());
+    handles.length = 0;
+  };
+
   try {
-    const handler = await AdMob.addListener('onRewardedVideoUserDidEarnReward', (info) => {
-      onReward(info);
-      handler.remove();
+    const reward = await new Promise((resolve, reject) => {
+      let settled = false;
+      let rewardEarned = null;
+      let dismissed = false;
+
+      // Reklam hiçbir sinyal göndermeden asılı kalırsa arayüz sonsuza dek kilitli kalmasın
+      const safetyTimer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          reject(new Error('Reklam zaman aşımına uğradı'));
+        }
+      }, 60000);
+
+      const settle = () => {
+        if (settled) return;
+        if (rewardEarned) {
+          settled = true;
+          clearTimeout(safetyTimer);
+          resolve(rewardEarned);
+        } else if (dismissed) {
+          settled = true;
+          clearTimeout(safetyTimer);
+          resolve(null);
+        }
+      };
+
+      AdMob.addListener('onRewardedVideoAdReward', (info) => {
+        rewardEarned = info || { type: 'gold', amount: 0 };
+        settle();
+      }).then((h) => handles.push(h));
+
+      // Ödül alınmadan reklam kapatılırsa (kullanıcı erken çıkarsa) bunu da yakala,
+      // aksi halde showRewardVideoAd() promise'i hiç çözülmeyip arayüz kilitli kalır
+      AdMob.addListener('onRewardedVideoAdDismissed', () => {
+        dismissed = true;
+        settle();
+      }).then((h) => handles.push(h));
+
+      AdMob.prepareRewardVideoAd({
+        adId: AD_UNITS.rewarded,
+        isTesting: false,
+      })
+        .then(() => AdMob.showRewardVideoAd())
+        .then((rewardItem) => {
+          if (rewardItem && !rewardEarned) {
+            rewardEarned = rewardItem;
+            settle();
+          }
+        })
+        .catch((e) => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(safetyTimer);
+            reject(e);
+          }
+        });
     });
-    await AdMob.prepareRewardVideoAd({
-      adId: AD_UNITS.rewarded,
-      isTesting: false,
-    });
-    await AdMob.showRewardVideoAd();
+
+    if (reward) {
+      await onReward(reward);
+    } else {
+      throw new Error('Reklam ödül alınmadan kapatıldı');
+    }
   } catch (e) {
     console.warn('Rewarded ad failed:', e);
     throw e;
+  } finally {
+    cleanup();
   }
 }
 

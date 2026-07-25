@@ -192,6 +192,7 @@ export default function GamePage({ user }) {
   const [finalJourney, setFinalJourney] = useState(null);
   const [reviveRoll, setReviveRoll] = useState(null);
   const [reviveState, setReviveState] = useState('idle');
+  const [answeredMsgId, setAnsweredMsgId] = useState(null);
   const [turnRewardDue, setTurnRewardDue] = useState(false);
   const [turnAdLoading, setTurnAdLoading] = useState(false);
   const [dailyLimitInfo, setDailyLimitInfo] = useState(null);
@@ -439,6 +440,10 @@ export default function GamePage({ user }) {
     if (!text && !diceResult) return;
     if (loading) return;
 
+    // Kilidi hemen burada devreye al: zar animasyonu süresince (aşağıda) loading
+    // henüz true olmasa, kullanıcı art arda başka seçeneklere tıklayabilirdi.
+    setLoading(true);
+
     // Auto-roll d20 when no dice result is provided
     let finalDice = diceResult;
     if (!finalDice && character) {
@@ -470,7 +475,6 @@ export default function GamePage({ user }) {
     const userMsgId = Date.now();
     setMessages((m) => [...m, { role: 'user', content: text, id: userMsgId }]);
     setInput('');
-    setLoading(true);
 
     try {
       const data = await sendChat(sessionId, characterId, text, finalDice);
@@ -834,6 +838,13 @@ export default function GamePage({ user }) {
   // (e.g. 1/80) rounds down to a near-invisible fraction of a pixel.
   const hpBarWidth = character.hp > 0 ? Math.max(hpPct, 4) : 0;
   const isDead = character.status === 'dead' || character.status === 'unconscious' || !!finalJourney || character.hp <= 0;
+
+  // Seçenek butonları sadece en son anlatıcı mesajında aktif olmalı; eski mesajlardaki
+  // seçenekler yanlışlıkla tekrar tıklanıp hikayenin karışmasına yol açmasın.
+  let lastAssistantMsgId = null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'assistant') { lastAssistantMsgId = messages[i].id; break; }
+  }
 
   const handleStatSelect = async (statKey) => {
     try {
@@ -2332,14 +2343,14 @@ export default function GamePage({ user }) {
                   </p>
                 )}
 
-                {/* Option buttons */}
-                {options.length > 0 && !isNew && (
+                {/* Option buttons — only on the latest narrator message, and only until one is picked */}
+                {options.length > 0 && !isNew && msg.id === lastAssistantMsgId && answeredMsgId !== msg.id && (
                   <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                     {options.map((opt, i) => (
                       <motion.button
                         key={i}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => { playClick(); handleSend(opt.text); }}
+                        onClick={() => { if (loading) return; playClick(); setAnsweredMsgId(msg.id); handleSend(opt.text); }}
                         disabled={loading}
                         style={{
                           textAlign: 'left',
