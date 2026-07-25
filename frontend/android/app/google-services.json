@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "103499453593-lq61k5f84d1glrsno3bqtcanlkckvjs8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kaderinsesi.app",
+            "certificate_hash": "93be91135b1df7cacd5518070cd9ed7fd3baf1f7"
+          }
+        },
+        {
           "client_id": "103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com",
           "client_type": 3
         }
