@@ -16,6 +16,7 @@ jobs:
         id: auth
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          token_format: 'access_token'
 
       - name: Add SHA-1 to Firebase Android app
         run: |
