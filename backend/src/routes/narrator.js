@@ -160,12 +160,9 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
 7. **Seviye atlayış**: XP 300'ün katlarına ulaştığında karakter seviye atlar. Backend otomatik olarak hit die zar atıp HP artırır ve bir stat artış puanı verir. HP artışını sen yanıtında duyur, stat seçimini oyuncuya bırak.
 
 ## ÖLÜM KURALLARI
-- HP 0 olunca karakter BAYILIR (bilinçsiz).
-- Baygın karakter her turda ölüm kurtarma zarı atar: d20, 10+ başarı, 10 altı başarısız.
-- 3 başarı = stabilize (1 HP ile uyanır). 3 başarısızlık = ÖLÜM.
-- Nat 20 = anında stabilize + 1 HP. Nat 1 = 2 başarısızlık sayılır.
-- Baygın karaktere yaklaşan düşmanlar HP'ye hasar vererek ölümü hızlandırabilir.
-- Karakter tamamen öldüğünde, son kurtuluş zarı (d20, 10+ başarılı) hakkı vardır. Başarılı olursa 1 HP ile dirilir, başarısız olursa macera sona erer ve karakter silinir.
+- HP 0 olunca karakter DÜŞER (bilinçsiz/ölüm kıyısında). Bunu hikayede dramatik şekilde anlat.
+- HP 0'a düşürdüğün ANDA hp_change event'ini mutlaka gönder — bu, oyuna otomatik bir "yeniden doğma zarı" ekranı açtırır. Sen death_save event'i GÖNDERME ve hikayede "zar at" diye TALEP ETME; zar atma ekranı sistem tarafından otomatik gösterilir, sen sadece HP'nin 0'a düştüğünü anlat ve yanıtını orada bitir.
+- Oyuncu bu ekranda kendi kendine zar atıp başarılı olursa 1 HP ile dirilir (bunu sonraki yanıtında hikayeye yansıt), başarısız olursa macera orada sona erer.
 
 ## GENEL KURALLAR
 1. Her yanıt 3-5 kısa cümle. CÜMLELERİNİ MUTLAKA TAMAMLA. Yarım bırakma.
@@ -180,18 +177,21 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
 7. **SAVAŞ HASARI:** Oyuncu isabet ettirdiğinde veya düşman vurduğunda yanıtının SONUNA mutlaka şu event'i ekle:
    {"event":"hp_change","value":-X}
    X = silah/düşman zar sonucu. Örn: kılıç isabeti 1d8=5 ise {"event":"hp_change","value":-5}.
+   **KRİTİK KURAL:** Oyuncuya hasar veren HER düşman önce {"event":"enemy_spawn",...} ile tanıtılmış olmalı (aynı yanıtta veya önceki bir yanıtta). Hikayede adı geçmeyen, tanıtılmamış "görünmez" bir düşmandan hp_change asla gönderme — önce düşmanı isimlendirip sahneye çıkar, hasarı ondan sonra ver.
+   **KRİTİK KURAL:** Zaten aktif bir düşmanla savaşırken yeni bir düşman daha eklemeden (enemy_spawn) ÖNCE hikayede bunun nereden geldiğini, neden ortaya çıktığını mutlaka 1 cümleyle anlat (örn: "Goblinin çığlığına başka bir goblin daha koştu geldi"). Anlatılmayan/sebepsiz düşman ekleme.
 8. Oyun olaylarını yanıtın SONUNA ayrı satırda JSON yaz:
    {"event":"hp_change","value":-5}
    {"event":"gold_change","value":10}
    {"event":"item_gained","name":"İksir","type":"potion","description":"2d6 HP iyileştirir"}
    {"event":"xp_gain","value":50}
-   {"event":"death_save","success":true}
    {"event":"enemy_spawn","name":"Goblin","max_hp":15,"ac":15}
    {"event":"enemy_damage","value":-5}
    {"event":"enemy_dead"}
    {"event":"enemy_dead","name":"Goblin"}
+   {"event":"follower_damage","name":"Yoldaş Adı","value":-4}
    {"event":"item_used","name":"Mana İksiri"}
-   enemy_dead: Düşman öldüğünde, kaçtığında, teslim olduğunda, barış yapıldığında veya dost edinildiğinde MUTLAKA kullan. İsim belirtilirse sadece o düşmanı kaldırır, isimsiz tüm aktif düşmanları kaldırır.
+   enemy_dead: Düşman öldüğünde, kaçtığında, teslim olduğunda, barış yapıldığında veya dost edinildiğinde MUTLAKA kullan. Birden fazla düşman aktifse İSMİ MUTLAKA belirt (yoksa hangi düşmanın öldüğü belirsiz olur ve diğerleri de yanlışlıkla kaybolabilir). Sadece TEK bir düşman aktifken isim opsiyoneldir.
+   follower_damage: Savaşta yanındaki bir yoldaş/takipçi düşmandan hasar aldığında MUTLAKA kullan (name=yoldaşın adı, value=negatif hasar miktarı, örn -4). Aynı zamanda hikayede yoldaşa ne olduğunu mutlaka 1 cümleyle anlat (örn: "Kaya, goblinin baltasıyla omzundan yaralandı"). Yoldaş HP'si düşman hasarı aldığında ASLA sabit kalmasın.
    item_used: Hikâyede karakter bir iksir veya tüketilebilir eşya kullandığında (örn: "Mana İksiri içtin") MUTLAKA kullan. Envanterden o eşyayı düşürür. İsim, envanterdeki eşya adıyla büyük/küçük harf duyarsız eşleşmeli.
    {"event":"scene_change","scene":"cave"}
    scene_change: Oyuncu farklı bir bölgeye/ortama geçtiğinde MUTLAKA kullan. Atmosfer sesi otomatik değişir. Kullanılabilir sahneler: forest, dungeon, tavern, city, cave, swamp, ocean, mountain, temple, camp, ruins, storm, desert. Oyuncu bir ormandan mağaraya girerse scene=cave, bir tavernaya girerse scene=tavern, denize açılırsa scene=ocean, fırtına koparsa scene=storm, çölde yürüyorsa scene=desert, bir tapınağa girerse scene=temple, gece kamp kurarsa scene=camp, harabelere girerse scene=ruins, bataklıktan geçerse scene=swamp, dağlara çıkarsa scene=mountain yaz. Bölge gerçekten değiştiğinde event gönder, her yanıtta değil.
@@ -402,6 +402,20 @@ async function applyEvents(aiReply, characterId, sessionId) {
       await characterRef.update({ hp, status: hp <= 0 ? 'dead' : 'alive', updated_at: serverTimestamp() });
     }
 
+    if (event.event === 'follower_damage' && event.name && typeof event.value === 'number') {
+      const existing = await findNpcByName(characterId, event.name.substring(0, 100));
+      if (existing && existing.data.is_follower) {
+        const maxHp = existing.data.follower_max_hp || followerMaxHp(character.level);
+        const change = Math.max(-30, Math.min(30, Math.round(event.value)));
+        const newHp = Math.max(0, Math.min(maxHp, (existing.data.follower_hp ?? maxHp) + change));
+        await existing.ref.update({
+          follower_hp: newHp,
+          follower_status: newHp <= 0 ? 'downed' : (existing.data.follower_status || 'active'),
+          updated_at: serverTimestamp(),
+        });
+      }
+    }
+
     if (event.event === 'gold_change' && typeof event.value === 'number') {
       event.value = Math.max(-200, Math.min(200, Math.round(event.value)));
       await characterRef.update({ gold: Math.max(0, (character.gold || 0) + event.value), updated_at: serverTimestamp() });
@@ -447,8 +461,18 @@ async function applyEvents(aiReply, characterId, sessionId) {
     if (event.event === 'enemy_dead' && sessionRef) {
       const session = docData(await sessionRef.get());
       const enemies = Array.isArray(session?.current_enemy) ? session.current_enemy : [];
+      let remainingEnemies;
+      if (event.name) {
+        remainingEnemies = enemies.filter((enemy) => enemy.name !== event.name);
+      } else if (enemies.length <= 1) {
+        remainingEnemies = [];
+      } else {
+        // İsim belirtilmemiş ama birden fazla düşman aktif: hepsini silmek yerine
+        // sadece ilkini kaldır — "biri ölünce hepsi kaybolur" hatasını önler.
+        remainingEnemies = enemies.slice(1);
+      }
       await sessionRef.update({
-        current_enemy: event.name ? enemies.filter((enemy) => enemy.name !== event.name) : null,
+        current_enemy: remainingEnemies.length ? remainingEnemies : null,
         updated_at: serverTimestamp(),
       });
       const moraleEvents = await applyAllFollowersMoodEvent(characterId, 'victory').catch(() => []);
