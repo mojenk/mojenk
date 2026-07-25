@@ -20,6 +20,9 @@ import {
   Ship,
   Tent,
   BookOpen,
+  Ghost,
+  Rocket,
+  Crosshair,
 } from 'lucide-react';
 
 // Scenarios are built dynamically via t() in the component
@@ -77,6 +80,24 @@ const SCENARIO_DEFS = [
     icon: BookOpen,
     nameKey: 'scenario_realistic_name', descKey: 'scenario_realistic_desc', tagKey: 'scenario_realistic_tag',
     tagColor: '#a8a29e',
+  },
+  {
+    id: 'horror',
+    icon: Ghost,
+    nameKey: 'scenario_horror_name', descKey: 'scenario_horror_desc', tagKey: 'scenario_horror_tag',
+    tagColor: '#7c3aed',
+  },
+  {
+    id: 'scifi',
+    icon: Rocket,
+    nameKey: 'scenario_scifi_name', descKey: 'scenario_scifi_desc', tagKey: 'scenario_scifi_tag',
+    tagColor: '#38bdf8',
+  },
+  {
+    id: 'western',
+    icon: Crosshair,
+    nameKey: 'scenario_western_name', descKey: 'scenario_western_desc', tagKey: 'scenario_western_tag',
+    tagColor: '#ca8a04',
   },
   {
     id: 'custom',

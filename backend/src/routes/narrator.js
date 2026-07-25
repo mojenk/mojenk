@@ -42,7 +42,7 @@ const RECENT_KEEP = 8;
 const AI_TIMEOUT_MS = 30000;
 const MAX_RETRIES = 1;
 
-async function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = [], narratorTone = null) {
+async function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = [], narratorTone = null, scenarioId = null) {
   const mod = v => Math.floor((v - 10) / 2);
   const fmt = v => (v >= 0 ? '+' : '') + v;
 
@@ -100,10 +100,16 @@ ${activeWorldEvents.map(e => `- **${e.title}** (${e.type}): ${e.description}`).j
     sea: 'Açık deniz, korsan gemileri, deniz canavarları, batık hazine haritaları, liman kasabaları. Atmosfer: tuzlu rüzgar, dalgalar, macera.',
     caravan: 'Ticaret kervanında yolculuk, çöl kasabaları, yol haydutları, tüccar entrikaları, gece kampları. Atmosfer: sıcak, tozlu, tehlikeli.',
     realistic: 'ÖNEMLI: Bu senaryo tamamen gerçekçidir — HİÇBİR büyü, canavar, ejderha, peri, şeytan, undead veya doğaüstü unsur YOKTUR. Sadece insan dramı, siyaset, ticaret, savaş, diplomasi ve hayatta kalma. Düşmanlar insandır: haydutlar, askerler, casuslar, suçlular. Silahlar gerçekçi: kılıç, yay, bıçak. İksir yerine şifalı otlar ve cerrahi. Büyü sınıfı seçildiyse bile büyü kullanamaz, bunun yerine bilgelik ve strateji kullanır.',
+    horror: 'ÖNEMLI: Bu bir KORKU senaryosudur. Lanetli malikaneler, sisli mezarlıklar, çürümüş tarikat mabetleri, hayaletler, iblisler ve akıl sağlığını tehdit eden varlıklar. Atmosfer sürekli gerilimli, ürkütücü ve tekinsiz olsun — ani sesler, gölgeler, açıklanamayan olaylar. Oyuncuda güvende olmadığı hissini sürekli canlı tut, ama adil oyna (haksız ölüm yok). Betimlemeler duyusal ve rahatsız edici olsun (koku, ses, karanlık).',
+    scifi: 'ÖNEMLI: Bu bir BİLİM KURGU senaryosudur. Uzay gemileri, yıldızlararası koloniler, yapay zekalar, uzaylı ırklar, ileri teknoloji silahlar (lazer, plazma) ve unutulmuş uzay istasyonları. Büyü yerine teknoloji ve bilim kullanılır (mühendislik, hackleme, biyoteknoloji). Silahlar/eşyalar fütüristik: enerji kılıcı, blaster, holografik ekranlar, nano-iksir yerine stim-enjeksiyon. Atmosfer: soğuk metal koridorlar, yıldızların sessizliği, bilinmeyenin merakı ve tehlikesi.',
+    western: 'ÖNEMLI: Bu bir VAHŞİ BATI senaryosudur. Tozlu çöl kasabaları, silahşörler, tren soygunları, kanun kaçakları, altın madenleri ve şerifler. Büyü yoktur, sadece altı patlar tabancalar, tüfekler, dinamit ve at sırtında takip sahneleri. Diyaloglar sert, lakonik ve gururlu olsun. Atmosfer: kavurucu güneş, toz bulutları, viski kokan salonlar, düello gerilimleri.',
     custom: 'AI serbestçe yaratıcı bir senaryo tasarlar. Oyuncunun tercihleri ve eylemleri hikayeyi şekillendirir.',
   };
-  const scenarioKey = (sessionTitle || '').toLowerCase().replace(/[^a-z]/g, '');
-  const scenarioHint = scenarioHints[scenarioKey] || Object.entries(scenarioHints).find(([k]) => scenarioKey.includes(k))?.[1] || '';
+  const titleKey = (sessionTitle || '').toLowerCase().replace(/[^a-z]/g, '');
+  const scenarioHint = scenarioHints[scenarioId]
+    || scenarioHints[titleKey]
+    || Object.entries(scenarioHints).find(([k]) => titleKey.includes(k))?.[1]
+    || '';
 
   const toneInstructions = {
     dramatic: language === 'en'
@@ -524,6 +530,7 @@ async function applyEvents(aiReply, characterId, sessionId) {
           const maxHp = followerMaxHp(character.level);
           Object.assign(updates, {
             is_follower: 1,
+            relationship: 'friendly',
             hire_cost: null,
             follower_role: determineFollowerRole(`${existing.data.description || ''} ${existing.data.notes || ''}`),
             follower_max_hp: maxHp,
@@ -534,6 +541,15 @@ async function applyEvents(aiReply, characterId, sessionId) {
             follower_loyalty: existing.data.follower_loyalty || 60,
             follower_status: 'active',
           });
+          // Yoldaş yapılan NPC aynı zamanda aktif düşman ise savaş UI'sini kapat
+          if (sessionRef) {
+            const session = docData(await sessionRef.get());
+            const enemies = Array.isArray(session?.current_enemy) ? session.current_enemy : [];
+            const remaining = enemies.filter((enemy) => String(enemy.name || '').toLocaleLowerCase('tr') !== String(event.name || '').toLocaleLowerCase('tr'));
+            if (remaining.length !== enemies.length) {
+              await sessionRef.update({ current_enemy: remaining.length ? remaining : null, updated_at: serverTimestamp() });
+            }
+          }
         }
         if (event.event === 'npc_topic' && Array.isArray(event.topics)) {
           const previous = Array.isArray(existing.data.topics) ? existing.data.topics : [];
@@ -669,7 +685,8 @@ router.post('/chat', async (req, res) => {
       language || 'tr',
       knownNpcs,
       activeQuests,
-      character.narrator_tone
+      character.narrator_tone,
+      session.scenario
     );
     let aiReply;
     try {
@@ -791,6 +808,9 @@ router.post('/start', async (req, res) => {
       sea:     language === 'en' ? 'Sea Voyage'      : 'Deniz Yolculuğu',
       caravan: language === 'en' ? 'Caravan Road'    : 'Kervan Yolu',
       realistic: language === 'en' ? 'Realistic Adventure' : 'Gerçekçi Macera',
+      horror:  language === 'en' ? 'Horror Nightmare' : 'Korku Kâbusu',
+      scifi:   language === 'en' ? 'Interstellar Mission' : 'Yıldızlararası Görev',
+      western: language === 'en' ? 'Wild West'       : 'Vahşi Batı',
       custom:  language === 'en' ? 'Free Adventure'  : 'Serbest Macera',
     };
     const openings = {
@@ -821,6 +841,15 @@ router.post('/start', async (req, res) => {
       realistic: language === 'en'
         ? `${character.name} enters a world where steel is steel, men are men, and no magic answers prayers. Power belongs to those who scheme, fight, or endure — and the game begins now.`
         : `${character.name} çelik çelik, insan insan, büyünün hiçbir duaya yanıt vermediği bir dünyaya adım atıyor. Güç; entrika kuran, savaşan veya dayananlarındır — oyun şimdi başlıyor.`,
+      horror: language === 'en'
+        ? `${character.name} stands before a decaying mansion, its windows dark like hollow eyes. A cold draft carries a whisper that shouldn't exist, and the front door creaks open on its own.`
+        : `${character.name} çürümüş bir malikanenin önünde duruyor; pencereleri boş gözler gibi kapkaranlık. Soğuk bir hava akımı olmaması gereken bir fısıltı taşıyor ve ön kapı kendiliğinden gıcırdayarak açılıyor.`,
+      scifi: language === 'en'
+        ? `${character.name} wakes in the cold hum of a starship's corridor, emergency lights flickering red. The ship's AI stutters a warning through the intercom — something has boarded that shouldn't be here.`
+        : `${character.name} bir uzay gemisinin soğuk uğultulu koridorunda gözlerini açıyor; acil durum ışıkları kırmızı kırmızı yanıp sönüyor. Geminin yapay zekası interkomdan kekeleyerek bir uyarı veriyor — gemiye olmaması gereken bir şey binmiş.`,
+      western: language === 'en'
+        ? `${character.name} rides into a dust-choked frontier town under a blistering sun. Wanted posters flutter on a wooden post, and the saloon doors swing with the promise of trouble.`
+        : `${character.name} kavurucu güneşin altında toz bulutlarına boğulmuş bir sınır kasabasına at sürüyor. Ahşap direkte aranıyor afişleri dalgalanıyor ve salon kapıları belanın habercisi gibi sallanıyor.`,
       custom: language === 'en'
         ? `${character.name} steps into the unknown. The path ahead is unwritten, shaped only by choices yet to be made.`
         : `${character.name} bilinmezliğe adım atıyor. Önündeki yol yazılmamış, sadece verilecek seçimler tarafından şekillenecek.`,
@@ -832,7 +861,7 @@ router.post('/start', async (req, res) => {
       ? `Begin with this scene and write a gripping 4-5 sentence opening. Set the atmosphere, draw the player in, and end with 2-4 clear choices labeled **A)**, **B)**, **C)**. Do not break character or meta-comment.\n\nScene: ${opening}`
       : `Bu sahneyle başla ve sürükleyici 4-5 cümlelik bir açılış yap. Havayı kur, oyuncuyu içine çek, sonunda **A)**, **B)**, **C)** formatında 2-4 net seçenek sun. Karakter dışına çıkma veya yorum yapma.\n\nSahne: ${opening}`;
 
-    const systemPrompt = await buildSystem(character, '', title, inventory, language || 'tr', existingNpcs, [], character.narrator_tone);
+    const systemPrompt = await buildSystem(character, '', title, inventory, language || 'tr', existingNpcs, [], character.narrator_tone, scenario);
     const intro = await callGemini(systemPrompt, [], prompt);
 
     const messageRef = sessionRef.collection('messages').doc();

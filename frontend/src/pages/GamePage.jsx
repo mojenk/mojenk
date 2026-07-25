@@ -1817,6 +1817,8 @@ export default function GamePage({ user }) {
                       const fXpPct = Math.min(100, Math.round((fXp / 200) * 100));
                       const moraleColor = morale >= 60 ? '#4caf50' : morale >= 30 ? '#ff9800' : '#e53935';
                       const loyaltyColor = loyalty >= 60 ? '#4caf50' : loyalty >= 30 ? '#ff9800' : '#e53935';
+                      const bondLabel = loyalty >= 85 ? 'Sadık Müttefik' : 'Yoldaş';
+                      const bondColor = loyalty >= 85 ? '#c9963a' : '#4caf50';
                       return (
                       <motion.div
                         key={npc.id}
@@ -1841,6 +1843,9 @@ export default function GamePage({ user }) {
                             <RoleIcon size={12} /> {roleMeta.label}
                           </span>
                         </div>
+                        <span style={{ fontFamily: "'Crimson Text', serif", fontSize: '0.68rem', color: bondColor, fontWeight: 600 }}>
+                          {bondLabel}
+                        </span>
                         {npc.description && (
                           <p style={{ fontFamily: "'Crimson Text', serif", fontSize: '0.8rem', color: 'var(--text-dim)', margin: '0 0 0.35rem' }}>{npc.description}</p>
                         )}
@@ -1893,7 +1898,7 @@ export default function GamePage({ user }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '220px', overflowY: 'auto' }}>
                   {npcs.filter(n => !n.is_follower && n.npc_status !== 'dead' && n.relationship !== 'dead').map((npc) => {
                     const relColor = { friendly: '#4caf50', neutral: '#c9963a', hostile: '#e53935', unknown: '#888' }[npc.relationship] || '#888';
-                    const relLabel = { friendly: 'Dost', neutral: 'Tarafsız', hostile: 'Düşman', unknown: 'Bilinmiyor' }[npc.relationship] || 'Bilinmiyor';
+                    const relLabel = { friendly: 'Dost', neutral: 'Tarafsız', hostile: 'Düşman', unknown: 'Tanıdık' }[npc.relationship] || 'Tanıdık';
                     const canAfford = character && npc.hire_cost && character.gold >= npc.hire_cost;
                     return (
                       <motion.div

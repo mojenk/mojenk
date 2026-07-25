@@ -614,6 +614,9 @@ export function mapScenarioToAmbience(scenario) {
     ruins: 'ruins',
     storm: 'storm',
     desert: 'desert',
+    horror: 'ruins',
+    scifi: 'city',
+    western: 'desert',
   };
   return map[scenario] || 'forest';
 }
