@@ -51,6 +51,13 @@ export default function LoginPage({ onLogin }) {
     playClick();
     setLoading(true);
     setError('');
+    const timeoutMs = 20000;
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      setLoading(false);
+      setError('Google girişi zaman aşımına uğradı. Lütfen internet bağlantını kontrol edip tekrar dene.');
+    }, timeoutMs);
     try {
       let cred;
       if (Capacitor.isNativePlatform()) {
@@ -62,13 +69,16 @@ export default function LoginPage({ onLogin }) {
         // Web: Firebase popup flow
         cred = await signInWithPopup(auth, googleProvider);
       }
+      if (timedOut) return;
       await finalizeLogin(cred);
       playMagic();
     } catch (err) {
       console.error(err);
-      setError('Google girişi başarısız: ' + (err.message || 'Bilinmeyen hata'));
+      if (!timedOut) setError('Google girişi başarısız: ' + (err.message || 'Bilinmeyen hata'));
+    } finally {
+      clearTimeout(timeoutId);
     }
-    setLoading(false);
+    if (!timedOut) setLoading(false);
   };
 
   const handleAnonymous = async () => {
