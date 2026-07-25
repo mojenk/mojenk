@@ -29,7 +29,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm ci --prefix frontend
+          npm ci --prefix frontend --legacy-peer-deps
           npm ci --prefix backend
 
       - name: Build frontend
