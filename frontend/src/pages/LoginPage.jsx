@@ -37,7 +37,7 @@ export default function LoginPage({ onLogin }) {
       if (!window.google?.accounts?.id) return;
       try {
         window.google.accounts.id.initialize({
-          client_id: '103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com',
+          client_id: '103499453593-9ljq15ebsf4hi7aunppcirqhmaijf0ec.apps.googleusercontent.com',
           callback: async (response) => {
             if (!response?.credential) return;
             setLoading(true);
