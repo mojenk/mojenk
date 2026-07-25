@@ -1,0 +1,65 @@
+name: Add SHA1 Temp
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha1:
+        description: 'SHA-1 fingerprint (colon separated, e.g. AA:BB:...)'
+        required: true
+
+jobs:
+  add-sha1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        id: auth
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Add SHA-1 to Firebase Android app
+        run: |
+          TOKEN="${{ steps.auth.outputs.access_token }}"
+          SHA1_RAW="${{ inputs.sha1 }}"
+          SHA1_CLEAN=$(echo "$SHA1_RAW" | tr -d ':' | tr 'A-Z' 'a-z')
+          echo "Adding SHA1: $SHA1_CLEAN"
+          curl -s -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://firebase.googleapis.com/v1beta1/projects/kaderin-sesi/androidApps/1:103499453593:android:3fdc2bb084cab8091c1408/sha" \
+            -d "{\"shaHash\":\"$SHA1_CLEAN\",\"certType\":\"SHA_1\"}" | tee /tmp/add_result.json
+          echo "---"
+          cat /tmp/add_result.json
+
+      - name: List current SHA certs
+        run: |
+          TOKEN="${{ steps.auth.outputs.access_token }}"
+          curl -s -X GET \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://firebase.googleapis.com/v1beta1/projects/kaderin-sesi/androidApps/1:103499453593:android:3fdc2bb084cab8091c1408/sha" | tee /tmp/list_result.json
+
+      - name: Fetch updated google-services.json
+        run: |
+          TOKEN="${{ steps.auth.outputs.access_token }}"
+          curl -s -X GET \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://firebase.googleapis.com/v1beta1/projects/kaderin-sesi/androidApps/1:103499453593:android:3fdc2bb084cab8091c1408/config" > /tmp/config_response.json
+          node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('/tmp/config_response.json', 'utf8'));
+            if (data.configFileContents) {
+              fs.writeFileSync('/tmp/google-services.json', Buffer.from(data.configFileContents, 'base64').toString('utf8'));
+              console.log('OK: google-services.json written');
+            } else {
+              console.log('ERROR response:', JSON.stringify(data));
+              process.exit(1);
+            }
+          "
+          cat /tmp/google-services.json
+
+      - name: Upload google-services.json artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-services-json
+          path: /tmp/google-services.json
+          retention-days: 3
