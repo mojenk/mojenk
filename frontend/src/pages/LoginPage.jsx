@@ -88,7 +88,7 @@ export default function LoginPage({ onLogin }) {
     if (!Capacitor.isNativePlatform()) {
       // Web: mobil Chrome'da pop-up ve sessionStorage kısıtlamalarını aşmak
       // için doğrudan Google OAuth implicit flow yönlendirmesi yap.
-      const redirectUri = window.location.origin + window.location.pathname;
+      const redirectUri = window.location.origin; // slash olmadan, Cloud Console'da böyle kayıtlı
       const clientId = '103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com';
       const scope = encodeURIComponent('openid email profile');
       const state = Math.random().toString(36).slice(2);
