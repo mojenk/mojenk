@@ -18,6 +18,7 @@ import {
   playHeartbeat, playError, playSwordHit, playSwordMiss, playCriticalHit, playMagic,
 } from '../utils/sounds';
 import { startAmbience, stopAmbience, cleanupAmbience, mapScenarioToAmbience, detectAmbienceFromScene } from '../utils/ambient';
+import { useLang, t, getLang } from '../utils/i18n';
 import { StatIcon, ItemIcon } from '../utils/icons';
 import {
   Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX, Backpack,
@@ -27,22 +28,23 @@ import {
 } from 'lucide-react';
 
 const FOLLOWER_ROLE_META = {
-  warrior: { label: 'Savaşçı', icon: Sword, color: 'text-slate-300' },
-  archer: { label: 'Okçu', icon: Target, color: 'text-emerald-300' },
-  mage: { label: 'Büyücü', icon: Wand2, color: 'text-violet-300' },
-  healer: { label: 'Şifacı', icon: Heart, color: 'text-pink-300' },
+  warrior: { labelKey: 'role_warrior', icon: Sword, color: 'text-slate-300' },
+  archer: { labelKey: 'role_archer', icon: Target, color: 'text-emerald-300' },
+  mage: { labelKey: 'role_mage', icon: Wand2, color: 'text-violet-300' },
+  healer: { labelKey: 'role_healer', icon: Heart, color: 'text-pink-300' },
 };
 function getFollowerRoleMeta(role) {
-  return FOLLOWER_ROLE_META[role] || FOLLOWER_ROLE_META.warrior;
+  const meta = FOLLOWER_ROLE_META[role] || FOLLOWER_ROLE_META.warrior;
+  return { ...meta, label: t(meta.labelKey) };
 }
 
-const STAT_COLS = [
-  ['GÜÇ', 'strength', StatIcon.strength],
-  ['ÇEV', 'dexterity', StatIcon.dexterity],
-  ['DAY', 'constitution', StatIcon.constitution],
-  ['ZEK', 'intelligence', StatIcon.intelligence],
-  ['BİL', 'wisdom', StatIcon.wisdom],
-  ['KAR', 'charisma', StatIcon.charisma],
+const STAT_COLS_DEF = [
+  ['stat_abbr_strength', 'strength', StatIcon.strength],
+  ['stat_abbr_dexterity', 'dexterity', StatIcon.dexterity],
+  ['stat_abbr_constitution', 'constitution', StatIcon.constitution],
+  ['stat_abbr_intelligence', 'intelligence', StatIcon.intelligence],
+  ['stat_abbr_wisdom', 'wisdom', StatIcon.wisdom],
+  ['stat_abbr_charisma', 'charisma', StatIcon.charisma],
 ];
 
 const RACE_PORTRAITS = {
@@ -148,6 +150,8 @@ export default function GamePage({ user }) {
   const { soundOn, toggleSound } = useSound();
 
   const [character, setCharacter] = useState(null);
+  useLang(); // re-render on language change
+  const STAT_COLS = STAT_COLS_DEF.map(([k, s, i]) => [t(k), s, i]);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -2469,8 +2473,7 @@ export default function GamePage({ user }) {
                     gap: '0.25rem',
                     letterSpacing: '0.04em',
                   }}
-                >
-                  <RotateCcw size={13} /> Tekrar Dene
+                >{t('chat_error_retry')} <RotateCcw size={13} />
                 </motion.button>
               )}
               <motion.button
@@ -2543,7 +2546,7 @@ export default function GamePage({ user }) {
           >
             <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--blood)' }}><Swords size={48} /></div>
             <h2 className="font-fantasy" style={{ color: 'var(--blood)', fontSize: '1.6rem', letterSpacing: '0.12em', margin: 0, textAlign: 'center' }}>
-              SON YOLCULUK
+              {t('final_journey')}
             </h2>
             <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.95rem', textAlign: 'center', maxWidth: '340px', lineHeight: 1.6 }}>
               {finalJourney.finalMessage}
@@ -2595,7 +2598,7 @@ export default function GamePage({ user }) {
           >
             <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--blood)' }}><Skull size={56} /></div>
             <h2 className="font-fantasy" style={{ color: 'var(--blood)', fontSize: '1.7rem', letterSpacing: '0.1em', margin: 0, textAlign: 'center' }}>
-              KAHRAMANIN DÜŞTÜ
+              {t('hero_fell')}
             </h2>
             <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '1rem', textAlign: 'center', maxWidth: '320px' }}>
               {character.name} ölümün kıyısında. Yeniden doğma zarında 10+ atarsan 1 canla dirilirsin.

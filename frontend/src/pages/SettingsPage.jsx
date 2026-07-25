@@ -3,16 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { isSoundEnabled, toggleSound, getSoundVolume, setVolume, playClick } from '../utils/sounds';
-import { getLang, setLang } from '../utils/i18n';
+import { getLang, setLang, useLang, t } from '../utils/i18n';
 import { claimAdmin, deleteAccount, updateCharacterSettings } from '../utils/api';
 import { auth } from '../firebase';
 import Particles from '../components/Particles';
 import { Sparkles } from 'lucide-react';
 
 const TEXT_SIZES = [
-  { key: 'small', label: 'Küçük', px: '13px' },
-  { key: 'medium', label: 'Orta', px: '15px' },
-  { key: 'large', label: 'Büyük', px: '17px' },
+  { key: 'small', labelKey: 'text_small', px: '13px' },
+  { key: 'medium', labelKey: 'text_medium', px: '15px' },
+  { key: 'large', labelKey: 'text_large', px: '17px' },
 ];
 
 function getTextSize() {
@@ -26,15 +26,15 @@ function applyTextSize(size) {
 }
 
 const LANGUAGES = [
-  { key: 'tr', label: 'Türkçe', flag: '🇹🇷', note: 'Türkçe anlatı' },
-  { key: 'en', label: 'English', flag: '🇬🇧', note: 'English narration' },
+  { key: 'tr', label: 'Türkçe', flag: '🇹🇷', noteKey: 'lang_note_tr' },
+  { key: 'en', label: 'English', flag: '🇬🇧', noteKey: 'lang_note_en' },
 ];
 
 const TONES = [
-  { key: 'dramatic', label: 'Dramatik', desc: 'Duygusal, gerilimli ve tiyatsal' },
-  { key: 'comedic', label: 'Mizahi', desc: 'Hafif, esprili ve neşeli' },
-  { key: 'dark', label: 'Karanlık', desc: 'Kasvetli, sert ve acımasız' },
-  { key: 'epic', label: 'Epik', desc: 'Görkemli, kahramanlık ve destansı' },
+  { key: 'dramatic', labelKey: 'tone_dramatic_label', descKey: 'tone_dramatic_desc' },
+  { key: 'comedic', labelKey: 'tone_comedic_label', descKey: 'tone_comedic_desc' },
+  { key: 'dark', labelKey: 'tone_dark_label', descKey: 'tone_dark_desc' },
+  { key: 'epic', labelKey: 'tone_epic_label', descKey: 'tone_epic_desc' },
 ];
 
 export default function SettingsPage({ isAdmin }) {
@@ -46,6 +46,7 @@ export default function SettingsPage({ isAdmin }) {
     () => localStorage.getItem('dnd_theme') || 'dark'
   );
   const [lang, setLangState] = useState(getLang);
+  useLang(); // re-render on language change
   const [adminMsg, setAdminMsg] = useState('');
   const [claimingAdmin, setClaimingAdmin] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -64,8 +65,8 @@ export default function SettingsPage({ isAdmin }) {
   }, []);
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm('Hesabını ve tüm karakter/oyun verilerini kalıcı olarak silmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
-    if (!window.confirm('Son onay: Hesabın kalıcı olarak silinecek. Devam etmek istiyor musun?')) return;
+    if (!window.confirm(t('delete_account_confirm1'))) return;
+    if (!window.confirm(t('delete_account_confirm2'))) return;
     setDeletingAccount(true);
     setDeleteError('');
     try {
@@ -73,7 +74,7 @@ export default function SettingsPage({ isAdmin }) {
       await firebaseSignOut(auth);
       navigate('/');
     } catch (err) {
-      setDeleteError(err.message || 'Hesap silinemedi, lütfen tekrar dene');
+      setDeleteError(err.message || t('delete_account_fail'));
       setDeletingAccount(false);
     }
   };
@@ -84,9 +85,9 @@ export default function SettingsPage({ isAdmin }) {
     try {
       await claimAdmin();
       playClick();
-      setAdminMsg('Yönetici yetkisi bu hesaba tanındı. Sayfayı yenile.');
+      setAdminMsg(t('admin_claimed'));
     } catch (err) {
-      setAdminMsg(err.message || 'İşlem başarısız');
+      setAdminMsg(err.message || t('admin_fail'));
     }
     setClaimingAdmin(false);
   };
@@ -160,13 +161,13 @@ export default function SettingsPage({ isAdmin }) {
             className="btn-dark"
             style={{ padding: '0.44rem 0.9rem', fontSize: '0.85rem', minHeight: '44px' }}
           >
-            Geri
+            {t('back')}
           </motion.button>
           <h1
             className="font-fantasy gold-shimmer"
             style={{ fontSize: '1.3rem', letterSpacing: '0.1em', margin: 0 }}
           >
-            AYARLAR
+            {t('settings_title')}
           </h1>
         </div>
       </div>
@@ -179,7 +180,7 @@ export default function SettingsPage({ isAdmin }) {
             className="font-fantasy"
             style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 1rem' }}
           >
-            SES
+            {t('sound_title')}
           </h2>
 
           <div
@@ -189,7 +190,7 @@ export default function SettingsPage({ isAdmin }) {
             }}
           >
             <span style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text)', fontSize: '1rem' }}>
-              Ses Efektleri
+              {t('sound_effects')}
             </span>
             <motion.button
               whileTap={{ scale: 0.93 }}
@@ -222,7 +223,7 @@ export default function SettingsPage({ isAdmin }) {
                   fontSize: '0.9rem', minWidth: '65px',
                 }}
               >
-                Ses: {Math.round(vol * 100)}%
+                {t('volume', Math.round(vol * 100))}
               </span>
               <input
                 type="range" min="0" max="1" step="0.05"
@@ -240,15 +241,15 @@ export default function SettingsPage({ isAdmin }) {
             className="font-fantasy"
             style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 1rem' }}
           >
-            TEMA
+            {t('theme_title')}
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <span style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text)', fontSize: '1rem' }}>
-                {theme === 'dark' ? 'Karanlık Mod' : 'Aydınlık Mod'}
+                {theme === 'dark' ? t('dark_mode') : t('light_mode')}
               </span>
               <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.78rem', margin: '0.1rem 0 0' }}>
-                {theme === 'dark' ? 'Orta Çağ loş palet' : 'Parşömen & gündüz palet'}
+                {theme === 'dark' ? t('dark_desc') : t('light_desc')}
               </p>
             </div>
             <motion.button
@@ -281,10 +282,10 @@ export default function SettingsPage({ isAdmin }) {
             className="font-fantasy"
             style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 1rem' }}
           >
-            METİN BOYUTU
+            {t('text_size_title')}
           </h2>
           <div style={{ display: 'flex', gap: '0.6rem' }}>
-            {TEXT_SIZES.map(({ key, label, px }) => (
+            {TEXT_SIZES.map(({ key, labelKey, px }) => (
               <motion.button
                 key={key}
                 whileTap={{ scale: 0.95 }}
@@ -300,7 +301,7 @@ export default function SettingsPage({ isAdmin }) {
                   transition: 'all 0.2s',
                 }}
               >
-                {label}
+                {t(labelKey)}
               </motion.button>
             ))}
           </div>
@@ -310,7 +311,7 @@ export default function SettingsPage({ isAdmin }) {
               color: 'var(--text-muted)', fontSize: '0.78rem', textAlign: 'center',
             }}
           >
-            Boyut sayfayı yenilediğinizde kalıcı olur
+            {t('text_size_note')}
           </p>
         </div>
 
@@ -320,10 +321,10 @@ export default function SettingsPage({ isAdmin }) {
             className="font-fantasy"
             style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 1rem' }}
           >
-            {lang === 'en' ? 'LANGUAGE' : 'DİL'}
+            {t('lang_title')}
           </h2>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            {LANGUAGES.map(({ key, label, flag, note }) => (
+            {LANGUAGES.map(({ key, label, flag, noteKey }) => (
               <motion.button
                 key={key}
                 whileTap={{ scale: 0.95 }}
@@ -344,7 +345,7 @@ export default function SettingsPage({ isAdmin }) {
                   color: lang === key ? 'var(--gold)' : 'var(--text-dim)',
                   fontWeight: lang === key ? 700 : 400,
                 }}>{label}</span>
-                <span style={{ fontFamily: "'Crimson Text', serif", fontSize: '0.7rem', color: 'var(--text-muted)' }}>{note}</span>
+                <span style={{ fontFamily: "'Crimson Text', serif", fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t(noteKey)}</span>
               </motion.button>
             ))}
           </div>
@@ -366,24 +367,24 @@ export default function SettingsPage({ isAdmin }) {
             className="font-fantasy"
             style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 1rem' }}
           >
-            ANLATICI TONU
+            {t('tone_title')}
           </h2>
           <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', margin: '0 0 0.75rem' }}>
-            AI'nin hikayeyi nasıl anlatacağını seç. Bir sonraki mesajından itibaren geçerli olur.
+            {t('tone_note')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            {TONES.map((t) => (
+            {TONES.map((toneItem) => (
               <motion.button
-                key={t.key}
+                key={toneItem.key}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => handleTone(t.key)}
+                onClick={() => handleTone(toneItem.key)}
                 disabled={toneSaving}
                 style={{
                   width: '100%',
                   padding: '0.85rem 1rem',
                   borderRadius: '10px',
-                  border: tone === t.key ? '1px solid var(--gold)' : '1px solid var(--border)',
-                  background: tone === t.key ? 'rgba(201,150,58,0.12)' : 'rgba(0,0,0,0.25)',
+                  border: tone === toneItem.key ? '1px solid var(--gold)' : '1px solid var(--border)',
+                  background: tone === toneItem.key ? 'rgba(201,150,58,0.12)' : 'rgba(0,0,0,0.25)',
                   color: 'var(--text)',
                   textAlign: 'left',
                   cursor: toneSaving ? 'wait' : 'pointer',
@@ -394,20 +395,20 @@ export default function SettingsPage({ isAdmin }) {
                 }}
               >
                 <div>
-                  <div style={{ fontFamily: "'Cinzel', serif", fontWeight: 700, color: tone === t.key ? 'var(--gold)' : 'var(--text)' }}>
-                    {t.label}
+                  <div style={{ fontFamily: "'Cinzel', serif", fontWeight: 700, color: tone === toneItem.key ? 'var(--gold)' : 'var(--text)' }}>
+                    {t(toneItem.labelKey)}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.15rem' }}>
-                    {t.desc}
+                    {t(toneItem.descKey)}
                   </div>
                 </div>
-                {tone === t.key && <Sparkles size={18} color="var(--gold)" />}
+                {tone === toneItem.key && <Sparkles size={18} color="var(--gold)" />}
               </motion.button>
             ))}
           </div>
           {toneSaving && (
             <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '0.6rem', textAlign: 'center' }}>
-              Kaydediliyor...
+              {t('tone_saving')}
             </p>
           )}
         </div>
@@ -476,7 +477,7 @@ export default function SettingsPage({ isAdmin }) {
               cursor: 'pointer',
             }}
           >
-            Gizlilik Politikası
+            {t('privacy_policy')}
           </motion.button>
         </div>
 
@@ -486,10 +487,10 @@ export default function SettingsPage({ isAdmin }) {
             className="font-fantasy"
             style={{ color: '#c85454', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 0.75rem' }}
           >
-            TEHLİKELİ BÖLGE
+            {t('danger_zone')}
           </h2>
           <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', margin: '0 0 0.75rem' }}>
-            Hesabını ve tüm karakter, oturum ve oyun verilerini kalıcı olarak silersin. Bu işlem geri alınamaz.
+            {t('delete_account_desc')}
           </p>
           <motion.button
             whileTap={{ scale: 0.96 }}
@@ -502,7 +503,7 @@ export default function SettingsPage({ isAdmin }) {
               cursor: deletingAccount ? 'default' : 'pointer', opacity: deletingAccount ? 0.6 : 1,
             }}
           >
-            {deletingAccount ? 'Siliniyor...' : 'Hesabımı Sil'}
+            {deletingAccount ? t('deleting') : t('delete_account_btn')}
           </motion.button>
           {deleteError && (
             <p style={{ fontFamily: "'Crimson Text', serif", color: '#e88', fontSize: '0.82rem', marginTop: '0.6rem' }}>

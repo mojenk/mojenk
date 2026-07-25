@@ -6,6 +6,7 @@ import { playClick, playDamage, playError } from '../utils/sounds';
 import Particles from '../components/Particles';
 import AnnouncementsBar from '../components/AnnouncementsBar';
 import { Sparkles, Swords, Castle, Skull, Heart, Coins, ScrollText, Trash2, X, Dices } from 'lucide-react';
+import { useLang, t, getLang } from '../utils/i18n';
 
 const RACE_PORTRAITS = {
   'İnsan': '/races/insan.svg',
@@ -19,6 +20,7 @@ const RACE_PORTRAITS = {
 export default function CharactersPage({ user, onLogout, isAdmin }) {
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
+  useLang(); // re-render on language change
   const [error, setError] = useState('');
   const [sessionMap, setSessionMap] = useState({});
   const [expandedChar, setExpandedChar] = useState(null);
@@ -45,7 +47,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
       });
       setSessionMap(map);
     } catch (err) {
-      setError(err.message || 'Veriler yüklenemedi');
+      setError(err.message || t('data_load_fail'));
     }
     setLoading(false);
   };
@@ -59,7 +61,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
       if (characters.some((c) => c.id === createdId)) {
         const createdChar = characters.find((c) => c.id === createdId);
         setExpandedChar(createdId);
-        setCreatedNotice(`${createdChar?.name || 'Kahraman'} oluşturuldu. Macerayı başlatmak için kartındaki "Yeni Macera" düğmesine bas.`);
+        setCreatedNotice(t('hero_created_notice', createdChar?.name || ''));
       } else {
         loadData();
       }
@@ -78,7 +80,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
       setDeleteConfirm(null);
     } catch (err) {
       playError();
-      setError(err.message || 'Silme başarısız');
+      setError(err.message || t('delete_fail'));
     }
     setDeleting(false);
   };
@@ -99,7 +101,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
   const formatDate = (d) => {
     if (!d) return '';
     const dt = new Date(d);
-    return dt.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+    return dt.toLocaleDateString(getLang() === 'tr' ? 'tr-TR' : 'en-GB', { day: 'numeric', month: 'short' });
   };
 
   return (
@@ -151,7 +153,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
             className="btn-dark"
             style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }}
           >
-            Çıkış
+            {t('logout')}
           </motion.button>
         </div>
         {/* Nav row */}
@@ -162,7 +164,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
             className="btn-dark"
             style={{ fontSize: '0.75rem', padding: '0.35rem 0.85rem', minHeight: '36px' }}
           >
-            Onur Listesi
+            {t('hall_of_fame_btn')}
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.96 }}
@@ -295,7 +297,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
         {loading ? (
           <div style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--text-dim)' }}>
             <div style={{ marginBottom: '1rem', animation: 'spin 1.5s linear infinite', display: 'flex', justifyContent: 'center' }}><Swords size={40} /></div>
-            <p style={{ fontFamily: "'Crimson Text', serif" }}>Yükleniyor...</p>
+            <p style={{ fontFamily: "'Crimson Text', serif" }}>{t('loading')}</p>
           </div>
         ) : characters.length === 0 ? (
           <motion.div
@@ -523,7 +525,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
                         className="btn-gold"
                         style={{ flex: 1, fontSize: '0.85rem', padding: '0.55rem 0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
                       >
-                        <Dices size={16} /> Yeni Macera
+                        <Dices size={16} /> {t('new_adventure')}
                       </motion.button>
                     )}
                     <motion.button
@@ -590,11 +592,9 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
               <h3
                 className="font-fantasy"
                 style={{ color: 'var(--blood)', fontSize: '1rem', margin: '0 0 0.5rem' }}
-              >
-                Kahramanı Sil?
-              </h3>
+              >{t('delete_hero_title')}</h3>
               <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.9rem', marginBottom: '1rem' }}>
-                {characters.find((c) => c.id === deleteConfirm)?.name} ve tüm maceraları kalıcı olarak silinecek.
+                {t("delete_hero_desc", characters.find((c) => c.id === deleteConfirm)?.name || "")}
               </p>
               <div style={{ display: 'flex', gap: '0.6rem' }}>
                 <motion.button
@@ -603,9 +603,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
                   className="btn-dark"
                   disabled={deleting}
                   style={{ flex: 1, fontSize: '0.9rem', padding: '0.5rem 0' }}
-                >
-                  Vazgeç
-                </motion.button>
+                >{t('cancel')}</motion.button>
                 <motion.button
                   whileTap={{ scale: 0.96 }}
                   onClick={() => handleDelete(deleteConfirm)}
@@ -627,7 +625,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
                     gap: '0.4rem',
                   }}
                 >
-                  {deleting ? '...' : (<><Skull size={15} /> Sil</>)}
+                  {deleting ? '...' : (<><Skull size={15} /> {t('delete')}</>)}
                 </motion.button>
               </div>
             </motion.div>

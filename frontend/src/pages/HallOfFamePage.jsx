@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Flame } from 'lucide-react';
 import { getFallenHeroes } from '../utils/api';
+import { useLang, t, getLang } from '../utils/i18n';
 import { playClick } from '../utils/sounds';
 import Particles from '../components/Particles';
 
@@ -18,6 +19,7 @@ const RACE_PORTRAITS = {
 export default function HallOfFamePage({ user }) {
   const navigate = useNavigate();
   const [heroes, setHeroes] = useState([]);
+  useLang();
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
 
@@ -29,7 +31,7 @@ export default function HallOfFamePage({ user }) {
 
   const formatDate = (d) => {
     if (!d) return '';
-    return new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    return new Date(d).toLocaleDateString(getLang() === 'tr' ? 'tr-TR' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   return (
@@ -53,14 +55,14 @@ export default function HallOfFamePage({ user }) {
             className="btn-dark"
             style={{ padding: '0.44rem 0.9rem', fontSize: '0.85rem', minHeight: '44px' }}
           >
-            Geri
+            {t('back')}
           </motion.button>
           <div>
             <h1
               className="font-fantasy gold-shimmer"
               style={{ fontSize: '1.3rem', letterSpacing: '0.1em', margin: 0 }}
             >
-              ONUR LİSTESİ
+              {t('hall_title')}
             </h1>
             <p
               style={{
@@ -68,7 +70,7 @@ export default function HallOfFamePage({ user }) {
                 fontSize: '0.8rem', margin: '0.1rem 0 0',
               }}
             >
-              Yolculuğunu tamamlayan kahramanlar
+              {t('hall_subtitle')}
             </p>
           </div>
         </div>
@@ -78,7 +80,7 @@ export default function HallOfFamePage({ user }) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', paddingBottom: '2rem' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--text-dim)' }}>
-            <p style={{ fontFamily: "'Crimson Text', serif" }}>Yükleniyor...</p>
+            <p style={{ fontFamily: "'Crimson Text', serif" }}>{t('loading')}</p>
           </div>
         ) : heroes.length === 0 ? (
           <motion.div
@@ -93,12 +95,12 @@ export default function HallOfFamePage({ user }) {
                 fontSize: '1.1rem', marginBottom: '0.35rem',
               }}
             >
-              Henüz düşen kahraman yok
+              {t('no_fallen')}
             </p>
             <p
               style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.9rem' }}
             >
-              Her kahraman kendi efsanesini yazar
+              {t('no_fallen_sub')}
             </p>
           </motion.div>
         ) : (
@@ -203,7 +205,7 @@ export default function HallOfFamePage({ user }) {
                       >
                         ▶
                       </span>
-                      {expanded === hero.id ? 'Gizle' : 'Macera özeti'}
+                      {expanded === hero.id ? t('hide_summary') : t('adventure_summary')}
                     </button>
                     {expanded === hero.id && (
                       <motion.p

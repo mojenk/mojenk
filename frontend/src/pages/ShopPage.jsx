@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Coins, ShoppingBag, Backpack } from 'lucide-react';
 import { getItemIcon } from '../utils/icons';
 import { getCharacter, shopCatalog, shopBuy, shopSell } from '../utils/api';
+import { useLang, t } from '../utils/i18n';
 import { playClick, playHeal, playError, playLevelUp } from '../utils/sounds';
 import Particles from '../components/Particles';
 
@@ -18,9 +19,9 @@ const CATEGORY_TYPE = {
   'Çeşitli':  'misc',
 };
 
-const TABS = [
-  { key: 'buy', label: 'Satın Al', Icon: ShoppingBag },
-  { key: 'sell', label: 'Sat', Icon: Coins },
+const TABS_DEF = [
+  { key: 'buy', labelKey: 'buy_tab', Icon: ShoppingBag },
+  { key: 'sell', labelKey: 'sell_tab', Icon: Coins },
 ];
 
 function Toast({ msg, type, onDone }) {
@@ -59,6 +60,8 @@ export default function ShopPage({ user }) {
   const [tab, setTab] = useState('buy');
   const [activeCategory, setActiveCategory] = useState('Tüketici');
   const [loading, setLoading] = useState(true);
+  useLang();
+  const TABS = TABS_DEF.map(tb => ({ ...tb, label: t(tb.labelKey) }));
   const [busy, setBusy] = useState(null); // itemId being bought/sold
   const [toast, setToast] = useState(null);
 

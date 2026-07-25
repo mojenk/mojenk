@@ -9,15 +9,17 @@ import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { apiGetCurrentUser } from '../utils/api';
 import { Swords, ScrollText, Globe } from 'lucide-react';
+import { useLang, t } from '../utils/i18n';
 
-const FEATURES = [
-  { icon: Swords, title: 'Epik Savaşlar', desc: 'Zar at, düşmanlarını yen' },
-  { icon: ScrollText, title: 'Derin Hikayeler', desc: 'AI destekli anlatı' },
-  { icon: Globe, title: 'Geniş Dünya', desc: 'Sonsuz macera seni bekliyor' },
+const FEATURES_KEYS = [
+  { icon: Swords, titleKey: 'feature_battles_title', descKey: 'feature_battles_desc' },
+  { icon: ScrollText, titleKey: 'feature_stories_title', descKey: 'feature_stories_desc' },
+  { icon: Globe, titleKey: 'feature_world_title', descKey: 'feature_world_desc' },
 ];
 
 export default function LoginPage({ onLogin }) {
   const [error, setError] = useState('');
+  useLang();
   const [loading, setLoading] = useState(false);
   const { soundOn, toggleSound } = useSound();
 
@@ -188,7 +190,7 @@ export default function LoginPage({ onLogin }) {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            Google ile Giriş Yap
+            {t('google_login')}
           </motion.button>
 
           <motion.button
@@ -203,7 +205,7 @@ export default function LoginPage({ onLogin }) {
               cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? '⏳ Kapılar Açılıyor...' : 'Misafir Olarak Devam Et'}
+            {loading ? t('login_loading') : t('guest_login')}
           </motion.button>
         </div>
 
@@ -230,11 +232,11 @@ export default function LoginPage({ onLogin }) {
         transition={{ duration: 0.6, delay: 0.5 }}
         style={{ display: 'flex', gap: '0.75rem', marginTop: '1.75rem', width: '100%', maxWidth: '380px', position: 'relative', zIndex: 1 }}
       >
-        {FEATURES.map((f, i) => {
+        {FEATURES_KEYS.map((f, i) => {
           const Icon = f.icon;
           return (
             <motion.div
-              key={f.title}
+              key={f.titleKey}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 + i * 0.1 }}
@@ -247,10 +249,10 @@ export default function LoginPage({ onLogin }) {
                 <Icon size={22} />
               </div>
               <div style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif", fontSize: '0.58rem', letterSpacing: '0.05em', fontWeight: 700, marginBottom: '0.25rem', textTransform: 'uppercase' }}>
-                {f.title}
+                {t(f.titleKey)}
               </div>
               <div style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.75rem' }}>
-                {f.desc}
+                {t(f.descKey)}
               </div>
             </motion.div>
           );

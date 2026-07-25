@@ -9,14 +9,15 @@ import { getCharacter, useItem, equipItem, dropItem, levelUpStat } from '../util
 import { playClick, playHeal, playError, playLevelUp } from '../utils/sounds';
 import Particles from '../components/Particles';
 import { ClassIcon, StatIcon, ItemIcon } from '../utils/icons';
+import { useLang, t } from '../utils/i18n';
 
-const STAT_LABELS = {
-  strength: ['Güç'],
-  dexterity: ['Çeviklik'],
-  constitution: ['Anayasa'],
-  intelligence: ['Zeka'],
-  wisdom: ['Bilgelik'],
-  charisma: ['Karizma'],
+const STAT_LABEL_KEYS = {
+  strength: 'stat_strength',
+  dexterity: 'stat_dexterity',
+  constitution: 'stat_constitution',
+  intelligence: 'stat_intelligence',
+  wisdom: 'stat_wisdom',
+  charisma: 'stat_charisma',
 };
 
 // Approximate race/class bonuses matching backend (for display only)
@@ -38,10 +39,10 @@ const CLASS_BONUSES = {
   Barbar: { strength: 1 },
 };
 
-const TABS = [
-  { key: 'stats', label: 'Özellikler', icon: BarChart3 },
-  { key: 'inventory', label: 'Envanter', icon: Backpack },
-  { key: 'background', label: 'Geçmiş', icon: BookOpen },
+const TABS_DEF = [
+  { key: 'stats', labelKey: 'tab_stats', icon: BarChart3 },
+  { key: 'inventory', labelKey: 'tab_inventory', icon: Backpack },
+  { key: 'background', labelKey: 'tab_background', icon: BookOpen },
 ];
 
 export default function CharacterSheetPage({ user }) {
@@ -53,7 +54,10 @@ export default function CharacterSheetPage({ user }) {
   const [itemMsg, setItemMsg] = useState('');
   const [statSelectOpen, setStatSelectOpen] = useState(false);
   const [statError, setStatError] = useState('');
-  const TAB_KEYS = TABS.map((t) => t.key);
+  useLang();
+  const TABS = TABS_DEF.map(tb => ({ ...tb, label: t(tb.labelKey) }));
+  const STAT_LABELS = Object.fromEntries(Object.entries(STAT_LABEL_KEYS).map(([k,v]) => [k, [t(v)]]));
+  const TAB_KEYS = TABS.map((tb) => tb.key);
   const touchStartX = useRef(null);
 
   const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
@@ -138,7 +142,7 @@ export default function CharacterSheetPage({ user }) {
             fontFamily: "'Crimson Text', serif",
           }}
         >
-          Yükleniyor...
+          {t('loading')}
         </p>
       </div>
     );

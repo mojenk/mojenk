@@ -6,24 +6,25 @@ import { showInterstitialAd } from '../utils/ads';
 import { playClick, playMagic } from '../utils/sounds';
 import Particles from '../components/Particles';
 import { ScrollText, Check, Target, AlertTriangle, Swords, Sword } from 'lucide-react';
+import { useLang, t } from '../utils/i18n';
 import { ClassIcon, StatIcon } from '../utils/icons';
 
-const RACES = [
-  { name: 'İnsan', image: '/races/insan.svg', desc: 'Uyarlanabilir ve kararlı, her mesleğe elverişli.' },
-  { name: 'Elf', image: '/races/elf.svg', desc: 'Uzun ömürlü, zarif ve doğayla iç içe. Çeviklik bonusu.' },
-  { name: 'Cüce', image: '/races/cuce.svg', desc: 'Dayanıklı, gururlu ve madenlerin ustadı. Anayasa bonusu.' },
-  { name: 'Yarı-Ork', image: '/races/yariork.svg', desc: 'Vahşi güç ve savaş azmi. Güç ve anayasa bonusu.' },
-  { name: 'Hobit', image: '/races/hobit.svg', desc: 'Küçük, sessiz ve şanslı. Çeviklik ve karizma bonusu.' },
-  { name: 'İblissoyu', image: '/races/iblissoyu.svg', desc: 'Cehennem izi taşıyan gizemli yarı-insan. Zeka ve karizma bonusu.' },
+const RACES_DEF = [
+  { nameKey: 'race_human', raceId: 'İnsan', image: '/races/insan.svg', descKey: 'race_human_desc' },
+  { nameKey: 'race_elf', raceId: 'Elf', image: '/races/elf.svg', descKey: 'race_elf_desc' },
+  { nameKey: 'race_dwarf', raceId: 'Cüce', image: '/races/cuce.svg', descKey: 'race_dwarf_desc' },
+  { nameKey: 'race_halfork', raceId: 'Yarı-Ork', image: '/races/yariork.svg', descKey: 'race_halfork_desc' },
+  { nameKey: 'race_hobbit', raceId: 'Hobit', image: '/races/hobit.svg', descKey: 'race_hobbit_desc' },
+  { nameKey: 'race_tiefling', raceId: 'İblissoyu', image: '/races/iblissoyu.svg', descKey: 'race_tiefling_desc' },
 ];
 
-const CLASSES = [
-  { name: 'Savaşçı', desc: 'Güçlü dövüşçü, her silahı kullanabilir' },
-  { name: 'Büyücü', desc: 'Güçlü büyüler, ama zayıf zırh' },
-  { name: 'Hırsız', desc: 'Gizlilik ve hile ustası' },
-  { name: 'Rahip', desc: 'İyileştirici ve ilahi büyü kullanıcısı' },
-  { name: 'Avcı', desc: 'Uzak mesafe ve iz sürme uzmanı' },
-  { name: 'Barbar', desc: 'Öfkeli savaşçı, en yüksek HP' },
+const CLASSES_DEF = [
+  { nameKey: 'class_warrior', classId: 'Savaşçı', descKey: 'class_warrior_desc' },
+  { nameKey: 'class_mage', classId: 'Büyücü', descKey: 'class_mage_desc' },
+  { nameKey: 'class_rogue', classId: 'Hırsız', descKey: 'class_rogue_desc' },
+  { nameKey: 'class_cleric', classId: 'Rahip', descKey: 'class_cleric_desc' },
+  { nameKey: 'class_ranger', classId: 'Avcı', descKey: 'class_ranger_desc' },
+  { nameKey: 'class_barbarian', classId: 'Barbar', descKey: 'class_barbarian_desc' },
 ];
 
 const RACE_BONUSES = {
@@ -74,17 +75,17 @@ function canDecrease(st, key) {
   return st[key] > 8;
 }
 
-const STAT_ROWS = [
-  { key: 'strength', label: 'Güç' },
-  { key: 'dexterity', label: 'Çeviklik' },
-  { key: 'constitution', label: 'Anayasa' },
-  { key: 'intelligence', label: 'Zeka' },
-  { key: 'wisdom', label: 'Bilgelik' },
-  { key: 'charisma', label: 'Karizma' },
+const STAT_ROWS_DEF = [
+  { key: 'strength', labelKey: 'stat_strength' },
+  { key: 'dexterity', labelKey: 'stat_dexterity' },
+  { key: 'constitution', labelKey: 'stat_constitution' },
+  { key: 'intelligence', labelKey: 'stat_intelligence' },
+  { key: 'wisdom', labelKey: 'stat_wisdom' },
+  { key: 'charisma', labelKey: 'stat_charisma' },
 ];
 
 const SUGGESTED_NAMES = ['Aragorn', 'Gandalf', 'Legolas', 'Drizzt', 'Elminster', 'Lyra'];
-const STEPS = ['İsim', 'Irk', 'Sınıf', 'Özellikler'];
+const STEPS_KEYS = ['step_name', 'step_race', 'step_class', 'step_attributes'];
 
 const RACE_BACKSTORIES = {
   'İnsan': [
@@ -131,6 +132,11 @@ export default function CreateCharacterPage({ user }) {
   });
   const [background, setBackground] = useState('');
   const [loading, setLoading] = useState(false);
+  useLang();
+  const RACES = RACES_DEF.map(r => ({ ...r, name: t(r.nameKey), desc: t(r.descKey) }));
+  const CLASSES = CLASSES_DEF.map(c => ({ ...c, name: t(c.nameKey), desc: t(c.descKey) }));
+  const STAT_ROWS = STAT_ROWS_DEF.map(s => ({ ...s, label: t(s.labelKey) }));
+  const STEPS = STEPS_KEYS.map(k => t(k));
   const [error, setError] = useState('');
 
   const handleClassSelect = (cls) => {
@@ -508,7 +514,7 @@ export default function CreateCharacterPage({ user }) {
                   <motion.button
                     key={c.name}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => handleClassSelect(c.name)}
+                    onClick={() => handleClassSelect(c.classId)}
                     className={`select-card${charClass === c.name ? ' active' : ''}`}
                     style={{
                       display: 'flex',
@@ -799,11 +805,7 @@ export default function CreateCharacterPage({ user }) {
             gap: '0.4rem',
           }}
         >
-          {loading
-            ? '⏳ Oluşturuluyor...'
-            : step < 3
-            ? 'Devam Et →'
-            : (<><Swords size={16} /> Kahramanı Yarat!</>)}
+          {loading ? t('creating') : step < 3 ? t('continue_btn') : (<><Swords size={16} /> {t('create_hero_btn')}</>)}
         </motion.button>
       </div>
     </div>

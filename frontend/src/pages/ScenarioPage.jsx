@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { createSession } from '../utils/api';
+import { useLang, t } from '../utils/i18n';
 import { playClick, playMagic } from '../utils/sounds';
 import Particles from '../components/Particles';
 import {
@@ -21,85 +22,66 @@ import {
   BookOpen,
 } from 'lucide-react';
 
-const SCENARIOS = [
+// Scenarios are built dynamically via t() in the component
+const SCENARIO_DEFS = [
   {
     id: 'dungeon',
     icon: Landmark,
-    name: 'Karanlık Zindan',
-    desc: 'Tehlikeli zindanlar, tuzaklar ve lanetli hazineler',
-    tag: 'Klasik',
+    nameKey: 'scenario_dungeon_name', descKey: 'scenario_dungeon_desc', tagKey: 'scenario_dungeon_tag',
     tagColor: '#9ca3af',
   },
   {
     id: 'forest',
     icon: TreePine,
-    name: 'Gizemli Orman',
-    desc: 'Antik büyüler, kayıp köyler ve mistik yaratıklar',
-    tag: 'Popüler',
+    nameKey: 'scenario_forest_name', descKey: 'scenario_forest_desc', tagKey: 'scenario_forest_tag',
     tagColor: '#34d399',
   },
   {
     id: 'tavern',
     icon: Beer,
-    name: 'Taverna Sırları',
-    desc: 'Entrikalar, sırlar ve tehlikeli görevler',
-    tag: 'Sosyal',
+    nameKey: 'scenario_tavern_name', descKey: 'scenario_tavern_desc', tagKey: 'scenario_tavern_tag',
     tagColor: '#fbbf24',
   },
   {
     id: 'city',
     icon: Building2,
-    name: 'Şehir Karanlığı',
-    desc: 'Suç örgütleri, siyasi entrikalar ve gizem',
-    tag: 'Entrika',
+    nameKey: 'scenario_city_name', descKey: 'scenario_city_desc', tagKey: 'scenario_city_tag',
     tagColor: '#f87171',
   },
   {
     id: 'dragon',
     icon: Flame,
-    name: 'Ejderha Arayışı',
-    desc: 'Efsanevi canavara karşı ölüm kalım mücadelesi',
-    tag: 'Epik',
+    nameKey: 'scenario_dragon_name', descKey: 'scenario_dragon_desc', tagKey: 'scenario_dragon_tag',
     tagColor: '#f97316',
   },
   {
     id: 'mountain',
     icon: Mountain,
-    name: 'Dağların Çağrısı',
-    desc: 'Kayıp tapınaklar, fırtınalar ve zirvedeki ölümsüz bilge',
-    tag: 'Yolculuk',
+    nameKey: 'scenario_mountain_name', descKey: 'scenario_mountain_desc', tagKey: 'scenario_mountain_tag',
     tagColor: '#60a5fa',
   },
   {
     id: 'sea',
     icon: Ship,
-    name: 'Deniz Yolculuğu',
-    desc: 'Korsan gemileri, batık hazineler ve fırtınalı denizler',
-    tag: 'Açık Dünya',
+    nameKey: 'scenario_sea_name', descKey: 'scenario_sea_desc', tagKey: 'scenario_sea_tag',
     tagColor: '#22d3ee',
   },
   {
     id: 'caravan',
     icon: Tent,
-    name: 'Kervan Yolu',
-    desc: 'Ticaret kervanı, yol haydutları ve çöl kasabaları',
-    tag: 'Yolculuk',
+    nameKey: 'scenario_caravan_name', descKey: 'scenario_caravan_desc', tagKey: 'scenario_caravan_tag',
     tagColor: '#d4d4d8',
   },
   {
     id: 'realistic',
     icon: BookOpen,
-    name: 'Gerçekçi Macera',
-    desc: 'Büyü yok, canavar yok — sadece insan dramı, siyaset ve hayatta kalma',
-    tag: 'Hardcore',
+    nameKey: 'scenario_realistic_name', descKey: 'scenario_realistic_desc', tagKey: 'scenario_realistic_tag',
     tagColor: '#a8a29e',
   },
   {
     id: 'custom',
     icon: Sparkles,
-    name: 'Serbest Macera',
-    desc: "AI'nın sürpriz senaryosuyla özgür keşif",
-    tag: 'Sürpriz',
+    nameKey: 'scenario_custom_name', descKey: 'scenario_custom_desc', tagKey: 'scenario_custom_tag',
     tagColor: '#c084fc',
   },
 ];
@@ -108,6 +90,8 @@ export default function ScenarioPage({ user }) {
   const { characterId } = useParams();
   const navigate = useNavigate();
   const [selected, setSelected] = useState('');
+  useLang();
+  const SCENARIOS = SCENARIO_DEFS.map(s => ({ ...s, name: t(s.nameKey), desc: t(s.descKey), tag: t(s.tagKey) }));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -123,7 +107,7 @@ export default function ScenarioPage({ user }) {
         );
       }
     } catch (err) {
-      setError(err.message || 'Oturum oluşturulamadı');
+      setError(err.message || t('scenario_fail'));
     }
     setLoading(false);
   };
@@ -322,9 +306,9 @@ export default function ScenarioPage({ user }) {
           }}
         >
           {loading ? (
-            <><Hourglass size={16} /> Macera Başlıyor...</>
+            <><Hourglass size={16} /> {t('scenario_starting')}</>
           ) : (
-            <><Dices size={16} /> Macerayı Başlat!</>
+            <><Dices size={16} /> {t('scenario_start')}</>
           )}
         </motion.button>
       </div>
