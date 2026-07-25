@@ -416,3 +416,7 @@ export async function claimAdmin() {
   return safeFetch(`${API}/setup/admin`, { method: 'POST' });
 }
 
+export async function syncPremium() {
+  return safeFetch(`${API}/premium/sync`, { method: 'POST' });
+}
+

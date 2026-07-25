@@ -4,10 +4,11 @@ import { motion } from 'framer-motion';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { isSoundEnabled, toggleSound, getSoundVolume, setVolume, playClick } from '../utils/sounds';
 import { getLang, setLang, useLang, t } from '../utils/i18n';
-import { claimAdmin, deleteAccount, updateCharacterSettings } from '../utils/api';
+import { claimAdmin, deleteAccount, updateCharacterSettings, syncPremium } from '../utils/api';
+import { isPurchasesAvailable, fetchOfferings, purchasePackage, restorePurchases } from '../utils/purchases';
 import { auth } from '../firebase';
 import Particles from '../components/Particles';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Crown } from 'lucide-react';
 
 const TEXT_SIZES = [
   { key: 'small', labelKey: 'text_small', px: '13px' },
@@ -37,7 +38,7 @@ const TONES = [
   { key: 'epic', labelKey: 'tone_epic_label', descKey: 'tone_epic_desc' },
 ];
 
-export default function SettingsPage({ isAdmin }) {
+export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
   const navigate = useNavigate();
   const [sound, setSound] = useState(isSoundEnabled());
   const [vol, setVol] = useState(getSoundVolume());
@@ -56,6 +57,13 @@ export default function SettingsPage({ isAdmin }) {
   });
   const [activeCharacterId, setActiveCharacterId] = useState(null);
   const [toneSaving, setToneSaving] = useState(false);
+  const [offerings, setOfferings] = useState([]);
+  const [loadingOfferings, setLoadingOfferings] = useState(false);
+  const [purchasingId, setPurchasingId] = useState(null);
+  const [restoring, setRestoring] = useState(false);
+  const [premiumMsg, setPremiumMsg] = useState('');
+
+  const isPremiumActive = Boolean(user?.is_premium);
 
   useEffect(() => {
     try {
@@ -63,6 +71,53 @@ export default function SettingsPage({ isAdmin }) {
       if (id) setActiveCharacterId(id);
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (isPremiumActive || !isPurchasesAvailable()) return;
+    setLoadingOfferings(true);
+    fetchOfferings().then((result) => {
+      setOfferings(result.current?.availablePackages || []);
+      setLoadingOfferings(false);
+    });
+  }, [isPremiumActive]);
+
+  const handlePurchase = async (pkg) => {
+    setPurchasingId(pkg.identifier);
+    setPremiumMsg('');
+    try {
+      const active = await purchasePackage(pkg);
+      if (active) {
+        const result = await syncPremium();
+        onUserUpdate?.(result.user);
+        setPremiumMsg(t('premium_purchase_success'));
+        playClick();
+      } else {
+        setPremiumMsg(t('premium_purchase_error'));
+      }
+    } catch (err) {
+      if (err?.userCancelled) setPremiumMsg(t('premium_purchase_cancelled'));
+      else setPremiumMsg(err.message || t('premium_purchase_error'));
+    }
+    setPurchasingId(null);
+  };
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    setPremiumMsg('');
+    try {
+      const active = await restorePurchases();
+      if (active) {
+        const result = await syncPremium();
+        onUserUpdate?.(result.user);
+        setPremiumMsg(t('premium_purchase_success'));
+      } else {
+        setPremiumMsg(t('premium_restore_none'));
+      }
+    } catch (err) {
+      setPremiumMsg(err.message || t('premium_purchase_error'));
+    }
+    setRestoring(false);
+  };
 
   const handleDeleteAccount = async () => {
     if (!window.confirm(t('delete_account_confirm1'))) return;
@@ -409,6 +464,94 @@ export default function SettingsPage({ isAdmin }) {
           {toneSaving && (
             <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '0.6rem', textAlign: 'center' }}>
               {t('tone_saving')}
+            </p>
+          )}
+        </div>
+
+        {/* Premium */}
+        <div className="stone-card" style={{ padding: '1.25rem', marginBottom: '1rem', borderColor: isPremiumActive ? 'var(--gold)' : undefined }}>
+          <h2
+            className="font-fantasy"
+            style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Crown size={16} /> {t('premium_title')}
+          </h2>
+
+          {isPremiumActive ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Crown size={18} color="var(--gold)" />
+                <span style={{ fontFamily: "'Cinzel', serif", color: 'var(--gold)', fontWeight: 700 }}>
+                  {t('premium_active_badge')}
+                </span>
+              </div>
+              <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.85rem', margin: '0 0 0.75rem' }}>
+                {t('premium_until_label')}: {user?.premium_until ? new Date(user.premium_until).toLocaleDateString() : t('premium_lifetime')}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.85rem', margin: '0 0 0.75rem' }}>
+                {t('premium_not_active_desc')}
+              </p>
+              <ul style={{ margin: '0 0 1rem', paddingLeft: '1.1rem', fontFamily: "'Crimson Text', serif", color: 'var(--text)', fontSize: '0.82rem' }}>
+                <li>{t('premium_benefit_no_ads')}</li>
+                <li>{t('premium_benefit_unlimited_moves')}</li>
+                <li>{t('premium_benefit_wheel_spins')}</li>
+              </ul>
+
+              {!isPurchasesAvailable() ? (
+                <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center' }}>
+                  {t('premium_web_note')}
+                </p>
+              ) : loadingOfferings ? (
+                <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', textAlign: 'center' }}>
+                  {t('premium_loading_offerings')}
+                </p>
+              ) : offerings.length === 0 ? (
+                <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center' }}>
+                  {t('premium_no_offerings')}
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '0.75rem' }}>
+                  {offerings.map((pkg) => (
+                    <motion.button
+                      key={pkg.identifier}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => handlePurchase(pkg)}
+                      disabled={purchasingId !== null}
+                      style={{
+                        width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', minHeight: '48px',
+                        border: '1px solid var(--gold)', background: 'rgba(201,150,58,0.15)',
+                        color: 'var(--gold)', fontFamily: "'Cinzel', serif", fontSize: '0.9rem', fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        cursor: purchasingId !== null ? 'wait' : 'pointer', opacity: purchasingId !== null ? 0.7 : 1,
+                      }}
+                    >
+                      <span>{pkg.product?.title || pkg.identifier}</span>
+                      <span>{purchasingId === pkg.identifier ? t('premium_purchasing') : (pkg.product?.priceString || '')}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              )}
+
+              {isPurchasesAvailable() && (
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleRestore}
+                  disabled={restoring}
+                  className="btn-dark"
+                  style={{ width: '100%', fontSize: '0.82rem', padding: '0.55rem 1rem' }}
+                >
+                  {restoring ? t('premium_restoring') : t('premium_restore_btn')}
+                </motion.button>
+              )}
+            </div>
+          )}
+
+          {premiumMsg && (
+            <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text)', fontSize: '0.82rem', marginTop: '0.75rem', textAlign: 'center' }}>
+              {premiumMsg}
             </p>
           )}
         </div>

@@ -18,6 +18,7 @@ import AccountDeletionPage from './pages/AccountDeletionPage';
 import { playPageTransition } from './utils/sounds';
 import { apiGetCurrentUser, adminCheck } from './utils/api';
 import { initPush } from './utils/push';
+import { configurePurchases } from './utils/purchases';
 
 // Apply saved text size and theme on startup
 (function () {
@@ -88,7 +89,7 @@ function AnimatedRoutes({ user, onLogout, isAdmin }) {
           path="/settings"
           element={
             <motion.div {...pageVariants} style={{ flex: 1 }}>
-              <SettingsPage user={user} isAdmin={isAdmin} />
+              <SettingsPage user={user} isAdmin={isAdmin} onUserUpdate={handleUserUpdate} />
             </motion.div>
           }
         />
@@ -162,6 +163,7 @@ export default function App() {
           setUser(current.user);
           try { localStorage.setItem('dnd_user', JSON.stringify(current.user)); } catch {}
           initPush().catch(() => {});
+          configurePurchases(fbUser.uid).catch(() => {});
         } catch (err) {
           console.error('Failed to sync user:', err);
           setUser(null);
@@ -188,6 +190,11 @@ export default function App() {
     setFirebaseUser(null);
     setIsAdmin(false);
     try { localStorage.removeItem('dnd_user'); } catch {}
+  };
+
+  const handleUserUpdate = (updatedUser) => {
+    setUser(updatedUser);
+    try { localStorage.setItem('dnd_user', JSON.stringify(updatedUser)); } catch {}
   };
 
   if (firebaseInitError) {

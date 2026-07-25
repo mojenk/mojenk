@@ -3,6 +3,8 @@ const { defineSecret } = require('firebase-functions/params');
 const app = require('./index');
 
 const geminiApiKey = defineSecret('GEMINI_API_KEY');
+const revenueCatSecretKey = defineSecret('REVENUECAT_SECRET_KEY');
+const revenueCatWebhookAuth = defineSecret('REVENUECAT_WEBHOOK_AUTH');
 
 exports.api = onRequest(
   {
@@ -11,7 +13,7 @@ exports.api = onRequest(
     timeoutSeconds: 120,
     minInstances: 0,
     maxInstances: 10,
-    secrets: [geminiApiKey],
+    secrets: [geminiApiKey, revenueCatSecretKey, revenueCatWebhookAuth],
   },
   app
 );
