@@ -189,8 +189,10 @@ export default function LoginPage({ onLogin }) {
       await finalizeLogin(cred);
       playMagic();
     } catch (err) {
-      console.error(err);
-      if (!timedOut) setError(mapAuthError(err));
+      console.error('Native GoogleAuth error:', err);
+      let details = err?.message || JSON.stringify(err);
+      if (details === '{}') details = 'Bilinmeyen native hata';
+      if (!timedOut) setError('Google girişi başarısız: ' + details);
     } finally {
       clearTimeout(timeoutId);
     }
@@ -206,14 +208,14 @@ export default function LoginPage({ onLogin }) {
     <div
       className="stone-bg"
       style={{
-        minHeight: '100dvh',
+        minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1.5rem 1rem',
+        justifyContent: 'flex-start',
+        padding: '1rem',
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'auto',
       }}
     >
       <Particles type="ember" count={18} />
@@ -245,7 +247,7 @@ export default function LoginPage({ onLogin }) {
         initial={{ opacity: 0, y: -32 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
-        style={{ textAlign: 'center', marginBottom: '1.5rem', position: 'relative', zIndex: 1 }}
+        style={{ textAlign: 'center', marginBottom: '1rem', marginTop: '0.5rem', position: 'relative', zIndex: 1 }}
       >
         <motion.div
           animate={{ y: [0, -8, 0] }}
@@ -280,7 +282,7 @@ export default function LoginPage({ onLogin }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.22 }}
         className="stone-card"
-        style={{ width: '100%', maxWidth: '380px', padding: '2rem 1.5rem', position: 'relative', zIndex: 1, borderRadius: '18px' }}
+        style={{ width: '100%', maxWidth: '380px', padding: '1.25rem', position: 'relative', zIndex: 1, borderRadius: '18px', marginBottom: '1rem' }}
       >
         <div className="rune-divider" style={{ marginBottom: '1.5rem' }} />
 
