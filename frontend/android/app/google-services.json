@@ -14,24 +14,12 @@
       },
       "oauth_client": [
         {
-          "client_id": "103499453593-5jdob3nrh16ipdtanmm11isikfnvp707.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.kaderinsesi.app",
-            "certificate_hash": "104c47e83b7d633d04efda71b8d950fa68bf12b0"
-          }
-        },
-        {
           "client_id": "103499453593-lq61k5f84d1glrsno3bqtcanlkckvjs8.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.kaderinsesi.app",
             "certificate_hash": "93be91135b1df7cacd5518070cd9ed7fd3baf1f7"
           }
-        },
-        {
-          "client_id": "103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com",
-          "client_type": 3
         }
       ],
       "api_key": [
@@ -43,7 +31,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com",
+              "client_id": "103499453593-9ljq15ebsf4hi7aunppcirqhmaijf0ec.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
