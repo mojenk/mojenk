@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Component } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { AnimatePresence, motion } from 'framer-motion';
 import { auth, firebaseInitError } from './firebase';
@@ -38,6 +38,40 @@ const pageVariants = {
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
   exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
 };
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error('App ErrorBoundary caught:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="stone-bg" style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ maxWidth: 480, textAlign: 'center', color: 'var(--gold)', fontFamily: "'Cinzel', serif" }}>
+            <h2 style={{ marginBottom: 12 }}>Bir hata oluştu</h2>
+            <p style={{ opacity: 0.85, fontSize: '0.85rem', lineHeight: 1.6, wordBreak: 'break-word' }}>
+              {this.state.error?.message || 'Bilinmeyen hata'}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{ marginTop: 16, padding: '10px 18px', background: 'rgba(201,150,58,0.2)', border: '1px solid var(--gold)', color: 'var(--gold)', borderRadius: 8, cursor: 'pointer' }}
+            >
+              Yeniden dene
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function AnimatedRoutes({ user, onLogout, isAdmin, onUserUpdate }) {
   const location = useLocation();
@@ -157,18 +191,9 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
-        try {
-          const token = await fbUser.getIdToken();
-          const current = await apiGetCurrentUser(token);
-          setUser(current.user);
-          try { localStorage.setItem('dnd_user', JSON.stringify(current.user)); } catch {}
-          initPush().catch(() => {});
-          configurePurchases(fbUser.uid).catch(() => {});
-        } catch (err) {
-          console.error('Failed to sync user:', err);
-          setUser(null);
-          try { localStorage.removeItem('dnd_user'); } catch {}
-        }
+        try { localStorage.setItem('dnd_user_fb_uid', fbUser.uid); } catch {}
+        initPush().catch(() => {});
+        configurePurchases(fbUser.uid).catch(() => {});
         try {
           await adminCheck();
           setIsAdmin(true);
@@ -178,11 +203,30 @@ export default function App() {
       } else {
         setUser(null);
         setIsAdmin(false);
+        try { localStorage.removeItem('dnd_user'); localStorage.removeItem('dnd_user_fb_uid'); } catch {}
       }
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
+
+  // Auth state değiştiğinde backend ile senkronize et; eğer LoginPage'den
+  // zaten user set edilmişse ve API hata verirse mevcut user'ı koru.
+  useEffect(() => {
+    if (!firebaseUser) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await firebaseUser.getIdToken();
+        const current = await apiGetCurrentUser(token);
+        if (!cancelled) setUser(current.user || null);
+      } catch (err) {
+        console.error('Auth sync failed:', err);
+        // Mevcut user varsa silme; yoksa null kalır.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [firebaseUser]);
 
   const handleLogout = async () => {
     await firebaseSignOut(auth);
@@ -247,5 +291,9 @@ export default function App() {
 
   if (!user) return <LoginPage onLogin={setUser} firebaseUser={firebaseUser} />;
 
-  return <AnimatedRoutes user={user} onLogout={handleLogout} isAdmin={isAdmin} onUserUpdate={handleUserUpdate} />;
+  return (
+    <ErrorBoundary>
+      <AnimatedRoutes user={user} onLogout={handleLogout} isAdmin={isAdmin} onUserUpdate={handleUserUpdate} />
+    </ErrorBoundary>
+  );
 }
