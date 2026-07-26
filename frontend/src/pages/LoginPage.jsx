@@ -24,7 +24,7 @@ const FEATURES_KEYS = [
   { icon: Globe, titleKey: 'feature_world_title', descKey: 'feature_world_desc' },
 ];
 
-const GOOGLE_WEB_CLIENT_ID = '103499453593-9ljq15ebsf4hi7aunppcirqhmaijf0ec.apps.googleusercontent.com';
+const GOOGLE_WEB_CLIENT_ID = '103499453593-n2huh62soedmhatu71i12sacf58g8nqc.apps.googleusercontent.com';
 
 export default function LoginPage({ onLogin }) {
   useLang();
