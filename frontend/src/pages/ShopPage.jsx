@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Coins, ShoppingBag, Backpack } from 'lucide-react';
 import { getItemIcon } from '../utils/icons';
@@ -53,6 +53,8 @@ function Toast({ msg, type, onDone }) {
 export default function ShopPage({ user }) {
   const { characterId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const scenario = searchParams.get('scenario');
 
   const [character, setCharacter] = useState(null);
   const [inventory, setInventory] = useState([]);
@@ -71,7 +73,7 @@ export default function ShopPage({ user }) {
     try {
       const [charData, catData] = await Promise.all([
         getCharacter(characterId),
-        shopCatalog(),
+        shopCatalog(scenario),
       ]);
       setCharacter(charData.character);
       setInventory(charData.inventory || []);
@@ -81,7 +83,7 @@ export default function ShopPage({ user }) {
     } finally {
       setLoading(false);
     }
-  }, [characterId]);
+  }, [characterId, scenario]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -265,9 +267,14 @@ export default function ShopPage({ user }) {
                         width: '2.8rem', height: '2.8rem', borderRadius: '10px', flexShrink: 0,
                         background: 'rgba(201,150,58,0.08)', border: '1px solid var(--border)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden',
                       }}
                     >
-                      <ItemTypeIcon size={20} color="var(--gold)" />
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <ItemTypeIcon size={20} color="var(--gold)" />
+                      )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p
@@ -359,9 +366,14 @@ export default function ShopPage({ user }) {
                         width: '2.8rem', height: '2.8rem', borderRadius: '10px', flexShrink: 0,
                         background: 'rgba(92,74,42,0.15)', border: '1px solid var(--border)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden',
                       }}
                     >
-                      <ItemTypeIcon size={18} color="var(--parch)" />
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <ItemTypeIcon size={18} color="var(--parch)" />
+                      )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p

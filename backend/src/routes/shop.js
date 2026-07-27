@@ -15,7 +15,11 @@ function estimateSellPrice(item) {
 }
 
 router.get('/catalog', (req, res) => {
-  res.json({ items: CATALOG });
+  const { scenario } = req.query;
+  const items = scenario
+    ? CATALOG.filter((item) => item.scenarios.includes(scenario) || item.scenarios.includes('all'))
+    : CATALOG;
+  res.json({ items });
 });
 
 router.use(verifyFirebaseToken);
@@ -53,6 +57,7 @@ router.post('/buy', async (req, res) => {
         name: item.name,
         type: item.type,
         description: item.description,
+        image: item.image || null,
         quantity: 1,
         equipped: 0,
         created_at: serverTimestamp(),

@@ -213,13 +213,16 @@ export default function CharacterSheetPage({ user }) {
             >
               <img
                 src={{
-                  'İnsan': '/races/insan.svg',
-                  'Elf': '/races/elf.svg',
-                  'Cüce': '/races/cuce.svg',
-                  'Yarı-Ork': '/races/yariork.svg',
-                  'Hobit': '/races/hobit.svg',
-                  'İblissoyu': '/races/iblissoyu.svg',
-                }[character.race] || '/races/insan.svg'}
+                  'İnsan': '/races/insan.png',
+                  'Elf': '/races/elf.png',
+                  'Cüce': '/races/cuce.png',
+                  'Yarı-Ork': '/races/yariork.png',
+                  'Hobit': '/races/hobit.png',
+                  'İblissoyu': '/races/iblissoyu.png',
+                  'Gnom': '/races/gnom.png',
+                  'Ejderha Doğumlu': '/races/ejderhadogumlu.png',
+                  'Melek Soylu': '/races/meleksoylu.png',
+                }[character.race] || '/races/insan.png'}
                 alt={character.race}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
@@ -518,8 +521,12 @@ export default function CharacterSheetPage({ user }) {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{ flexShrink: 0, display: 'flex' }}>
-                            <ItemIconComp size={22} />
+                          <div style={{ flexShrink: 0, display: 'flex', width: '2.4rem', height: '2.4rem', borderRadius: '8px', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+                            {item.image ? (
+                              <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <ItemIconComp size={22} />
+                            )}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>

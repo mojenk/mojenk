@@ -9,12 +9,15 @@ import { Sparkles, Swords, Castle, Skull, Heart, Coins, ScrollText, Trash2, X, D
 import { useLang, t, getLang } from '../utils/i18n';
 
 const RACE_PORTRAITS = {
-  'İnsan': '/races/insan.svg',
-  'Elf': '/races/elf.svg',
-  'Cüce': '/races/cuce.svg',
-  'Yarı-Ork': '/races/yariork.svg',
-  'Hobit': '/races/hobit.svg',
-  'İblissoyu': '/races/iblissoyu.svg',
+  'İnsan': '/races/insan.png',
+  'Elf': '/races/elf.png',
+  'Cüce': '/races/cuce.png',
+  'Yarı-Ork': '/races/yariork.png',
+  'Hobit': '/races/hobit.png',
+  'İblissoyu': '/races/iblissoyu.png',
+  'Gnom': '/races/gnom.png',
+  'Ejderha Doğumlu': '/races/ejderhadogumlu.png',
+  'Melek Soylu': '/races/meleksoylu.png',
 };
 
 export default function CharactersPage({ user, onLogout, isAdmin }) {
@@ -358,7 +361,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
                       }}
                     >
                       <img
-                        src={RACE_PORTRAITS[char.race] || '/races/insan.svg'}
+                        src={RACE_PORTRAITS[char.race] || '/races/insan.png'}
                         alt={char.race}
                         style={{
                           width: '100%', height: '100%', objectFit: 'cover',

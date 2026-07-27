@@ -48,15 +48,18 @@ const STAT_COLS_DEF = [
 ];
 
 const RACE_PORTRAITS = {
-  'İnsan': '/races/insan.svg',
-  'Elf': '/races/elf.svg',
-  'Cüce': '/races/cuce.svg',
-  'Yarı-Ork': '/races/yariork.svg',
-  'Hobit': '/races/hobit.svg',
-  'İblissoyu': '/races/iblissoyu.svg',
+  'İnsan': '/races/insan.png',
+  'Elf': '/races/elf.png',
+  'Cüce': '/races/cuce.png',
+  'Yarı-Ork': '/races/yariork.png',
+  'Hobit': '/races/hobit.png',
+  'İblissoyu': '/races/iblissoyu.png',
+  'Gnom': '/races/gnom.png',
+  'Ejderha Doğumlu': '/races/ejderhadogumlu.png',
+  'Melek Soylu': '/races/meleksoylu.png',
 };
 function getRacePortrait(race) {
-  return RACE_PORTRAITS[race] || '/races/insan.svg';
+  return RACE_PORTRAITS[race] || '/races/insan.png';
 }
 
 function WheelIcon({ size = 18, color = 'currentColor' }) {
@@ -1456,7 +1459,7 @@ export default function GamePage({ user }) {
             {/* Shop button */}
             <motion.button
               whileTap={{ scale: 0.96 }}
-              onClick={() => { playClick(); navigate(`/shop/${characterId}`); }}
+              onClick={() => { playClick(); navigate(`/shop/${characterId}?scenario=${session?.scenario || scenario || ''}`); }}
               style={{
                 width: '2.1rem',
                 height: '2.1rem',
@@ -2054,7 +2057,11 @@ export default function GamePage({ user }) {
                           border: item.equipped ? '1px solid rgba(201,150,58,0.35)' : '1px solid rgba(92,74,42,0.2)',
                         }}
                       >
-                        <ItemIconComp size={18} style={{ flexShrink: 0 }} color="var(--gold)" />
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} style={{ width: 18, height: 18, flexShrink: 0, borderRadius: '4px', objectFit: 'cover' }} />
+                        ) : (
+                          <ItemIconComp size={18} style={{ flexShrink: 0 }} color="var(--gold)" />
+                        )}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
                             <span className="gold-text" style={{ fontFamily: "'Cinzel', serif", fontSize: '0.78rem', fontWeight: 700 }}>
@@ -3054,7 +3061,11 @@ export default function GamePage({ user }) {
                           boxShadow: isNotable ? `0 0 8px ${color}59` : 'none',
                         }}
                       >
-                        <LootIcon size={14} color={color} />
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} style={{ width: 14, height: 14, borderRadius: '3px', objectFit: 'cover' }} />
+                        ) : (
+                          <LootIcon size={14} color={color} />
+                        )}
                         <span style={{
                           fontFamily: "'Crimson Text', serif",
                           fontSize: '0.74rem',

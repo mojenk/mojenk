@@ -243,8 +243,9 @@ export async function startAdventure(sessionId, characterId, scenario) {
   }
 }
 
-export async function shopCatalog() {
-  return safeFetch(`${API}/shop/catalog`);
+export async function shopCatalog(scenario) {
+  const query = scenario ? `?scenario=${encodeURIComponent(scenario)}` : '';
+  return safeFetch(`${API}/shop/catalog${query}`);
 }
 
 export async function shopBuy(characterId, itemId) {

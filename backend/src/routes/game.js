@@ -210,7 +210,7 @@ router.post('/combat/attack', async (req, res) => {
     let loot = null;
     let updatedCharacter = null;
     if (enemy?.dead) {
-      loot = await applyLoot(characterId, enemy);
+      loot = await applyLoot(characterId, enemy, session?.scenario);
       xpGained = xpRewardForEnemy(enemy);
       updatedCharacter = (await grantXpAndLevelUp(characterId, xpGained)).character;
     }

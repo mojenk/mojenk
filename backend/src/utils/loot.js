@@ -1,21 +1,31 @@
 const { firestore, docData, serverTimestamp } = require('../firestore');
+const { CATALOG } = require('../data/items');
 
-function generateLoot(enemy) {
+function generateLoot(enemy, scenario) {
   const maxHp = Number(enemy?.max_hp || 15);
   const gold = Math.max(1, Math.round(maxHp * (0.4 + Math.random() * 0.6)));
   const items = [];
   if (Math.random() < 0.28) {
-    items.push({
-      name: Math.random() < 0.65 ? 'Küçük İyileşme İksiri' : 'Nadir Malzeme',
-      type: Math.random() < 0.65 ? 'potion' : 'misc',
-      description: Math.random() < 0.65 ? '2d4+2 HP iyileştirir.' : 'Tüccarlar için değerli bir ganimet.',
-    });
+    const pool = scenario
+      ? CATALOG.filter((entry) => entry.scenarios.includes(scenario) || entry.scenarios.includes('all'))
+      : CATALOG;
+    const consumablePool = pool.filter((entry) => ['potion', 'misc'].includes(entry.type));
+    const source = consumablePool.length ? consumablePool : pool;
+    if (source.length) {
+      const pick = source[Math.floor(Math.random() * source.length)];
+      items.push({
+        name: pick.name,
+        type: pick.type,
+        description: pick.description,
+        image: pick.image || null,
+      });
+    }
   }
   return { gold, items };
 }
 
-async function applyLoot(characterId, enemy) {
-  const loot = generateLoot(enemy);
+async function applyLoot(characterId, enemy, scenario) {
+  const loot = generateLoot(enemy, scenario);
   const characterRef = firestore.collection('characters').doc(characterId);
   const character = docData(await characterRef.get());
   if (!character) return loot;

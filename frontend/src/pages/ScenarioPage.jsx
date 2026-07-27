@@ -200,61 +200,88 @@ export default function ScenarioPage({ user }) {
             className={`select-card${selected === s.id ? ' active' : ''}`}
             style={{
               display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-              padding: '1rem 1.1rem',
+              flexDirection: 'column',
               width: '100%',
               textAlign: 'left',
+              padding: 0,
+              overflow: 'hidden',
             }}
           >
             <div
               style={{
-                width: '3.2rem',
-                height: '3.2rem',
-                borderRadius: '8px',
-                overflow: 'hidden',
+                width: '100%',
+                height: '7.5rem',
+                position: 'relative',
                 flexShrink: 0,
-                border: selected === s.id ? '2px solid var(--gold2)' : '2px solid transparent',
-                boxShadow: selected === s.id ? '0 0 12px rgba(201,150,58,0.35)' : 'none',
+                borderBottom: selected === s.id ? '2px solid var(--gold2)' : '2px solid transparent',
+                boxShadow: selected === s.id ? '0 2px 12px rgba(201,150,58,0.35)' : 'none',
               }}
             >
               <img
                 src={s.image}
                 alt={s.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
-            </div>
-            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(to top, rgba(10,8,6,0.92) 0%, rgba(10,8,6,0.15) 55%, rgba(10,8,6,0) 100%)',
+                }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '0.5rem',
+                  right: '0.5rem',
+                  fontSize: '0.6rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  padding: '0.15rem 0.4rem',
+                  borderRadius: '999px',
+                  color: '#fff',
+                  background: s.tagColor,
+                  boxShadow: '0 0 6px ' + s.tagColor + '66',
+                  fontFamily: "system-ui, sans-serif",
+                }}
+              >
+                {s.tag}
+              </span>
+              {selected === s.id && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '0.5rem',
+                    left: '0.5rem',
+                    color: 'var(--gold2)',
+                    background: 'rgba(10,8,6,0.7)',
+                    borderRadius: '999px',
+                    padding: '0.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Check size={14} />
+                </div>
+              )}
               <div
                 className="font-fantasy"
                 style={{
-                  color: selected === s.id ? 'var(--gold2)' : 'var(--text)',
-                  fontSize: '1rem',
+                  position: 'absolute',
+                  left: '0.85rem',
+                  bottom: '0.5rem',
+                  right: '0.85rem',
+                  color: selected === s.id ? 'var(--gold2)' : '#fff',
+                  fontSize: '1.05rem',
                   fontWeight: 700,
-                  marginBottom: '0.25rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.45rem',
+                  textShadow: '0 2px 6px rgba(0,0,0,0.8)',
                 }}
               >
                 {s.name}
-                <span
-                  style={{
-                    fontSize: '0.6rem',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    padding: '0.15rem 0.4rem',
-                    borderRadius: '999px',
-                    color: '#fff',
-                    background: s.tagColor,
-                    boxShadow: '0 0 6px ' + s.tagColor + '66',
-                    fontFamily: "system-ui, sans-serif",
-                  }}
-                >
-                  {s.tag}
-                </span>
               </div>
+            </div>
+            <div style={{ padding: '0.65rem 0.9rem 0.8rem' }}>
               <div
                 style={{
                   color: 'var(--text-dim)',
@@ -265,18 +292,6 @@ export default function ScenarioPage({ user }) {
                 {s.desc}
               </div>
             </div>
-            {selected === s.id && (
-              <div
-                style={{
-                  color: 'var(--gold2)',
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <Check size={16} />
-              </div>
-            )}
           </motion.button>
         ))}
       </div>

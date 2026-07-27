@@ -8,12 +8,15 @@ import { playClick } from '../utils/sounds';
 import Particles from '../components/Particles';
 
 const RACE_PORTRAITS = {
-  'İnsan': '/races/insan.svg',
-  'Elf': '/races/elf.svg',
-  'Cüce': '/races/cuce.svg',
-  'Yarı-Ork': '/races/yariork.svg',
-  'Hobit': '/races/hobit.svg',
-  'İblissoyu': '/races/iblissoyu.svg',
+  'İnsan': '/races/insan.png',
+  'Elf': '/races/elf.png',
+  'Cüce': '/races/cuce.png',
+  'Yarı-Ork': '/races/yariork.png',
+  'Hobit': '/races/hobit.png',
+  'İblissoyu': '/races/iblissoyu.png',
+  'Gnom': '/races/gnom.png',
+  'Ejderha Doğumlu': '/races/ejderhadogumlu.png',
+  'Melek Soylu': '/races/meleksoylu.png',
 };
 
 export default function HallOfFamePage({ user }) {
@@ -125,7 +128,7 @@ export default function HallOfFamePage({ user }) {
                     }}
                   >
                     <img
-                      src={RACE_PORTRAITS[hero.race] || '/races/insan.svg'}
+                      src={RACE_PORTRAITS[hero.race] || '/races/insan.png'}
                       alt={hero.race}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'grayscale(0.4)' }}
                     />
