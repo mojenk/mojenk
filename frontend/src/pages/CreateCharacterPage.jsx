@@ -10,12 +10,15 @@ import { useLang, t } from '../utils/i18n';
 import { ClassIcon, StatIcon } from '../utils/icons';
 
 const RACES_DEF = [
-  { nameKey: 'race_human', raceId: 'İnsan', image: '/races/insan.svg', descKey: 'race_human_desc' },
-  { nameKey: 'race_elf', raceId: 'Elf', image: '/races/elf.svg', descKey: 'race_elf_desc' },
-  { nameKey: 'race_dwarf', raceId: 'Cüce', image: '/races/cuce.svg', descKey: 'race_dwarf_desc' },
-  { nameKey: 'race_halfork', raceId: 'Yarı-Ork', image: '/races/yariork.svg', descKey: 'race_halfork_desc' },
-  { nameKey: 'race_hobbit', raceId: 'Hobit', image: '/races/hobit.svg', descKey: 'race_hobbit_desc' },
-  { nameKey: 'race_tiefling', raceId: 'İblissoyu', image: '/races/iblissoyu.svg', descKey: 'race_tiefling_desc' },
+  { nameKey: 'race_human', raceId: 'İnsan', image: '/races/insan.png', descKey: 'race_human_desc' },
+  { nameKey: 'race_elf', raceId: 'Elf', image: '/races/elf.png', descKey: 'race_elf_desc' },
+  { nameKey: 'race_dwarf', raceId: 'Cüce', image: '/races/cuce.png', descKey: 'race_dwarf_desc' },
+  { nameKey: 'race_halfork', raceId: 'Yarı-Ork', image: '/races/yariork.png', descKey: 'race_halfork_desc' },
+  { nameKey: 'race_hobbit', raceId: 'Hobit', image: '/races/hobit.png', descKey: 'race_hobbit_desc' },
+  { nameKey: 'race_tiefling', raceId: 'İblissoyu', image: '/races/iblissoyu.png', descKey: 'race_tiefling_desc' },
+  { nameKey: 'race_gnome', raceId: 'Gnom', image: '/races/gnom.png', descKey: 'race_gnome_desc' },
+  { nameKey: 'race_dragonborn', raceId: 'Ejderha Doğumlu', image: '/races/ejderhadogumlu.png', descKey: 'race_dragonborn_desc' },
+  { nameKey: 'race_aasimar', raceId: 'Melek Soylu', image: '/races/meleksoylu.png', descKey: 'race_aasimar_desc' },
 ];
 
 const CLASSES_DEF = [
@@ -34,6 +37,9 @@ const RACE_BONUSES = {
   'Yarı-Ork': { strength: 2, constitution: 1 },
   'Hobit': { dexterity: 2, charisma: 1 },
   'İblissoyu': { charisma: 2, intelligence: 1 },
+  'Gnom': { intelligence: 2, dexterity: 1 },
+  'Ejderha Doğumlu': { strength: 1, charisma: 2 },
+  'Melek Soylu': { wisdom: 2, charisma: 1 },
 };
 
 const CLASS_BONUSES = {
@@ -117,6 +123,21 @@ const RACE_BACKSTORIES = {
     { id: 'cultist', label: 'Tövbekar Kültist', desc: 'Bir zamanlar karanlık bir kültün üyesiydi. Gördüğü dehşetler sonrası kültü terk etti ama lanetli güçler hala damarlarında akıyor. Geçmişinin peşini bırakmasını bekliyor.' },
     { id: 'noble_outcast', label: 'Maskeli Asil', desc: 'Şeytan kanını gizleyen maskeli bir asil. Toplumda saygın bir konumu var ama gerçek kimliği ortaya çıkarsa her şeyini kaybedecek. Çifte hayat yaşıyor.' },
     { id: 'wanderer', label: 'Lanetli Gezgin', desc: 'Cehennem kanının lanetini kırmak için diyar diyar dolaşıyor. Her yerde önyargıyla karşılaşıyor, ama yardım ettiği insanlar onun gerçek doğasını görüyor.' },
+  ],
+  'Gnom': [
+    { id: 'tinkerer', label: 'Deli Mucit', desc: 'Kendi atölyesinde tehlikeli icatlar yapan bir Gnom mucidi. Son buluşu az kalsın koca bir köyü havaya uçuruyordu, şimdi hatasını telafi etmek için maceraya atılıyor.' },
+    { id: 'illusionist', label: 'Şaka Ustası Büyücü', desc: 'İllüzyon büyüleriyle herkesi kandırmayı seven neşeli bir Gnom. Ciddiyetsiz görünse de karmaşık büyüler konusunda gerçek bir dahi.' },
+    { id: 'archivist', label: 'Meraklı Arşivci', desc: 'Unutulmuş dillerin ve eski sırların peşinde koşan bilgi aşığı bir Gnom. Her kütüphaneyi, her mağarayı bir bilmece gibi görüyor.' },
+  ],
+  'Ejderha Doğumlu': [
+    { id: 'exiled_clan', label: 'Sürgün Klan Üyesi', desc: 'Kendi klanı tarafından onursuz ilan edilip sürgün edilmiş bir Ejderha Doğumlu savaşçı. Şerefini geri kazanmak için büyük bir kahramanlık peşinde.' },
+    { id: 'dragon_blooded', label: 'Ejderha Kanlı Şampiyon', desc: 'Damarlarında gerçek bir ejderhanın kanı akan nadir bir savaşçı. Bu güç hem bir armağan hem de bir lanet; kontrol etmeyi henüz tam öğrenemedi.' },
+    { id: 'temple_guardian', label: 'Tapınak Muhafızı', desc: 'Antik bir ejderha tapınağını korumakla görevlendirilmiş bir muhafız. Tapınağı yıkılınca, kutsal emaneti korumak için dünyaya açıldı.' },
+  ],
+  'Melek Soylu': [
+    { id: 'fallen_light', label: 'Düşmüş Işık', desc: 'Bir zamanlar kutsal bir tapınakta hizmet eden bu melek soylu, inancını sorgulayan bir trajedi yaşadı. Şimdi kendi doğrularını arıyor.' },
+    { id: 'divine_champion', label: 'İlahi Şampiyon', desc: 'Doğuştan gelen kutsal güçle seçilmiş bir şampiyon. Karanlığa karşı savaşmak için ilahi bir görevle dünyaya gönderildi.' },
+    { id: 'wandering_soul', label: 'Kayıp Ruhun Yolcusu', desc: 'Melek soyundan geldiğini yeni öğrenmiş, kimliğini ve amacını arayan genç bir gezgin. Geçmişinin sırrı onu büyük bir kadere sürüklüyor.' },
   ],
 };
 

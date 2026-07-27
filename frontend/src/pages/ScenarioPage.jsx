@@ -112,7 +112,7 @@ export default function ScenarioPage({ user }) {
   const navigate = useNavigate();
   const [selected, setSelected] = useState('');
   useLang();
-  const SCENARIOS = SCENARIO_DEFS.map(s => ({ ...s, name: t(s.nameKey), desc: t(s.descKey), tag: t(s.tagKey) }));
+  const SCENARIOS = SCENARIO_DEFS.map(s => ({ ...s, name: t(s.nameKey), desc: t(s.descKey), tag: t(s.tagKey), image: `/scenarios/${s.id}.png` }));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -209,18 +209,20 @@ export default function ScenarioPage({ user }) {
           >
             <div
               style={{
+                width: '3.2rem',
+                height: '3.2rem',
+                borderRadius: '8px',
+                overflow: 'hidden',
                 flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: selected === s.id ? 'var(--gold2)' : 'var(--text)',
-                filter:
-                  selected === s.id
-                    ? 'drop-shadow(0 0 8px rgba(201,150,58,0.6))'
-                    : 'none',
+                border: selected === s.id ? '2px solid var(--gold2)' : '2px solid transparent',
+                boxShadow: selected === s.id ? '0 0 12px rgba(201,150,58,0.35)' : 'none',
               }}
             >
-              <s.icon size={34} />
+              <img
+                src={s.image}
+                alt={s.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
             </div>
             <div style={{ flex: 1 }}>
               <div
