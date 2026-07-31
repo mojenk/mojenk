@@ -21,10 +21,10 @@ import { startAmbience, stopAmbience, cleanupAmbience, mapScenarioToAmbience, de
 import { useLang, t, getLang } from '../utils/i18n';
 import { StatIcon, ItemIcon } from '../utils/icons';
 import {
-  Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX, Backpack,
-  Users, Store, BarChart3, ScrollText, Skull, X, AlertTriangle,
-  CheckCircle2, XCircle, Dices, Zap, Wind, Send, Bomb, Sparkles, RotateCcw, Target, Wand2,
-  Crown,
+  Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX,
+  BarChart3, ScrollText, Skull, X, AlertTriangle,
+  CheckCircle2, XCircle, Dices, Zap, Wind, Bomb, Sparkles, RotateCcw, Target, Wand2,
+  Crown, ArrowLeft,
 } from 'lucide-react';
 
 const FOLLOWER_ROLE_META = {
@@ -62,13 +62,15 @@ function getRacePortrait(race) {
   return RACE_PORTRAITS[race] || '/races/insan.png';
 }
 
-function WheelIcon({ size = 18, color = 'currentColor' }) {
+function WheelIcon({ size = 18 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <circle cx="12" cy="12" r="3" fill={color} />
-      <path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-    </svg>
+    <img
+      src="/icons/wheel.png"
+      alt=""
+      width={size}
+      height={size}
+      style={{ objectFit: 'contain', filter: 'drop-shadow(0 0 3px rgba(201,150,58,0.4))' }}
+    />
   );
 }
 
@@ -320,6 +322,14 @@ export default function GamePage({ user }) {
               playNarrator();
             }
             if (data.character) setCharacter(data.character);
+            if (data.dailyLimit != null) {
+              setDailyLimitInfo({
+                used: data.dailyUsed,
+                limit: data.dailyLimit,
+                bonusAdsUsed: data.bonusAdsUsed,
+                maxBonusAds: data.maxBonusAds,
+              });
+            }
             // Handle scene_change events from start response
             const sceneEv = Array.isArray(data.events)
               ? data.events.find((e) => e.event === 'scene_change' && e.scene)
@@ -361,6 +371,18 @@ export default function GamePage({ user }) {
   useEffect(() => {
     if (!sceneAmbience) return;
     startAmbience(allEnemies.length > 0 ? 'combat' : sceneAmbience);
+  }, [sceneAmbience, allEnemies]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopAmbience();
+      } else if (sceneAmbience) {
+        startAmbience(allEnemies.length > 0 ? 'combat' : sceneAmbience);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [sceneAmbience, allEnemies]);
 
   useEffect(() => {
@@ -491,6 +513,14 @@ export default function GamePage({ user }) {
         playNarrator();
       }
       if (data.character) setCharacter(data.character);
+      if (data.dailyLimit != null) {
+        setDailyLimitInfo({
+          used: data.dailyUsed,
+          limit: data.dailyLimit,
+          bonusAdsUsed: data.bonusAdsUsed,
+          maxBonusAds: data.maxBonusAds,
+        });
+      }
       const sessionData = await getSession(sessionId);
       if (sessionData.session) {
         updateTurnProgress(sessionData.session.turn_count || 0);
@@ -1238,7 +1268,7 @@ export default function GamePage({ user }) {
         className="pt-safe"
       >
         <div className="game-header-flex" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          {/* Portrait + Back */}
+          {/* Back button */}
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={async () => {
@@ -1246,6 +1276,27 @@ export default function GamePage({ user }) {
               if (!isPremiumUser) await showInterstitialAd();
               navigate('/');
             }}
+            style={{
+              width: '2.4rem',
+              height: '2.4rem',
+              borderRadius: '50%',
+              background: 'rgba(92,74,42,0.15)',
+              border: '1px solid var(--gold)',
+              padding: 0,
+              flexShrink: 0,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--gold)',
+            }}
+            title="Geri dön"
+          >
+            <ArrowLeft size={20} />
+          </motion.button>
+
+          {/* Character portrait */}
+          <div
             style={{
               width: '2.6rem',
               height: '2.6rem',
@@ -1255,13 +1306,8 @@ export default function GamePage({ user }) {
               padding: 0,
               overflow: 'hidden',
               flexShrink: 0,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
               boxShadow: '0 0 10px rgba(201,150,58,0.25)',
             }}
-            title="Geri dön"
           >
             <img
               src={getRacePortrait(character.race)}
@@ -1269,7 +1315,7 @@ export default function GamePage({ user }) {
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => { e.target.style.display = 'none'; }}
             />
-          </motion.button>
+          </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -1360,6 +1406,22 @@ export default function GamePage({ user }) {
             >
               <Star size={14} />{Math.min(100, Math.round(((character.experience ?? 0) / 300) * 100))}%
             </span>
+            {dailyLimitInfo && (
+              <span
+                title="Günlük hamle hakkın"
+                style={{
+                  color: dailyLimitInfo.premium || (dailyLimitInfo.limit - dailyLimitInfo.used) > 5 ? 'var(--text-dim)' : '#e53935',
+                  fontFamily: "'Crimson Text', serif",
+                  fontSize: '0.78rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.2rem',
+                }}
+              >
+                <Dices size={14} />
+                {dailyLimitInfo.premium ? '∞' : `${Math.max(0, dailyLimitInfo.limit - dailyLimitInfo.used)}`}
+              </span>
+            )}
             {/* Wheel of Fate button */}
             {(() => {
               const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
@@ -1435,7 +1497,7 @@ export default function GamePage({ user }) {
                 position: 'relative',
               }}
             >
-              <Backpack size={18} />
+              <img src="/icons/backpack.png" alt="" width={18} height={18} style={{ objectFit: 'contain' }} />
               {inventory.length > 0 && (
                 <span style={{
                   position: 'absolute',
@@ -1474,7 +1536,7 @@ export default function GamePage({ user }) {
               }}
               title="Tüccar Dükkânı"
             >
-              <Store size={18} />
+              <img src="/icons/shop.png" alt="" width={18} height={18} style={{ objectFit: 'contain' }} />
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
@@ -1838,8 +1900,13 @@ export default function GamePage({ user }) {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '0.8rem', color: 'var(--text)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                            <Users size={13} /> {npc.name}
+                          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '0.8rem', color: 'var(--text)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                            <img
+                              src={getRacePortrait(npc.race)}
+                              alt=""
+                              style={{ width: '1.6rem', height: '1.6rem', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--gold)' }}
+                            />
+                            {npc.name}
                             <span style={{ fontFamily: "'Crimson Text', serif", fontSize: '0.7rem', color: 'var(--gold)', marginLeft: '0.25rem' }}>Sv.{fLevel}</span>
                           </span>
                           <span className={roleMeta.color} style={{ fontFamily: "'Crimson Text', serif", fontSize: '0.72rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -2006,7 +2073,7 @@ export default function GamePage({ user }) {
             <div style={{ padding: '0.6rem 0.75rem', overflowY: 'auto', maxHeight: '44vh' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <span className="font-fantasy gold-text" style={{ fontSize: '0.85rem', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <Backpack size={16} /> Envanter
+                  <img src="/icons/backpack.png" alt="" width={16} height={16} style={{ objectFit: 'contain' }} /> Envanter
                 </span>
                 <span style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.75rem' }}>
                   {inventory.length} eşya
@@ -2033,7 +2100,7 @@ export default function GamePage({ user }) {
               {inventory.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-dim)' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.3rem' }}>
-                    <Backpack size={24} />
+                    <img src="/icons/backpack.png" alt="" width={24} height={24} style={{ objectFit: 'contain', opacity: 0.6 }} />
                   </div>
                   <p style={{ fontFamily: "'Crimson Text', serif", fontSize: '0.85rem', margin: 0 }}>Envanterin boş</p>
                 </div>
@@ -2776,7 +2843,7 @@ export default function GamePage({ user }) {
                   gap: '0.35rem',
                 }}
               >
-                <Dices size={15} /> {diceRolling ? 'Zar atılıyor...' : `Otomatik ${lastDice?.stat || ''} Zarı`}
+                <img src="/icons/dice.png" alt="" width={15} height={15} style={{ objectFit: 'contain' }} /> {diceRolling ? 'Zar atılıyor...' : `Otomatik ${lastDice?.stat || ''} Zarı`}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.3rem' }}>
                 <DiceRoll
@@ -2909,7 +2976,7 @@ export default function GamePage({ user }) {
                     : combatResult.isCritical
                     ? <><Zap size={18} /> KRİTİK İSABET!</>
                     : combatResult.isHit
-                    ? <><Sword size={18} /> İSABET!</>
+                    ? <><img src="/icons/sword.png" alt="" width={18} height={18} style={{ objectFit: 'contain' }} /> İSABET!</>
                     : <><Wind size={18} /> ISKALADI!</>}
                 </div>
 
@@ -3162,7 +3229,7 @@ export default function GamePage({ user }) {
             cursor: !input.trim() || loading || isDead ? 'not-allowed' : 'pointer',
           }}
         >
-          <Send size={18} />
+          <img src="/icons/send.png" alt="" width={18} height={18} style={{ objectFit: 'contain' }} />
         </motion.button>
       </div>
 

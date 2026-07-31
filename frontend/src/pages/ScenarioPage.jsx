@@ -136,7 +136,7 @@ export default function ScenarioPage({ user }) {
   return (
     <div
       className="stone-bg"
-      style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}
+      style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
       <Particles type="magic" count={10} />
       <div

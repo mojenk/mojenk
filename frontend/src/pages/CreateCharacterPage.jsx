@@ -194,11 +194,14 @@ export default function CreateCharacterPage({ user }) {
     setLoading(false);
   };
 
+  const pointsUsed = calcPointsUsed(stats);
+  const pointsLeft = TOTAL_POINTS - pointsUsed;
+
   const canNext = [
     name.trim().length >= 2,
     !!race,
     !!charClass,
-    true,
+    pointsLeft === 0,
   ][step];
 
   const adjustStat = (key, delta) => {
@@ -208,9 +211,6 @@ export default function CreateCharacterPage({ user }) {
       return { ...s, [key]: s[key] + delta };
     });
   };
-
-  const pointsUsed = calcPointsUsed(stats);
-  const pointsLeft = TOTAL_POINTS - pointsUsed;
 
   // Calculate preview of final stats with race/class bonuses
   const previewBonus = (key) =>

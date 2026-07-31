@@ -9,6 +9,7 @@ const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 const { checkAndConsumeDailyTurn, claimDailyBonus } = require('../utils/dailyLimit');
+const { CATALOG, pickWeightedItem } = require('../data/items');
 
 let genAI;
 async function getGenAI() {
@@ -183,6 +184,7 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    {"event":"hp_change","value":-5}
    {"event":"gold_change","value":10}
    {"event":"item_gained","name":"İksir","type":"potion","description":"2d6 HP iyileştirir"}
+   {"event":"treasure_search"}
    {"event":"xp_gain","value":50}
    {"event":"enemy_spawn","name":"Goblin","max_hp":15,"ac":15}
    {"event":"enemy_damage","value":-5}
@@ -190,15 +192,18 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    {"event":"enemy_dead","name":"Goblin"}
    {"event":"follower_damage","name":"Yoldaş Adı","value":-4}
    {"event":"item_used","name":"Mana İksiri"}
+   {"event":"scene_change","scene":"cave"}
    enemy_dead: Düşman öldüğünde, kaçtığında, teslim olduğunda, barış yapıldığında veya dost edinildiğinde MUTLAKA kullan. Birden fazla düşman aktifse İSMİ MUTLAKA belirt (yoksa hangi düşmanın öldüğü belirsiz olur ve diğerleri de yanlışlıkla kaybolabilir). Sadece TEK bir düşman aktifken isim opsiyoneldir.
+   gold_change: SADECE hikaye metninde altının açıkça bulunduğu/kazanıldığı/verildiği anlatıldığında kullan — anlatılmayan gold_change YASAK, oyuncu neden altın kazandığını mutlaka okumalı. Miktarlar KÜÇÜK tutulmalı: küçük bulgular (cepte birkaç sikke, küçük bahşiş) 2-15 altın, önemli bir ödül/görev tamamlama gibi büyük anlar 20-50 altın. Çok istisnai efsanevi bir hazine dışında asla 50'nin üzerine çıkma, asla -50/+50 aralığının dışına taşma.
+   item_gained: Hikayede oyuncu bir eşya bulduğunda kullan. Eşya ismi SENARYOYA UYGUN olsun (vahşi batıda altıpatlar/tüfek, bilim-kurguda enerji silahı, ortaçağda kılıç/kalkan gibi). Eşyanın nadirlik/rarity değeri sen seçemezsin; backend senaryoya göre uygun nadirlikte eşya verir. Sadece genel bir eşya adı/türü belirt.
+   treasure_search: Oyuncu bir sandık, torba, gizli bölme, ceset, raf vb. somut bir şeyi ARAYIP AÇTIĞINDA kullan. Eşyanın ne olduğunu SEN UYDURMA — bu event'i göndermen yeterli, hangi eşyanın çıktığını backend belirleyip bir sonraki yanıtına ekleyecek; sen sadece "torbayı karıştırdın, içinde bir şey buldun" gibi genel bir arama anlatımı yaz, spesifik eşya ismi/açıklaması yazma.
    follower_damage: Savaşta yanındaki bir yoldaş/takipçi düşmandan hasar aldığında MUTLAKA kullan (name=yoldaşın adı, value=negatif hasar miktarı, örn -4). Aynı zamanda hikayede yoldaşa ne olduğunu mutlaka 1 cümleyle anlat (örn: "Kaya, goblinin baltasıyla omzundan yaralandı"). Yoldaş HP'si düşman hasarı aldığında ASLA sabit kalmasın.
    item_used: Hikâyede karakter bir iksir veya tüketilebilir eşya kullandığında (örn: "Mana İksiri içtin") MUTLAKA kullan. Envanterden o eşyayı düşürür. İsim, envanterdeki eşya adıyla büyük/küçük harf duyarsız eşleşmeli.
-   {"event":"scene_change","scene":"cave"}
    scene_change: Oyuncu farklı bir bölgeye/ortama geçtiğinde MUTLAKA kullan. Atmosfer sesi otomatik değişir. Kullanılabilir sahneler: forest, dungeon, tavern, city, cave, swamp, ocean, mountain, temple, camp, ruins, storm, desert. Oyuncu bir ormandan mağaraya girerse scene=cave, bir tavernaya girerse scene=tavern, denize açılırsa scene=ocean, fırtına koparsa scene=storm, çölde yürüyorsa scene=desert, bir tapınağa girerse scene=temple, gece kamp kurarsa scene=camp, harabelere girerse scene=ruins, bataklıktan geçerse scene=swamp, dağlara çıkarsa scene=mountain yaz. Bölge gerçekten değiştiğinde event gönder, her yanıtta değil.
-   {"event":"npc_meet","name":"NPC Adı","description":"Kısa fiziksel/kişilik tanımı","relationship":"friendly"}
+   {"event":"npc_meet","name":"NPC Adı","description":"Kısa fiziksel/kişilik tanımı","relationship":"friendly","race":"Elf"}
    {"event":"npc_update","name":"NPC Adı","notes":"Yeni öğrenilen bilgi veya ilişki değişikliği","relationship":"hostile"}
    {"event":"npc_topic","name":"NPC Adı","topics":["Konu 1","Konu 2","Konu 3"]}
-   npc_meet: Yeni bir önemli NPC ile ilk karşılaşmada kullan. relationship: friendly/neutral/hostile/unknown. Aynı yanıtın SONUNDA mutlaka npc_topic event'i de ekle ki oyuncu konuşma başlatabilsin.
+   npc_meet: Yeni bir önemli NPC ile ilk karşılaşmada kullan. relationship: friendly/neutral/hostile/unknown. race: NPC'nin ırkını şu listeden seç — İnsan, Elf, Cüce, Yarı-Ork, Hobit, İblissoyu, Gnom, Ejderha Doğumlu, Melek Soylu (belirtmezsen İnsan varsayılır; hikayeye uygun çeşitlilik kat). Aynı yanıtın SONUNDA mutlaka npc_topic event'i de ekle ki oyuncu konuşma başlatabilsin.
    npc_update: Mevcut bir NPC hakkında ilişki değişince veya önemli bilgi öğrenilince kullan.
    npc_topic: Bir NPC ile konuşulabilecek konular eklendiğinde veya güncellendiğinde kullan. Her seferinde 2-4 kısa konu başlığı yaz. Sonraki konuşmalarda bu konular UI'da buton olarak gösterilecek.
    {"event":"quest_start","title":"Görev başlığı","description":"Görevin kısa açıklaması (1-2 cümle)","reward_xp":50,"reward_gold":10}
@@ -391,6 +396,30 @@ async function applyEvents(aiReply, characterId, sessionId) {
 
   const characterRef = firestore.collection('characters').doc(characterId);
   const sessionRef = sessionId ? firestore.collection('sessions').doc(sessionId) : null;
+  const session = sessionRef ? docData(await sessionRef.get()) : null;
+  const scenario = session?.scenario || null;
+
+  function findCatalogMatchByName(name) {
+    const lower = String(name).toLocaleLowerCase('tr');
+    return CATALOG.find((entry) => String(entry.name).toLocaleLowerCase('tr') === lower)
+      || CATALOG.find((entry) => String(entry.name).toLocaleLowerCase('tr').includes(lower))
+      || CATALOG.find((entry) => lower.includes(String(entry.name).toLocaleLowerCase('tr')));
+  }
+
+  async function addItemToInventory(item) {
+    const itemRef = characterRef.collection('inventory').doc();
+    await itemRef.set({
+      id: itemRef.id,
+      name: item.name,
+      type: item.type,
+      description: item.description,
+      image: item.image || null,
+      quantity: 1,
+      equipped: 0,
+      created_at: serverTimestamp(),
+      updated_at: serverTimestamp(),
+    });
+  }
 
   for (const event of events) {
     const character = docData(await characterRef.get());
@@ -417,22 +446,36 @@ async function applyEvents(aiReply, characterId, sessionId) {
     }
 
     if (event.event === 'gold_change' && typeof event.value === 'number') {
-      event.value = Math.max(-200, Math.min(200, Math.round(event.value)));
+      event.value = Math.max(-50, Math.min(50, Math.round(event.value)));
       await characterRef.update({ gold: Math.max(0, (character.gold || 0) + event.value), updated_at: serverTimestamp() });
     }
 
     if (event.event === 'item_gained' && event.name) {
-      const itemRef = characterRef.collection('inventory').doc();
-      await itemRef.set({
-        id: itemRef.id,
+      const match = findCatalogMatchByName(event.name);
+      const item = {
         name: event.name.substring(0, 100),
-        type: event.type || 'misc',
-        description: (event.description || '').substring(0, 300),
-        quantity: 1,
-        equipped: 0,
-        created_at: serverTimestamp(),
-        updated_at: serverTimestamp(),
-      });
+        type: match?.type || event.type || 'misc',
+        description: (event.description || match?.description || '').substring(0, 300),
+        image: match?.image || null,
+      };
+      await addItemToInventory(item);
+      event.type = item.type;
+      event.description = item.description;
+      event.image = item.image;
+    }
+
+    if (event.event === 'treasure_search') {
+      const pick = pickWeightedItem(scenario);
+      if (pick) {
+        const item = {
+          name: pick.name,
+          type: pick.type,
+          description: pick.description,
+          image: pick.image || null,
+        };
+        await addItemToInventory(item);
+        events.push({ event: 'item_gained', name: item.name, type: item.type, description: item.description, image: item.image, _auto_generated: true });
+      }
     }
 
     if (event.event === 'enemy_spawn' && event.name && sessionRef) {
@@ -517,9 +560,11 @@ async function applyEvents(aiReply, characterId, sessionId) {
       const name = event.name.substring(0, 100);
       const existing = await findNpcByName(characterId, name);
       const ref = existing?.ref || characterRef.collection('npcs').doc();
+      const race = event.race || existing?.data.race || 'İnsan';
       await ref.set({
         id: ref.id,
         name,
+        race,
         description: (event.description || existing?.data.description || '').substring(0, 300),
         relationship: ['friendly', 'neutral', 'hostile', 'unknown'].includes(event.relationship) ? event.relationship : 'unknown',
         last_seen_session: sessionId || null,
@@ -764,7 +809,17 @@ router.post('/chat', async (req, res) => {
 
     const updatedChar = docData(await characterRef.get());
     const cleanReply = stripPlayerFacingText(aiReply);
-    res.json({ reply: cleanReply, rawReply: aiReply, events, character: updatedChar });
+    res.json({
+      reply: cleanReply,
+      rawReply: aiReply,
+      events,
+      character: updatedChar,
+      dailyUsed: dailyStatus.used,
+      dailyLimit: dailyStatus.limit,
+      bonusAdsUsed: dailyStatus.bonusAdsUsed,
+      maxBonusAds: dailyStatus.maxBonusAds,
+      premium: !!dailyStatus.premium,
+    });
   } catch (err) {
     console.error('Chat error:', err.message);
     const msg = err.message === 'Anlatıcı yanıt vermedi, tekrar dene'
@@ -905,7 +960,16 @@ router.post('/start', async (req, res) => {
 
     const updatedChar = docData(await characterRef.get());
     const cleanReply = stripPlayerFacingText(intro);
-    res.json({ reply: cleanReply, events, character: updatedChar });
+    res.json({
+      reply: cleanReply,
+      events,
+      character: updatedChar,
+      dailyUsed: dailyStatus.used,
+      dailyLimit: dailyStatus.limit,
+      bonusAdsUsed: dailyStatus.bonusAdsUsed,
+      maxBonusAds: dailyStatus.maxBonusAds,
+      premium: !!dailyStatus.premium,
+    });
   } catch (err) {
     console.error('Start error:', err.message);
     const msg = err.message === 'Anlatıcı yanıt vermedi, tekrar dene'

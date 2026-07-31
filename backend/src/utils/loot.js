@@ -1,18 +1,13 @@
 const { firestore, docData, serverTimestamp } = require('../firestore');
-const { CATALOG } = require('../data/items');
+const { pickWeightedItem } = require('../data/items');
 
 function generateLoot(enemy, scenario) {
   const maxHp = Number(enemy?.max_hp || 15);
   const gold = Math.max(1, Math.round(maxHp * (0.4 + Math.random() * 0.6)));
   const items = [];
   if (Math.random() < 0.28) {
-    const pool = scenario
-      ? CATALOG.filter((entry) => entry.scenarios.includes(scenario) || entry.scenarios.includes('all'))
-      : CATALOG;
-    const consumablePool = pool.filter((entry) => ['potion', 'misc'].includes(entry.type));
-    const source = consumablePool.length ? consumablePool : pool;
-    if (source.length) {
-      const pick = source[Math.floor(Math.random() * source.length)];
+    const pick = pickWeightedItem(scenario);
+    if (pick) {
       items.push({
         name: pick.name,
         type: pick.type,

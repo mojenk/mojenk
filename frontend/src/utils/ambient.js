@@ -140,42 +140,47 @@ function scheduleRandom(fn, minMs, maxMs, token) {
 // ── ORMAN ──
 function buildForest(token) {
   const layers = [
-    makeNoiseLoop({ filterType: 'bandpass', freq: 1800, q: 0.5, gain: 0.045 }),
-    makeNoiseLoop({ filterType: 'lowpass', freq: 400, q: 0.3, gain: 0.02 }),  // hafif rüzgar alt katman
+    makeNoiseLoop({ filterType: 'bandpass', freq: 1600, q: 0.45, gain: 0.035 }), // yaprak/serçe sesleri
+    makeNoiseLoop({ filterType: 'lowpass', freq: 320, q: 0.35, gain: 0.035 }),  // yumuşak rüzgar
+    makeNoiseLoop({ filterType: 'lowpass', freq: 80, q: 0.2, gain: 0.02 }),     // derin ağaç uğultusu
   ];
-  // Kuş cıvıltısı — çeşitli kuşlar
+  // Kuş cıvıltısı — hafif ve uzak
   scheduleRandom(() => {
-    const base = 1800 + Math.random() * 900;
-    textureTone(base, 0.1, 'sine', 0.3, base * 1.3);
-    setTimeout(() => textureTone(base * 1.2, 0.08, 'sine', 0.22, base * 0.9), 110);
-    if (Math.random() > 0.6) {
-      setTimeout(() => textureTone(base * 0.8, 0.12, 'sine', 0.18, base * 1.1), 250);
+    const base = 1600 + Math.random() * 700;
+    textureTone(base, 0.12, 'sine', 0.2, base * 1.25);
+    setTimeout(() => textureTone(base * 1.15, 0.08, 'sine', 0.14, base * 0.95), 120);
+    if (Math.random() > 0.65) {
+      setTimeout(() => textureTone(base * 0.85, 0.1, 'sine', 0.1, base * 1.05), 260);
     }
-  }, 2000, 5500, token);
+  }, 2500, 6500, token);
   // İkinci kuş türü — kısa kesik ötüş
   scheduleRandom(() => {
-    const f = 2400 + Math.random() * 600;
-    for (let i = 0; i < 3 + Math.floor(Math.random() * 3); i++) {
-      setTimeout(() => textureTone(f + Math.random() * 100, 0.04, 'sine', 0.2), i * 70);
+    const f = 2200 + Math.random() * 500;
+    for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) {
+      setTimeout(() => textureTone(f + Math.random() * 80, 0.04, 'sine', 0.12), i * 75);
     }
-  }, 5000, 12000, token);
-  // Böcek sesi — cırcır
+  }, 6000, 14000, token);
+  // Böcek sesi — cırcır (çok hafif, arka planda)
   scheduleRandom(() => {
-    const count = 4 + Math.floor(Math.random() * 6);
+    const count = 3 + Math.floor(Math.random() * 5);
     for (let i = 0; i < count; i++) {
-      setTimeout(() => textureTone(3800 + Math.random() * 600, 0.025, 'square', 0.1), i * 55);
+      setTimeout(() => textureTone(3600 + Math.random() * 500, 0.02, 'sine', 0.06), i * 60);
     }
-  }, 1200, 3500, token);
+  }, 2000, 4500, token);
   // Rüzgar esintisi
-  scheduleRandom(() => textureNoise(1.0 + Math.random() * 0.8, 0.18, 900, 'bandpass'), 5000, 10000, token);
+  scheduleRandom(() => textureNoise(1.2 + Math.random() * 1.0, 0.14, 700, 'bandpass'), 4000, 9000, token);
   // Yaprak hışırtısı
-  scheduleRandom(() => textureNoise(0.15 + Math.random() * 0.1, 0.12, 3500, 'highpass'), 3000, 7000, token);
+  scheduleRandom(() => textureNoise(0.2 + Math.random() * 0.15, 0.09, 3000, 'highpass'), 4000, 9000, token);
   // Uzak ağaçkakan
   scheduleRandom(() => {
-    for (let i = 0; i < 4; i++) {
-      setTimeout(() => textureTone(900, 0.02, 'square', 0.15), i * 60);
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => textureTone(850, 0.02, 'square', 0.08), i * 70);
     }
-  }, 15000, 30000, token);
+  }, 18000, 35000, token);
+  // Rüzgarın tahta çatlaklarından süzülmesi
+  scheduleRandom(() => {
+    textureTone(300 + Math.random() * 150, 1.2, 'sine', 0.05, 200);
+  }, 9000, 18000, token);
   return layers;
 }
 

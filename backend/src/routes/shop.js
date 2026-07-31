@@ -1,7 +1,7 @@
 const express = require('express');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
-const { CATALOG } = require('../data/items');
+const { CATALOG, RARITY } = require('../data/items');
 
 const router = express.Router();
 
@@ -16,9 +16,10 @@ function estimateSellPrice(item) {
 
 router.get('/catalog', (req, res) => {
   const { scenario } = req.query;
-  const items = scenario
-    ? CATALOG.filter((item) => item.scenarios.includes(scenario) || item.scenarios.includes('all'))
-    : CATALOG;
+  let items = CATALOG.filter((item) => item.rarity === RARITY.COMMON);
+  if (scenario) {
+    items = items.filter((item) => item.scenarios.includes(scenario) || item.scenarios.includes('all'));
+  }
   res.json({ items });
 });
 
@@ -26,7 +27,7 @@ router.use(verifyFirebaseToken);
 
 router.post('/buy', async (req, res) => {
   const { characterId, itemId } = req.body;
-  const item = CATALOG.find((entry) => entry.id === itemId);
+  const item = CATALOG.find((entry) => entry.id === itemId && entry.rarity === RARITY.COMMON);
   if (!characterId || !item) return res.status(400).json({ error: 'Geçersiz ürün veya karakter' });
 
   try {

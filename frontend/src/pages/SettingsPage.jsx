@@ -593,7 +593,7 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
               color: 'var(--text-dim)', fontSize: '0.9rem', margin: 0,
             }}
           >
-            Kader'in Sesi — Firebase v1.1
+            {lang === 'en' ? 'The Voice of Destiny' : "Kader'in Sesi"} — v2
           </p>
           <p
             style={{
@@ -601,8 +601,44 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
               color: 'var(--text-muted)', fontSize: '0.78rem', margin: '0.25rem 0 0',
             }}
           >
-            AI destekli D&D macera oyunu
+            {t('app_tagline')}
           </p>
+        </div>
+
+        {/* Rate & Support */}
+        <div className="stone-card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
+          <h2
+            className="font-fantasy"
+            style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 0.75rem' }}
+          >
+            {t('support_title')}
+          </h2>
+          <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', margin: '0 0 0.75rem' }}>
+            {t('support_desc')}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              onClick={() => { playClick(); window.open('https://play.google.com/store/apps/details?id=com.kaderinsesi.app', '_blank'); }}
+              className="btn-dark"
+              style={{ fontSize: '0.85rem', padding: '0.55rem 1rem', borderColor: 'var(--gold)', color: 'var(--gold)' }}
+            >
+              {t('rate_us')}
+            </motion.button>
+            <a
+              href="mailto:SupportKaderinSesi@gmail.com"
+              onClick={() => playClick()}
+              style={{
+                fontFamily: "'Crimson Text', serif",
+                color: 'var(--text-dim)',
+                fontSize: '0.82rem',
+                textDecoration: 'underline',
+                textAlign: 'center',
+              }}
+            >
+              SupportKaderinSesi@gmail.com
+            </a>
+          </div>
         </div>
 
         {/* Legal */}
