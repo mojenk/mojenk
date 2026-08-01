@@ -249,19 +249,26 @@ export default function ScenarioPage({ user }) {
                 <div
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: '0.4rem',
                     marginBottom: '0.25rem',
                   }}
                 >
-                  <Icon size={15} color={selected === s.id ? 'var(--gold2)' : 'var(--text-dim)'} />
+                  <Icon
+                    size={15}
+                    color={selected === s.id ? 'var(--gold2)' : 'var(--text-dim)'}
+                    style={{ flexShrink: 0, marginTop: '0.15rem' }}
+                  />
                   <span
                     className="font-fantasy"
                     style={{
                       color: selected === s.id ? 'var(--gold2)' : '#fff',
                       fontSize: '0.95rem',
                       fontWeight: 700,
+                      lineHeight: 1.2,
                       textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                      overflowWrap: 'anywhere',
+                      minWidth: 0,
                     }}
                   >
                     {s.name}
@@ -273,23 +280,27 @@ export default function ScenarioPage({ user }) {
                     fontFamily: "'Crimson Text', serif",
                     fontSize: '0.8rem',
                     lineHeight: 1.35,
-                    marginBottom: '0.35rem',
+                    marginBottom: '0.4rem',
+                    overflowWrap: 'anywhere',
                   }}
                 >
                   {s.desc}
                 </div>
                 <span
                   style={{
+                    display: 'inline-block',
                     fontSize: '0.55rem',
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.06em',
-                    padding: '0.12rem 0.4rem',
+                    padding: '0.15rem 0.45rem',
                     borderRadius: '999px',
                     color: '#fff',
                     background: s.tagColor,
                     boxShadow: '0 0 6px ' + s.tagColor + '66',
                     fontFamily: "system-ui, sans-serif",
+                    lineHeight: 1.4,
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {s.tag}

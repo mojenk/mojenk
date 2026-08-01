@@ -131,6 +131,31 @@ const CATALOG = [
 
   { id: 'mystery_relic',   name: 'Gizemli Emanet Kutusu',      type: 'misc',   price: 60,  sellPrice: 30,  description: 'İçinde ne olduğu maceranın sonunda belli olur', category: 'Çeşitli', rarity: RARITY.RARE, scenarios: ['custom'], image: '/items/mystery_relic.png' },
   { id: 'fate_dice',       name: "Kader'in Zarı",              type: 'misc',   price: 100, sellPrice: 50,  description: 'Kaderi değiştirdiğine inanılan gizemli bir zar', category: 'Çeşitli', rarity: RARITY.EPIC, scenarios: ['custom'], image: '/items/fate_dice.png' },
+
+  // ── Modern/Western/Sci-Fi/Korku senaryolarının MAĞAZA (Common) donanımı ──
+  // Bu senaryolarda kılıç/zırh satılmaz; dönemine uygun temel ekipman satılır.
+  { id: 'pistol_basic',    name: 'Basit Tabanca',              type: 'weapon', price: 75,  sellPrice: 37,  description: 'Menzilli silah, 1d8 delici hasar',     category: 'Silah', rarity: RARITY.COMMON, scenarios: ['western', 'realistic'], image: '/items/pistol_basic.png' },
+  { id: 'lasso',           name: 'Kement',                     type: 'weapon', price: 25,  sellPrice: 12,  description: 'Hedefi bağlar, 1d4 künt hasar',        category: 'Silah', rarity: RARITY.COMMON, scenarios: ['western'], image: '/items/lasso.png' },
+  { id: 'canteen',         name: 'Matara',                     type: 'misc',   price: 10,  sellPrice: 5,   description: 'Çölde su taşır',                       category: 'Çeşitli', rarity: RARITY.COMMON, scenarios: ['western', 'realistic', 'scifi'], image: '/items/canteen.png' },
+  { id: 'bandolier',       name: 'Fişeklik',                   type: 'armor',  price: 40,  sellPrice: 20,  description: '+1 AC, ekstra mermi taşır',            category: 'Zırh', rarity: RARITY.COMMON, scenarios: ['western', 'realistic'], image: '/items/bandolier.png' },
+
+  { id: 'laser_pistol',    name: 'Lazer Tabancası',            type: 'weapon', price: 85,  sellPrice: 42,  description: 'Menzilli silah, 1d8 enerji hasarı',    category: 'Silah', rarity: RARITY.COMMON, scenarios: ['scifi'], image: '/items/laser_pistol.png' },
+  { id: 'stim_injector',   name: 'Stim Enjektörü',             type: 'potion', price: 35,  sellPrice: 17,  description: '2d6+8 HP yeniler, anında etki',        category: 'Tüketici', rarity: RARITY.COMMON, scenarios: ['scifi'], image: '/items/stim_injector.png' },
+  { id: 'multi_tool',      name: 'Çok Amaçlı Tarayıcı',        type: 'misc',   price: 30,  sellPrice: 15,  description: 'Cihazları tarar ve onarır',            category: 'Çeşitli', rarity: RARITY.COMMON, scenarios: ['scifi'], image: '/items/multi_tool.png' },
+  { id: 'jumpsuit_vest',   name: 'Hafif Zırh Yeleği',          type: 'armor',  price: 65,  sellPrice: 32,  description: '+2 AC, hafif kompozit plaka',          category: 'Zırh', rarity: RARITY.COMMON, scenarios: ['scifi'], image: '/items/jumpsuit_vest.png' },
+  { id: 'shield_energy',   name: 'Enerji Kalkanı',             type: 'armor',  price: 120, sellPrice: 60,  description: '+3 AC, enerji bariyeri üretir',        category: 'Zırh', rarity: RARITY.RARE, scenarios: ['scifi'], image: '/items/shield_energy.png' },
+
+  { id: 'flashlight',      name: 'El Feneri',                  type: 'misc',   price: 20,  sellPrice: 10,  description: 'Karanlığı aydınlatır, pili sınırlı',   category: 'Çeşitli', rarity: RARITY.COMMON, scenarios: ['horror', 'realistic', 'scifi'], image: '/items/flashlight.png' },
+  { id: 'candles',         name: 'Mum Demeti',                 type: 'misc',   price: 8,   sellPrice: 4,   description: 'Loş ışık verir, ritüellerde kullanılır', category: 'Çeşitli', rarity: RARITY.COMMON, scenarios: ['horror'], image: '/items/candles.png' },
+  { id: 'holy_water',      name: 'Kutsal Su',                  type: 'potion', price: 30,  sellPrice: 15,  description: 'Karanlık varlıklara 2d6 hasar verir',  category: 'Tüketici', rarity: RARITY.COMMON, scenarios: ['horror'], image: '/items/holy_water.png' },
+  { id: 'crowbar',         name: 'Levye',                      type: 'weapon', price: 35,  sellPrice: 17,  description: '1d6 künt hasar, kapı açar',            category: 'Silah', rarity: RARITY.COMMON, scenarios: ['horror', 'realistic', 'scifi'], image: '/items/crowbar.png' },
+
+  { id: 'pocket_knife',    name: 'Çakı',                       type: 'weapon', price: 20,  sellPrice: 10,  description: '1d4 kesici hasar, her işe yarar',      category: 'Silah', rarity: RARITY.COMMON, scenarios: ['realistic', 'horror', 'scifi', 'western'], image: '/items/pocket_knife.png' },
+  { id: 'duct_tape',       name: 'Koli Bandı',                 type: 'misc',   price: 12,  sellPrice: 6,   description: 'Eşyaları onarır ve birleştirir',       category: 'Çeşitli', rarity: RARITY.COMMON, scenarios: ['realistic', 'horror', 'scifi'], image: '/items/duct_tape.png' },
+  { id: 'backpack_hiking', name: 'Sırt Çantası',               type: 'misc',   price: 45,  sellPrice: 22,  description: 'Taşıma kapasitesini artırır',          category: 'Çeşitli', rarity: RARITY.COMMON, scenarios: ['realistic', 'horror', 'scifi', 'western'], image: '/items/backpack_hiking.png' },
+  { id: 'binoculars',      name: 'Dürbün',                     type: 'misc',   price: 40,  sellPrice: 20,  description: 'Uzaktaki tehlikeleri görmeni sağlar',  category: 'Çeşitli', rarity: RARITY.COMMON, scenarios: ['realistic', 'horror', 'scifi', 'western'], image: '/items/binoculars.png' },
+  { id: 'heavy_jacket',    name: 'Kalın Ceket',                type: 'armor',  price: 50,  sellPrice: 25,  description: '+2 AC, soğuk ve darbelere karşı korur', category: 'Zırh', rarity: RARITY.COMMON, scenarios: ['horror', 'realistic'], image: '/items/heavy_jacket.png' },
+  { id: 'whiskey_bottle',  name: 'Viski Şişesi',               type: 'potion', price: 22,  sellPrice: 11,  description: '1d6+4 HP yeniler, cesaret verir',      category: 'Tüketici', rarity: RARITY.COMMON, scenarios: ['western', 'realistic'], image: '/items/whiskey_bottle.png' },
 ];
 
 module.exports = { CATALOG, RARITY };
