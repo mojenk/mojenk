@@ -210,7 +210,7 @@ export default function ScenarioPage({ user }) {
             <div
               style={{
                 width: '100%',
-                height: '7.5rem',
+                height: '6.5rem',
                 position: 'relative',
                 flexShrink: 0,
                 borderBottom: selected === s.id ? '2px solid var(--gold2)' : '2px solid transparent',
@@ -226,19 +226,19 @@ export default function ScenarioPage({ user }) {
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  background: 'linear-gradient(to top, rgba(10,8,6,0.92) 0%, rgba(10,8,6,0.15) 55%, rgba(10,8,6,0) 100%)',
+                  background: 'linear-gradient(to top, rgba(10,8,6,0.85) 0%, rgba(10,8,6,0.15) 55%, rgba(10,8,6,0) 100%)',
                 }}
               />
               <span
                 style={{
                   position: 'absolute',
-                  top: '0.5rem',
-                  right: '0.5rem',
+                  top: '0.45rem',
+                  right: '0.45rem',
                   fontSize: '0.6rem',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.06em',
-                  padding: '0.15rem 0.4rem',
+                  padding: '0.15rem 0.45rem',
                   borderRadius: '999px',
                   color: '#fff',
                   background: s.tagColor,
@@ -252,8 +252,8 @@ export default function ScenarioPage({ user }) {
                 <div
                   style={{
                     position: 'absolute',
-                    top: '0.5rem',
-                    left: '0.5rem',
+                    top: '0.45rem',
+                    left: '0.45rem',
                     color: 'var(--gold2)',
                     background: 'rgba(10,8,6,0.7)',
                     borderRadius: '999px',
@@ -265,28 +265,26 @@ export default function ScenarioPage({ user }) {
                   <Check size={14} />
                 </div>
               )}
+            </div>
+            <div style={{ padding: '0.65rem 0.9rem 0.8rem', background: 'rgba(10,8,6,0.55)' }}>
               <div
                 className="font-fantasy"
                 style={{
-                  position: 'absolute',
-                  left: '0.85rem',
-                  bottom: '0.5rem',
-                  right: '0.85rem',
                   color: selected === s.id ? 'var(--gold2)' : '#fff',
-                  fontSize: '1.05rem',
+                  fontSize: '1rem',
                   fontWeight: 700,
-                  textShadow: '0 2px 6px rgba(0,0,0,0.8)',
+                  marginBottom: '0.25rem',
+                  textShadow: '0 1px 4px rgba(0,0,0,0.8)',
                 }}
               >
                 {s.name}
               </div>
-            </div>
-            <div style={{ padding: '0.65rem 0.9rem 0.8rem' }}>
               <div
                 style={{
                   color: 'var(--text-dim)',
                   fontFamily: "'Crimson Text', serif",
-                  fontSize: '0.85rem',
+                  fontSize: '0.82rem',
+                  lineHeight: 1.35,
                 }}
               >
                 {s.desc}

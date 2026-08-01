@@ -24,7 +24,7 @@ import {
   Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX,
   BarChart3, ScrollText, Skull, X, AlertTriangle,
   CheckCircle2, XCircle, Dices, Zap, Wind, Bomb, Sparkles, RotateCcw, Target, Wand2,
-  Crown, ArrowLeft,
+  Crown, ArrowLeft, Users,
 } from 'lucide-react';
 
 const FOLLOWER_ROLE_META = {
