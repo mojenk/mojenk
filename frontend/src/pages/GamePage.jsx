@@ -19,13 +19,36 @@ import {
 } from '../utils/sounds';
 import { startAmbience, stopAmbience, cleanupAmbience, mapScenarioToAmbience, detectAmbienceFromScene } from '../utils/ambient';
 import { useLang, t, getLang } from '../utils/i18n';
+import { speak, stopSpeech, onSpeechChange, isTtsSupported, isTtsEnabled } from '../utils/tts';
 import { StatIcon, ItemIcon } from '../utils/icons';
 import {
   Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX,
   BarChart3, ScrollText, Skull, X, AlertTriangle,
   CheckCircle2, XCircle, Dices, Zap, Wind, Bomb, Sparkles, RotateCcw, Target, Wand2,
-  Crown, ArrowLeft, Users, Store, Backpack, Send,
+  Crown, ArrowLeft, Users, Store, Backpack, Send, Trophy, Flame, Scroll,
+  Package, Gem, BookOpen, Compass, Square,
 } from 'lucide-react';
+
+// Başarım rozeti görselleri (AchievementsPage ile aynı eşleme)
+const ACHIEVEMENT_ICONS = {
+  sword: Sword,
+  scroll: Scroll,
+  chest: Package,
+  gem: Gem,
+  coin: Coins,
+  campfire: Flame,
+  heart: Heart,
+  users: Users,
+  book: BookOpen,
+  star: Star,
+  compass: Compass,
+};
+const ACHIEVEMENT_TIER_COLORS = {
+  bronze: '#c07b4a',
+  silver: '#c9d1d9',
+  gold: '#e6b422',
+  legendary: '#b565d8',
+};
 
 const FOLLOWER_ROLE_META = {
   warrior: { labelKey: 'role_warrior', icon: Sword, color: 'text-slate-300' },
@@ -170,6 +193,9 @@ export default function GamePage({ user }) {
   const prevEnemyRef = useRef({ name: null, hp: null });
   const [levelUpShow, setLevelUpShow] = useState(false);
   const [followerJoinShow, setFollowerJoinShow] = useState(null);
+  const [achievementToast, setAchievementToast] = useState(null); // { id, tier, icon, xp, gold }
+  const [restBanner, setRestBanner] = useState(null); // { healed, followers, nightEvent } | { cooldownLeft }
+  const [speakingMsgId, setSpeakingMsgId] = useState(null);
   const [statSelectOpen, setStatSelectOpen] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [chatError, setChatError] = useState('');
@@ -343,6 +369,11 @@ export default function GamePage({ user }) {
             // Refresh NPC + quest lists after start
             getNpcs(characterId).then(d => setNpcs(d.npcs || [])).catch(() => {});
             getQuests(characterId).then(d => setQuests(d.quests || [])).catch(() => {});
+            // Achievements unlocked by starting a new scenario
+            const startAchievements = Array.isArray(data.events)
+              ? data.events.filter((e) => e.event === 'achievement_unlocked')
+              : [];
+            if (startAchievements.length) showAchievementQueue(startAchievements);
             setStarting(false);
           }).catch((err) => {
             setStarting(false);
@@ -376,6 +407,7 @@ export default function GamePage({ user }) {
     const handleVisibility = () => {
       if (document.hidden) {
         stopAmbience();
+        stopSpeech();
       } else if (sceneAmbience) {
         startAmbience(allEnemies.length > 0 ? 'combat' : sceneAmbience);
       }
@@ -456,6 +488,36 @@ export default function GamePage({ user }) {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Birden fazla başarım aynı anda açılırsa sırayla göster
+  const showAchievementQueue = useCallback((list) => {
+    playMagic();
+    list.forEach((achievement, index) => {
+      setTimeout(() => setAchievementToast(achievement), index * 3400);
+      setTimeout(() => setAchievementToast(null), index * 3400 + 3200);
+    });
+  }, []);
+
+  // Sesli anlatım: bir anlatıcı mesajını oku / durdur
+  const toggleSpeak = useCallback((message) => {
+    if (!isTtsSupported()) return;
+    playClick();
+    speak(message.content, { id: message.id, lang: getLang() });
+  }, []);
+
+  // TTS konuşma durumunu takip et; sayfadan çıkarken konuşmayı kes
+  useEffect(() => {
+    const unsubscribe = onSpeechChange(setSpeakingMsgId);
+    return () => { unsubscribe(); stopSpeech(); };
+  }, []);
+
+  // Otomatik seslendirme açıksa yeni anlatıcı mesajını oku
+  useEffect(() => {
+    if (!isTtsEnabled() || !isTtsSupported()) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== 'assistant' || !last.content) return;
+    speak(last.content, { id: last.id, lang: getLang() });
+  }, [messages]);
 
   const handleSend = async (messageText, diceResult = null) => {
     const charDead = character && (character.status === 'dead' || character.status === 'unconscious' || character.hp <= 0) || !!finalJourney;
@@ -572,6 +634,31 @@ export default function GamePage({ user }) {
           if (d.character) setCharacter(d.character);
           if (d.inventory) setInventory(d.inventory);
         }).catch(() => {});
+      }
+      // Camp / rest: show a recap banner and switch ambience to camp
+      const restEvent = Array.isArray(data.events)
+        ? data.events.find((e) => e.event === 'rest')
+        : null;
+      if (restEvent) {
+        if (restEvent.blocked) {
+          setRestBanner({ cooldownLeft: restEvent.cooldownLeft });
+        } else {
+          setRestBanner({
+            healed: restEvent.healed || 0,
+            followers: restEvent.followersHealed || 0,
+            nightEvent: restEvent.nightEvent || null,
+          });
+          playHeal();
+          setSceneAmbience('camp');
+        }
+        setTimeout(() => setRestBanner(null), 4500);
+      }
+      // Achievements unlocked during this turn
+      const unlockedAchievements = Array.isArray(data.events)
+        ? data.events.filter((e) => e.event === 'achievement_unlocked')
+        : [];
+      if (unlockedAchievements.length) {
+        showAchievementQueue(unlockedAchievements);
       }
       // Refresh NPC + quest lists after AI reply
       getNpcs(characterId).then(d => setNpcs(d.npcs || [])).catch(() => {});
@@ -1157,6 +1244,116 @@ export default function GamePage({ user }) {
                 artık yolculuğuna eşlik ediyor
               </p>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── ACHIEVEMENT UNLOCKED TOAST ── */}
+      <AnimatePresence>
+        {achievementToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -40, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -30, scale: 0.9 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+            style={{
+              position: 'fixed',
+              top: 'calc(env(safe-area-inset-top) + 4.5rem)',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 120,
+              width: 'min(92vw, 360px)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.7rem',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 12,
+              background: 'linear-gradient(135deg, rgba(30,24,16,0.97), rgba(48,36,18,0.97))',
+              border: `1px solid ${ACHIEVEMENT_TIER_COLORS[achievementToast.tier] || 'var(--gold)'}`,
+              boxShadow: '0 8px 28px rgba(0,0,0,0.55)',
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                flexShrink: 0,
+                borderRadius: 9,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: `${ACHIEVEMENT_TIER_COLORS[achievementToast.tier] || '#e6b422'}26`,
+                border: `1px solid ${ACHIEVEMENT_TIER_COLORS[achievementToast.tier] || 'var(--gold)'}`,
+              }}
+            >
+              {(() => {
+                const Icon = ACHIEVEMENT_ICONS[achievementToast.icon] || Trophy;
+                return <Icon size={22} color={ACHIEVEMENT_TIER_COLORS[achievementToast.tier] || '#e6b422'} />;
+              })()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.66rem', letterSpacing: '0.12em', color: 'var(--gold)', textTransform: 'uppercase' }}>
+                {t('achievement_unlocked_toast')}
+              </div>
+              <div className="font-fantasy" style={{ fontSize: '0.95rem', color: 'var(--text)', overflowWrap: 'anywhere' }}>
+                {t(`ach_${achievementToast.id}`)}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>
+                {t('achievements_reward', achievementToast.xp, achievementToast.gold)}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── CAMP / REST BANNER ── */}
+      <AnimatePresence>
+        {restBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.95 }}
+            style={{
+              position: 'fixed',
+              bottom: 'calc(env(safe-area-inset-bottom) + 6.5rem)',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 110,
+              width: 'min(92vw, 340px)',
+              padding: '0.7rem 0.9rem',
+              borderRadius: 12,
+              textAlign: 'center',
+              background: restBanner.cooldownLeft
+                ? 'rgba(60,30,20,0.94)'
+                : 'linear-gradient(135deg, rgba(26,20,14,0.96), rgba(56,32,14,0.96))',
+              border: `1px solid ${restBanner.cooldownLeft ? 'rgba(160,90,50,0.5)' : 'rgba(230,150,60,0.5)'}`,
+              boxShadow: '0 6px 22px rgba(0,0,0,0.5)',
+              pointerEvents: 'none',
+            }}
+          >
+            {restBanner.cooldownLeft ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', color: 'var(--text-dim)', fontSize: '0.82rem' }}>
+                <Flame size={15} color="#c07b4a" />
+                {t('rest_cooldown', restBanner.cooldownLeft)}
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', marginBottom: '0.25rem' }}>
+                  <Flame size={18} color="#ff9e40" />
+                  <span className="font-fantasy" style={{ color: 'var(--gold)', fontSize: '1rem' }}>{t('rest_title')}</span>
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#7fd47f' }}>{t('rest_healed', restBanner.healed)}</div>
+                {restBanner.followers > 0 && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{t('rest_followers', restBanner.followers)}</div>
+                )}
+                {restBanner.nightEvent && (
+                  <div style={{ fontSize: '0.75rem', color: '#c9a86a', marginTop: '0.3rem', fontStyle: 'italic' }}>
+                    {t(`night_${restBanner.nightEvent}`)}
+                  </div>
+                )}
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -2378,6 +2575,31 @@ export default function GamePage({ user }) {
                     >
                       KADER'İN SESİ
                     </span>
+                    {isTtsSupported() && (
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => toggleSpeak(msg)}
+                        title={speakingMsgId === msg.id ? t('tts_stop') : t('tts_play')}
+                        aria-label={speakingMsgId === msg.id ? t('tts_stop') : t('tts_play')}
+                        style={{
+                          marginLeft: 'auto',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 26,
+                          height: 26,
+                          padding: 0,
+                          borderRadius: 6,
+                          border: `1px solid ${speakingMsgId === msg.id ? 'var(--gold)' : 'var(--border)'}`,
+                          background: speakingMsgId === msg.id ? 'rgba(230,180,34,0.16)' : 'transparent',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {speakingMsgId === msg.id
+                          ? <Square size={12} color="var(--gold)" fill="var(--gold)" />
+                          : <Volume2 size={13} color="var(--text-dim)" />}
+                      </motion.button>
+                    )}
                   </div>
                 )}
                 {msg.role === 'user' && (

@@ -161,7 +161,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
           </motion.button>
         </div>
         {/* Nav row */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => { playClick(); navigate('/hall-of-fame'); }}
@@ -169,6 +169,14 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
             style={{ fontSize: '0.75rem', padding: '0.35rem 0.85rem', minHeight: '36px' }}
           >
             {t('hall_of_fame_btn')}
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={() => { playClick(); navigate('/achievements'); }}
+            className="btn-dark"
+            style={{ fontSize: '0.75rem', padding: '0.35rem 0.85rem', minHeight: '36px' }}
+          >
+            {t('achievements_btn')}
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.96 }}

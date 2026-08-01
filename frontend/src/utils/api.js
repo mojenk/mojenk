@@ -421,3 +421,7 @@ export async function syncPremium() {
   return safeFetch(`${API}/premium/sync`, { method: 'POST' });
 }
 
+
+export async function getAchievements() {
+  return safeFetch(`${API}/achievements`);
+}

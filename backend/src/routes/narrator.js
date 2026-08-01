@@ -9,7 +9,8 @@ const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 const { checkAndConsumeDailyTurn, claimDailyBonus } = require('../utils/dailyLimit');
-const { CATALOG, pickWeightedItem } = require('../data/items');
+const { CATALOG, pickWeightedItem, RARITY } = require('../data/items');
+const { bumpStats } = require('../utils/achievements');
 
 let genAI;
 async function getGenAI() {
@@ -42,6 +43,17 @@ const SUMMARY_INTERVAL = 10;
 const RECENT_KEEP = 8;
 const AI_TIMEOUT_MS = 30000;
 const MAX_RETRIES = 1;
+
+// ── Kamp / Dinlenme ──
+const REST_COOLDOWN_TURNS = 8;
+const NIGHT_EVENTS = [
+  'gece_nobeti_bozuldu',
+  'gizemli_yolcu',
+  'kabus_goruldu',
+  'yildizlarin_fisiltisi',
+  'kamp_atesi_soyledi',
+  'uzaktan_uluma',
+];
 
 async function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = [], narratorTone = null, scenarioId = null) {
   const mod = v => Math.floor((v - 10) / 2);
@@ -185,6 +197,7 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    {"event":"gold_change","value":10}
    {"event":"item_gained","name":"İksir","type":"potion","description":"2d6 HP iyileştirir"}
    {"event":"treasure_search"}
+   {"event":"rest"}
    {"event":"xp_gain","value":50}
    {"event":"enemy_spawn","name":"Goblin","max_hp":15,"ac":15}
    {"event":"enemy_damage","value":-5}
@@ -197,6 +210,7 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    gold_change: SADECE hikaye metninde altının açıkça bulunduğu/kazanıldığı/verildiği anlatıldığında kullan — anlatılmayan gold_change YASAK, oyuncu neden altın kazandığını mutlaka okumalı. Miktarlar KÜÇÜK tutulmalı: küçük bulgular (cepte birkaç sikke, küçük bahşiş) 2-15 altın, önemli bir ödül/görev tamamlama gibi büyük anlar 20-50 altın. Çok istisnai efsanevi bir hazine dışında asla 50'nin üzerine çıkma, asla -50/+50 aralığının dışına taşma.
    item_gained: Hikayede oyuncu bir eşya bulduğunda kullan. Eşya ismi SENARYOYA UYGUN olsun (vahşi batıda altıpatlar/tüfek, bilim-kurguda enerji silahı, ortaçağda kılıç/kalkan gibi). Eşyanın nadirlik/rarity değeri sen seçemezsin; backend senaryoya göre uygun nadirlikte eşya verir. Sadece genel bir eşya adı/türü belirt.
    treasure_search: Oyuncu bir sandık, torba, gizli bölme, ceset, raf vb. somut bir şeyi ARAYIP AÇTIĞINDA kullan. Eşyanın ne olduğunu SEN UYDURMA — bu event'i göndermen yeterli, hangi eşyanın çıktığını backend belirleyip bir sonraki yanıtına ekleyecek; sen sadece "torbayı karıştırdın, içinde bir şey buldun" gibi genel bir arama anlatımı yaz, spesifik eşya ismi/açıklaması yazma.
+   rest: Oyuncu kamp kurduğunda, ateş yakıp dinlendiğinde, uyuduğunda veya handa/tavernada gecelediğinde kullan. Backend karakterin ve yoldaşlarının canını yeniler; sen kamp sahnesini atmosferik anlat (ateş, gece sesleri, yoldaşlarla sohbet) ve SAVAŞ SIRASINDA veya düşman aktifken ASLA rest gönderme. Aynı yanıtta {"event":"scene_change","scene":"camp"} da göndermen tavsiye edilir. Backend bazen bir gece olayı (nöbet bozulması, gizemli yolcu, kabus, uzaktan uluma) tetikler — bir sonraki yanıtında bunu hikayeye doğal şekilde işle.
    follower_damage: Savaşta yanındaki bir yoldaş/takipçi düşmandan hasar aldığında MUTLAKA kullan (name=yoldaşın adı, value=negatif hasar miktarı, örn -4). Aynı zamanda hikayede yoldaşa ne olduğunu mutlaka 1 cümleyle anlat (örn: "Kaya, goblinin baltasıyla omzundan yaralandı"). Yoldaş HP'si düşman hasarı aldığında ASLA sabit kalmasın.
    item_used: Hikâyede karakter bir iksir veya tüketilebilir eşya kullandığında (örn: "Mana İksiri içtin") MUTLAKA kullan. Envanterden o eşyayı düşürür. İsim, envanterdeki eşya adıyla büyük/küçük harf duyarsız eşleşmeli.
    scene_change: Oyuncu farklı bir bölgeye/ortama geçtiğinde MUTLAKA kullan. Atmosfer sesi otomatik değişir. Kullanılabilir sahneler: forest, dungeon, tavern, city, cave, swamp, ocean, mountain, temple, camp, ruins, storm, desert. Oyuncu bir ormandan mağaraya girerse scene=cave, bir tavernaya girerse scene=tavern, denize açılırsa scene=ocean, fırtına koparsa scene=storm, çölde yürüyorsa scene=desert, bir tapınağa girerse scene=temple, gece kamp kurarsa scene=camp, harabelere girerse scene=ruins, bataklıktan geçerse scene=swamp, dağlara çıkarsa scene=mountain yaz. Bölge gerçekten değiştiğinde event gönder, her yanıtta değil.
@@ -399,6 +413,11 @@ async function applyEvents(aiReply, characterId, sessionId) {
   const session = sessionRef ? docData(await sessionRef.get()) : null;
   const scenario = session?.scenario || null;
 
+  // Başarım sayaçları — bu tur boyunca biriktirilip sonunda tek seferde yazılır.
+  const statDeltas = {};
+  const statMaxes = {};
+  const bump = (key, value = 1) => { statDeltas[key] = (statDeltas[key] || 0) + value; };
+
   function findCatalogMatchByName(name) {
     const lower = String(name).toLocaleLowerCase('tr');
     return CATALOG.find((entry) => String(entry.name).toLocaleLowerCase('tr') === lower)
@@ -447,6 +466,7 @@ async function applyEvents(aiReply, characterId, sessionId) {
 
     if (event.event === 'gold_change' && typeof event.value === 'number') {
       event.value = Math.max(-50, Math.min(50, Math.round(event.value)));
+      if (event.value > 0) bump('gold_earned', event.value);
       await characterRef.update({ gold: Math.max(0, (character.gold || 0) + event.value), updated_at: serverTimestamp() });
     }
 
@@ -474,7 +494,60 @@ async function applyEvents(aiReply, characterId, sessionId) {
           image: pick.image || null,
         };
         await addItemToInventory(item);
-        events.push({ event: 'item_gained', name: item.name, type: item.type, description: item.description, image: item.image, _auto_generated: true });
+        bump('treasures_found');
+        if (pick.rarity === RARITY.LEGENDARY) bump('legendary_items');
+        events.push({ event: 'item_gained', name: item.name, type: item.type, description: item.description, image: item.image, rarity: pick.rarity, _auto_generated: true });
+      }
+    }
+
+    // ── Kamp / Dinlenme ────────────────────────────────────────────────────
+    // AI, oyuncu kamp kurduğunda/dinlendiğinde {"event":"rest"} yayınlar.
+    // Kötüye kullanımı engellemek için oturum başına 8 turluk bir bekleme var.
+    if (event.event === 'rest' && sessionRef) {
+      const latestSession = docData(await sessionRef.get());
+      const turn = latestSession?.turn_count || 0;
+      const lastRestTurn = latestSession?.last_rest_turn;
+      const cooldownLeft = lastRestTurn == null ? 0 : Math.max(0, REST_COOLDOWN_TURNS - (turn - lastRestTurn));
+
+      if (cooldownLeft > 0) {
+        event.blocked = true;
+        event.cooldownLeft = cooldownLeft;
+      } else {
+        const maxHp = character.max_hp || 1;
+        const healed = Math.max(1, Math.round(maxHp * 0.35));
+        const newHp = Math.min(maxHp, (character.hp || 0) + healed);
+        await characterRef.update({ hp: newHp, status: newHp > 0 ? 'alive' : character.status, updated_at: serverTimestamp() });
+
+        // Yoldaşlar da dinlenir
+        const followerSnapshot = await characterRef.collection('npcs').where('is_follower', '==', 1).get();
+        if (!followerSnapshot.empty) {
+          const restBatch = firestore.batch();
+          followerSnapshot.docs.forEach((doc) => {
+            const follower = doc.data();
+            const followerMax = follower.follower_max_hp || 0;
+            if (!followerMax) return;
+            restBatch.update(doc.ref, {
+              follower_hp: Math.min(followerMax, (follower.follower_hp || 0) + Math.max(1, Math.round(followerMax * 0.35))),
+              follower_status: 'active',
+              follower_morale: Math.min(100, (follower.follower_morale || 60) + 5),
+              updated_at: serverTimestamp(),
+            });
+          });
+          await restBatch.commit();
+        }
+
+        await sessionRef.update({ last_rest_turn: turn, updated_at: serverTimestamp() });
+        bump('camps_rested');
+
+        // %30 ihtimalle gece olayı — anlatıcı bir sonraki turda işleyebilir
+        const nightEvent = Math.random() < 0.3
+          ? NIGHT_EVENTS[Math.floor(Math.random() * NIGHT_EVENTS.length)]
+          : null;
+        event.healed = newHp - (character.hp || 0);
+        event.hp = newHp;
+        event.maxHp = maxHp;
+        event.followersHealed = followerSnapshot.size;
+        event.nightEvent = nightEvent;
       }
     }
 
@@ -518,6 +591,7 @@ async function applyEvents(aiReply, characterId, sessionId) {
         current_enemy: remainingEnemies.length ? remainingEnemies : null,
         updated_at: serverTimestamp(),
       });
+      bump('enemies_killed', Math.max(1, enemies.length - remainingEnemies.length));
       const moraleEvents = await applyAllFollowersMoodEvent(characterId, 'victory').catch(() => []);
       moraleEvents.forEach((entry) => events.push(entry));
     }
@@ -542,12 +616,15 @@ async function applyEvents(aiReply, characterId, sessionId) {
     if (event.event === 'xp_gain' && typeof event.value === 'number') {
       const result = await grantXpAndLevelUp(characterId, Math.max(0, Math.min(100, Math.round(event.value))));
       result.followerEvents?.forEach((entry) => events.push(entry));
+      const leveled = docData(await characterRef.get());
+      if (leveled?.level) statMaxes.max_level = Math.max(statMaxes.max_level || 0, leveled.level);
     }
 
     if (event.event === 'death_save' && typeof event.success === 'boolean' && character.status === 'unconscious') {
       const successCount = (character.death_saves_success || 0) + (event.success ? 1 : 0);
       const failCount = (character.death_saves_fail || 0) + (event.success ? 0 : 1);
       if (successCount >= 3) {
+        bump('near_death_saves');
         await characterRef.update({ status: 'alive', hp: 1, death_saves_success: 0, death_saves_fail: 0, updated_at: serverTimestamp() });
       } else if (failCount >= 3) {
         await characterRef.update({ status: 'dead', death_saves_success: 0, death_saves_fail: 0, updated_at: serverTimestamp() });
@@ -561,6 +638,7 @@ async function applyEvents(aiReply, characterId, sessionId) {
       const existing = await findNpcByName(characterId, name);
       const ref = existing?.ref || characterRef.collection('npcs').doc();
       const race = event.race || existing?.data.race || 'İnsan';
+      if (!existing) bump('npcs_met');
       await ref.set({
         id: ref.id,
         name,
@@ -597,6 +675,7 @@ async function applyEvents(aiReply, characterId, sessionId) {
         }
         if (event.event === 'npc_recruit') {
           const maxHp = followerMaxHp(character.level);
+          if (!existing.data.is_follower) bump('followers_gained');
           Object.assign(updates, {
             is_follower: 1,
             relationship: 'friendly',
@@ -670,8 +749,10 @@ async function applyEvents(aiReply, characterId, sessionId) {
           const status = event.event === 'quest_complete' ? 'completed' : 'failed';
           await ref.update({ status, completed_at: serverTimestamp(), updated_at: serverTimestamp() });
           if (status === 'completed') {
+            bump('quests_completed');
             if (quest.reward_gold > 0) {
               const latest = docData(await characterRef.get());
+              bump('gold_earned', quest.reward_gold);
               await characterRef.update({ gold: (latest.gold || 0) + quest.reward_gold, updated_at: serverTimestamp() });
             }
             if (quest.reward_xp > 0) await grantXpAndLevelUp(characterId, quest.reward_xp);
@@ -680,7 +761,39 @@ async function applyEvents(aiReply, characterId, sessionId) {
       }
     }
   }
+
+  // ── Başarım değerlendirmesi ────────────────────────────────────────────
+  // Tüm sayaçlar tek seferde yazılır, açılan başarımların ödülü hemen verilir.
+  const latestCharacter = docData(await characterRef.get());
+  statMaxes.max_level = Math.max(statMaxes.max_level || 0, latestCharacter?.level || 1);
+  const achievementEvents = await grantAchievements(characterId, latestCharacter?.ownerUid, statDeltas, statMaxes);
+  achievementEvents.forEach((entry) => events.push(entry));
+
   return events;
+}
+
+/**
+ * Sayaçları günceller, yeni açılan başarımların XP/altın ödülünü karakter'e
+ * uygular ve frontend'e gönderilecek `achievement_unlocked` olaylarını döndürür.
+ */
+async function grantAchievements(characterId, uid, deltas = {}, maxes = {}) {
+  if (!uid) return [];
+  try {
+    const unlocked = await bumpStats(uid, deltas, maxes);
+    if (!unlocked.length) return [];
+    const characterRef = firestore.collection('characters').doc(characterId);
+    for (const achievement of unlocked) {
+      if (achievement.gold > 0) {
+        const latest = docData(await characterRef.get());
+        await characterRef.update({ gold: (latest?.gold || 0) + achievement.gold, updated_at: serverTimestamp() });
+      }
+      if (achievement.xp > 0) await grantXpAndLevelUp(characterId, achievement.xp).catch(() => {});
+    }
+    return unlocked;
+  } catch (achievementErr) {
+    console.error('Achievement error:', achievementErr.message);
+    return [];
+  }
 }
 
 router.use(verifyFirebaseToken);
@@ -784,6 +897,10 @@ router.post('/chat', async (req, res) => {
     } catch (eventErr) {
       console.error('Chat applyEvents error:', eventErr.message);
     }
+
+    // Her hamle "hikaye anlatıcısı" başarımlarını ilerletir
+    const moveAchievements = await grantAchievements(characterId, req.firebaseUser.uid, { moves_played: 1 });
+    moveAchievements.forEach((entry) => events.push(entry));
 
     const followerSnapshot = await characterRef.collection('npcs').where('is_follower', '==', 1).get();
     if (!followerSnapshot.empty) {
@@ -954,6 +1071,20 @@ router.post('/start', async (req, res) => {
       events = await applyEvents(intro, characterId, sessionId);
     } catch (eventErr) {
       console.error('Start applyEvents error:', eventErr.message);
+    }
+
+    // Farklı senaryo denemek "kâşif" başarımlarını ilerletir (senaryo başına bir kez)
+    try {
+      const userRef = firestore.collection('users').doc(req.firebaseUser.uid);
+      const userData = docData(await userRef.get()) || {};
+      const played = Array.isArray(userData.played_scenarios) ? userData.played_scenarios : [];
+      if (scenario && !played.includes(scenario)) {
+        await userRef.set({ played_scenarios: [...played, scenario], updated_at: serverTimestamp() }, { merge: true });
+        const scenarioAchievements = await grantAchievements(characterId, req.firebaseUser.uid, { scenarios_played: 1 });
+        scenarioAchievements.forEach((entry) => events.push(entry));
+      }
+    } catch (scenarioErr) {
+      console.error('Scenario achievement error:', scenarioErr.message);
     }
 
     await updateSessionProgress(sessionId, character, intro, []);

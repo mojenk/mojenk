@@ -9,6 +9,7 @@ const characterRoutes = require('./routes/character');
 const gameRoutes = require('./routes/game');
 const narratorRoutes = require('./routes/narrator');
 const shopRoutes = require('./routes/shop');
+const achievementRoutes = require('./routes/achievements');
 const adminRoutes = require('./routes/admin');
 const setupRoutes = require('./routes/setup');
 const announcementRoutes = require('./routes/announcements');
@@ -34,6 +35,7 @@ app.use('/api/game', gameRoutes);
 app.use('/api/narrator', narratorRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/premium', premiumRoutes);
+app.use('/api/achievements', achievementRoutes);
 app.get('/api/health', async (req, res) => {
   const { firestore } = require('./firestore');
   let firestoreStatus = 'unknown';

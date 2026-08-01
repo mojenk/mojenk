@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { isSoundEnabled, toggleSound, getSoundVolume, setVolume, playClick } from '../utils/sounds';
+import { isTtsSupported, isTtsEnabled, setTtsEnabled, getTtsRate, setTtsRate, stopSpeech } from '../utils/tts';
 import { getLang, setLang, useLang, t } from '../utils/i18n';
 import { claimAdmin, deleteAccount, updateCharacterSettings, syncPremium } from '../utils/api';
 import { isPurchasesAvailable, fetchOfferings, purchasePackage, restorePurchases } from '../utils/purchases';
@@ -42,6 +43,9 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
   const navigate = useNavigate();
   const [sound, setSound] = useState(isSoundEnabled());
   const [vol, setVol] = useState(getSoundVolume());
+  const [ttsSupported] = useState(isTtsSupported);
+  const [tts, setTts] = useState(isTtsEnabled);
+  const [ttsRate, setTtsRateState] = useState(getTtsRate);
   const [textSize, setTextSize] = useState(getTextSize());
   const [theme, setTheme] = useState(
     () => localStorage.getItem('dnd_theme') || 'dark'
@@ -156,6 +160,20 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     const v = parseFloat(e.target.value);
     setVolume(v);
     setVol(v);
+  };
+
+  const handleTtsToggle = () => {
+    const next = !tts;
+    setTtsEnabled(next);
+    setTts(next);
+    if (!next) stopSpeech();
+    playClick();
+  };
+
+  const handleTtsRate = (e) => {
+    const rate = parseFloat(e.target.value);
+    setTtsRate(rate);
+    setTtsRateState(rate);
   };
 
   const handleTextSize = (size) => {
@@ -287,6 +305,76 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
                 style={{ flex: 1, accentColor: 'var(--gold)', height: '20px' }}
               />
             </div>
+          )}
+        </div>
+
+        {/* Voice narration (TTS) */}
+        <div className="stone-card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
+          <h2
+            className="font-fantasy"
+            style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 1rem' }}
+          >
+            {t('tts_title')}
+          </h2>
+
+          {!ttsSupported ? (
+            <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
+              {t('tts_unsupported')}
+            </p>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tts ? '1rem' : 0 }}>
+                <div style={{ minWidth: 0 }}>
+                  <span style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text)', fontSize: '1rem' }}>
+                    {t('tts_title')}
+                  </span>
+                  <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.78rem', margin: '0.1rem 0 0' }}>
+                    {t('tts_desc')}
+                  </p>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.93 }}
+                  onClick={handleTtsToggle}
+                  aria-label={t('tts_title')}
+                  style={{
+                    width: '54px', height: '30px', borderRadius: '15px', flexShrink: 0,
+                    background: tts ? 'rgba(201,150,58,0.65)' : 'rgba(50,40,30,0.9)',
+                    border: `1px solid ${tts ? 'var(--gold)' : 'var(--border)'}`,
+                    cursor: 'pointer', position: 'relative',
+                    transition: 'background 0.25s, border-color 0.25s',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute', top: '4px',
+                      left: tts ? '26px' : '4px',
+                      width: '20px', height: '20px', borderRadius: '50%',
+                      background: tts ? 'var(--gold)' : '#555',
+                      transition: 'left 0.25s',
+                    }}
+                  />
+                </motion.button>
+              </div>
+
+              {tts && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                  <span
+                    style={{
+                      fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)',
+                      fontSize: '0.9rem', minWidth: '95px',
+                    }}
+                  >
+                    {t('tts_speed')} {ttsRate.toFixed(1)}x
+                  </span>
+                  <input
+                    type="range" min="0.6" max="1.5" step="0.1"
+                    value={ttsRate}
+                    onChange={handleTtsRate}
+                    style={{ flex: 1, accentColor: 'var(--gold)', height: '20px' }}
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
 
