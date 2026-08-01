@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { isSoundEnabled, toggleSound, getSoundVolume, setVolume, playClick } from '../utils/sounds';
-import { isTtsSupported, isTtsEnabled, setTtsEnabled, getTtsRate, setTtsRate, stopSpeech } from '../utils/tts';
+import {
+  isTtsSupported, isTtsEnabled, setTtsEnabled, getTtsRate, setTtsRate, stopSpeech,
+  getTtsPitch, setTtsPitch, getTtsGender, setTtsGender,
+  getPreferredVoiceUri, setPreferredVoiceUri, getAvailableVoices, speak,
+} from '../utils/tts';
 import { getLang, setLang, useLang, t } from '../utils/i18n';
 import { claimAdmin, deleteAccount, updateCharacterSettings, syncPremium } from '../utils/api';
 import { isPurchasesAvailable, fetchOfferings, purchasePackage, restorePurchases } from '../utils/purchases';
@@ -46,6 +50,10 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
   const [ttsSupported] = useState(isTtsSupported);
   const [tts, setTts] = useState(isTtsEnabled);
   const [ttsRate, setTtsRateState] = useState(getTtsRate);
+  const [ttsPitch, setTtsPitchState] = useState(getTtsPitch);
+  const [ttsGender, setTtsGenderState] = useState(getTtsGender);
+  const [ttsVoice, setTtsVoiceState] = useState(getPreferredVoiceUri);
+  const [ttsVoices, setTtsVoices] = useState([]);
   const [textSize, setTextSize] = useState(getTextSize());
   const [theme, setTheme] = useState(
     () => localStorage.getItem('dnd_theme') || 'dark'
@@ -75,6 +83,22 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
       if (id) setActiveCharacterId(id);
     } catch {}
   }, []);
+
+  // Cihazdaki TTS sesleri asenkron yüklenir; liste hazır olunca tazele.
+  useEffect(() => {
+    if (!ttsSupported) return undefined;
+    const refresh = () => setTtsVoices(getAvailableVoices(lang === 'en' ? 'en' : 'tr'));
+    refresh();
+    window.speechSynthesis.addEventListener?.('voiceschanged', refresh);
+    const retry = setTimeout(refresh, 600);
+    return () => {
+      clearTimeout(retry);
+      window.speechSynthesis.removeEventListener?.('voiceschanged', refresh);
+    };
+  }, [ttsSupported, lang]);
+
+  // Sayfadan ayrılırken test seslendirmesi devam etmesin
+  useEffect(() => () => stopSpeech(), []);
 
   useEffect(() => {
     if (isPremiumActive || !isPurchasesAvailable()) return;
@@ -174,6 +198,32 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     const rate = parseFloat(e.target.value);
     setTtsRate(rate);
     setTtsRateState(rate);
+  };
+
+  const handleTtsPitch = (e) => {
+    const pitch = parseFloat(e.target.value);
+    setTtsPitch(pitch);
+    setTtsPitchState(pitch);
+  };
+
+  const handleTtsGender = (gender) => {
+    setTtsGender(gender);
+    setTtsGenderState(gender);
+    // Elle seçilmiş ses varsa cinsiyet tercihini ezmesin diye sıfırla
+    setPreferredVoiceUri('');
+    setTtsVoiceState('');
+    playClick();
+  };
+
+  const handleTtsVoice = (e) => {
+    const uri = e.target.value;
+    setPreferredVoiceUri(uri);
+    setTtsVoiceState(uri);
+  };
+
+  const handleTtsTest = () => {
+    stopSpeech();
+    speak(t('tts_test_text'), { id: `tts-test-${Date.now()}`, lang: getLang() });
   };
 
   const handleTextSize = (size) => {
@@ -357,21 +407,116 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
               </div>
 
               {tts && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                  <span
-                    style={{
-                      fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)',
-                      fontSize: '0.9rem', minWidth: '95px',
-                    }}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {/* Ses cinsiyeti */}
+                  <div>
+                    <span
+                      style={{
+                        display: 'block', marginBottom: '0.5rem',
+                        fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.9rem',
+                      }}
+                    >
+                      {t('tts_gender')}
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {[
+                        { id: 'male', label: t('tts_male') },
+                        { id: 'female', label: t('tts_female') },
+                        { id: 'auto', label: t('tts_auto') },
+                      ].map((option) => (
+                        <motion.button
+                          key={option.id}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleTtsGender(option.id)}
+                          style={{
+                            flex: 1, minHeight: '40px', borderRadius: '8px', cursor: 'pointer',
+                            fontFamily: "'Crimson Text', serif", fontSize: '0.88rem',
+                            color: ttsGender === option.id ? 'var(--gold)' : 'var(--text-dim)',
+                            background: ttsGender === option.id ? 'rgba(201,150,58,0.16)' : 'rgba(0,0,0,0.28)',
+                            border: `1px solid ${ttsGender === option.id ? 'var(--gold)' : 'var(--border)'}`,
+                          }}
+                        >
+                          {option.label}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ses seçimi (cihazda yüklü sesler) */}
+                  {ttsVoices.length > 0 && (
+                    <div>
+                      <span
+                        style={{
+                          display: 'block', marginBottom: '0.5rem',
+                          fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.9rem',
+                        }}
+                      >
+                        {t('tts_voice')}
+                      </span>
+                      <select
+                        value={ttsVoice}
+                        onChange={handleTtsVoice}
+                        style={{
+                          width: '100%', minHeight: '42px', padding: '0 0.6rem', borderRadius: '8px',
+                          fontFamily: "'Crimson Text', serif", fontSize: '0.9rem',
+                          color: 'var(--text)', background: 'rgba(0,0,0,0.35)',
+                          border: '1px solid var(--border)',
+                        }}
+                      >
+                        <option value="">{t('tts_voice_auto')}</option>
+                        {ttsVoices.map((voice) => (
+                          <option key={voice.voiceURI} value={voice.voiceURI}>
+                            {voice.name} ({voice.lang})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Okuma hızı */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                    <span
+                      style={{
+                        fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)',
+                        fontSize: '0.9rem', minWidth: '105px',
+                      }}
+                    >
+                      {t('tts_speed')} {ttsRate.toFixed(2)}x
+                    </span>
+                    <input
+                      type="range" min="0.6" max="1.5" step="0.05"
+                      value={ttsRate}
+                      onChange={handleTtsRate}
+                      style={{ flex: 1, accentColor: 'var(--gold)', height: '20px' }}
+                    />
+                  </div>
+
+                  {/* Ses tonu (kalınlık) */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                    <span
+                      style={{
+                        fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)',
+                        fontSize: '0.9rem', minWidth: '105px',
+                      }}
+                    >
+                      {t('tts_pitch')} {ttsPitch.toFixed(2)}
+                    </span>
+                    <input
+                      type="range" min="0.5" max="1.3" step="0.05"
+                      value={ttsPitch}
+                      onChange={handleTtsPitch}
+                      style={{ flex: 1, accentColor: 'var(--gold)', height: '20px' }}
+                    />
+                  </div>
+
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleTtsTest}
+                    className="btn-dark"
+                    style={{ minHeight: '44px', fontSize: '0.9rem' }}
                   >
-                    {t('tts_speed')} {ttsRate.toFixed(1)}x
-                  </span>
-                  <input
-                    type="range" min="0.6" max="1.5" step="0.1"
-                    value={ttsRate}
-                    onChange={handleTtsRate}
-                    style={{ flex: 1, accentColor: 'var(--gold)', height: '20px' }}
-                  />
+                    {t('tts_test')}
+                  </motion.button>
                 </div>
               )}
             </>

@@ -367,6 +367,15 @@ const TR = {
   tts_unsupported: 'Bu cihaz sesli anlatımı desteklemiyor',
   tts_play: 'Sesli oku',
   tts_stop: 'Okumayı durdur',
+  tts_gender: 'Anlatıcı Sesi',
+  tts_male: 'Erkek',
+  tts_female: 'Kadın',
+  tts_auto: 'Otomatik',
+  tts_voice: 'Ses Seçimi',
+  tts_voice_auto: 'Otomatik (en iyi ses)',
+  tts_pitch: 'Ses Tonu',
+  tts_test: 'Sesi Dene',
+  tts_test_text: 'Karanlık ormanın derinliklerinden bir uğultu yükseldi. Kaderin, bu geceye yazılmayı bekliyor kahraman.',
 };
 
 const EN = {
@@ -736,6 +745,15 @@ const EN = {
   tts_unsupported: 'This device does not support voice narration',
   tts_play: 'Read aloud',
   tts_stop: 'Stop reading',
+  tts_gender: 'Narrator Voice',
+  tts_male: 'Male',
+  tts_female: 'Female',
+  tts_auto: 'Auto',
+  tts_voice: 'Voice Selection',
+  tts_voice_auto: 'Automatic (best voice)',
+  tts_pitch: 'Voice Pitch',
+  tts_test: 'Test Voice',
+  tts_test_text: 'A low rumble rose from the depths of the dark forest. Your fate waits to be written tonight, hero.',
 };
 
 const DICTS = { tr: TR, en: EN };
