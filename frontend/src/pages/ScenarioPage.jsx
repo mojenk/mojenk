@@ -23,6 +23,7 @@ import {
   Ghost,
   Rocket,
   Crosshair,
+  Sword,
 } from 'lucide-react';
 
 // Scenarios are built dynamically via t() in the component
@@ -186,112 +187,125 @@ export default function ScenarioPage({ user }) {
           padding: '1rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.65rem',
+          gap: '0.75rem',
         }}
       >
-        {SCENARIOS.map((s, i) => (
-          <motion.button
-            key={s.id}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => { playClick(); setSelected(s.id); }}
-            className={`select-card${selected === s.id ? ' active' : ''}`}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              width: '100%',
-              textAlign: 'left',
-              padding: 0,
-              overflow: 'hidden',
-            }}
-          >
-            <div
+        {SCENARIOS.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <motion.button
+              key={s.id}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => { playClick(); setSelected(s.id); }}
+              className={`select-card${selected === s.id ? ' active' : ''}`}
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.85rem',
                 width: '100%',
-                height: '6.5rem',
-                position: 'relative',
-                flexShrink: 0,
-                borderBottom: selected === s.id ? '2px solid var(--gold2)' : '2px solid transparent',
-                boxShadow: selected === s.id ? '0 2px 12px rgba(201,150,58,0.35)' : 'none',
+                textAlign: 'left',
+                padding: '0.75rem',
+                overflow: 'hidden',
+                minHeight: '5.5rem',
               }}
             >
-              <img
-                src={s.image}
-                alt={s.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
               <div
                 style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'linear-gradient(to top, rgba(10,8,6,0.85) 0%, rgba(10,8,6,0.15) 55%, rgba(10,8,6,0) 100%)',
-                }}
-              />
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '0.45rem',
-                  right: '0.45rem',
-                  fontSize: '0.6rem',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  padding: '0.15rem 0.45rem',
-                  borderRadius: '999px',
-                  color: '#fff',
-                  background: s.tagColor,
-                  boxShadow: '0 0 6px ' + s.tagColor + '66',
-                  fontFamily: "system-ui, sans-serif",
+                  width: '4rem',
+                  height: '4rem',
+                  borderRadius: '10px',
+                  flexShrink: 0,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  border: '1px solid rgba(139,106,20,0.35)',
+                  boxShadow: selected === s.id ? '0 0 12px rgba(201,150,58,0.35)' : 'none',
                 }}
               >
-                {s.tag}
-              </span>
-              {selected === s.id && (
+                <img
+                  src={s.image}
+                  alt={s.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+                {selected === s.id && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(10,8,6,0.55)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--gold2)',
+                    }}
+                  >
+                    <Check size={22} />
+                  </div>
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    position: 'absolute',
-                    top: '0.45rem',
-                    left: '0.45rem',
-                    color: 'var(--gold2)',
-                    background: 'rgba(10,8,6,0.7)',
-                    borderRadius: '999px',
-                    padding: '0.25rem',
                     display: 'flex',
                     alignItems: 'center',
+                    gap: '0.4rem',
+                    marginBottom: '0.25rem',
                   }}
                 >
-                  <Check size={14} />
+                  <Icon size={15} color={selected === s.id ? 'var(--gold2)' : 'var(--text-dim)'} />
+                  <span
+                    className="font-fantasy"
+                    style={{
+                      color: selected === s.id ? 'var(--gold2)' : '#fff',
+                      fontSize: '0.95rem',
+                      fontWeight: 700,
+                      textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                    }}
+                  >
+                    {s.name}
+                  </span>
                 </div>
-              )}
-            </div>
-            <div style={{ padding: '0.65rem 0.9rem 0.8rem', background: 'rgba(10,8,6,0.55)' }}>
-              <div
-                className="font-fantasy"
-                style={{
-                  color: selected === s.id ? 'var(--gold2)' : '#fff',
-                  fontSize: '1rem',
-                  fontWeight: 700,
-                  marginBottom: '0.25rem',
-                  textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-                }}
-              >
-                {s.name}
+                <div
+                  style={{
+                    color: 'var(--text-dim)',
+                    fontFamily: "'Crimson Text', serif",
+                    fontSize: '0.8rem',
+                    lineHeight: 1.35,
+                    marginBottom: '0.35rem',
+                  }}
+                >
+                  {s.desc}
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.55rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    padding: '0.12rem 0.4rem',
+                    borderRadius: '999px',
+                    color: '#fff',
+                    background: s.tagColor,
+                    boxShadow: '0 0 6px ' + s.tagColor + '66',
+                    fontFamily: "system-ui, sans-serif",
+                  }}
+                >
+                  {s.tag}
+                </span>
               </div>
-              <div
+              <Sword
+                size={16}
                 style={{
-                  color: 'var(--text-dim)',
-                  fontFamily: "'Crimson Text', serif",
-                  fontSize: '0.82rem',
-                  lineHeight: 1.35,
+                  color: selected === s.id ? 'var(--gold2)' : 'var(--text-dim)',
+                  opacity: selected === s.id ? 1 : 0.4,
+                  flexShrink: 0,
                 }}
-              >
-                {s.desc}
-              </div>
-            </div>
-          </motion.button>
-        ))}
+              />
+            </motion.button>
+          );
+        })}
       </div>
 
       {/* Bottom button */}
