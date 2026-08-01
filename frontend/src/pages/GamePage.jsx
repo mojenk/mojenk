@@ -63,7 +63,14 @@ function getRacePortrait(race) {
 }
 
 function WheelIcon({ size = 18 }) {
-  return <RotateCcw size={size} color="var(--gold)" />;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" color="var(--gold)">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="2" />
+      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+      <path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M19.07 4.93l-2.83 2.83M7.76 16.24L4.93 19.07" />
+    </svg>
+  );
 }
 
 // SVG arc helpers for the wheel of fate

@@ -1,0 +1,19 @@
+Konu: Beklenmeyen kredi tüketimi hakkında destek talebi
+
+Merhaba Verdent Destek Ekibi,
+
+"Kader'in Sesi" (com.kaderinsesi.app) adlı projemde Android uygulamasındaki Google ile Giriş
+özelliğinde yaşadığım bir hatayı gidermek için asistanla birden fazla oturumda çalıştım.
+Bu süreçte, sorunun ilk çözüm denemesinde tam olarak giderilmediğini fark ettim; hatayı
+netleştirmek ve düzeltmek için ek oturumlar ve build denemeleri gerekti. Bu durum
+beklenenden fazla kredi tüketimine yol açtı.
+
+Talebim: Bu ek düzeltme turları için harcanan krediler konusunda bir değerlendirme
+yapmanızı ve mümkünse telafi/iade sağlamanızı rica ediyorum.
+
+Proje: Kader'in Sesi
+Repo: mojenk/mojenk
+İlgili tarih/saat: 2026-07-26, 01:22 - 03:43 (UTC)
+
+Teşekkürler,
+[Adınız]
