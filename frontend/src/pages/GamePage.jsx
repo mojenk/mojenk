@@ -24,7 +24,7 @@ import {
   Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX,
   BarChart3, ScrollText, Skull, X, AlertTriangle,
   CheckCircle2, XCircle, Dices, Zap, Wind, Bomb, Sparkles, RotateCcw, Target, Wand2,
-  Crown, ArrowLeft, Users,
+  Crown, ArrowLeft, Users, Store, Backpack, Send,
 } from 'lucide-react';
 
 const FOLLOWER_ROLE_META = {
@@ -63,15 +63,7 @@ function getRacePortrait(race) {
 }
 
 function WheelIcon({ size = 18 }) {
-  return (
-    <img
-      src="/icons/wheel.png"
-      alt=""
-      width={size}
-      height={size}
-      style={{ objectFit: 'contain', filter: 'drop-shadow(0 0 3px rgba(201,150,58,0.4))' }}
-    />
-  );
+  return <RotateCcw size={size} color="var(--gold)" />;
 }
 
 // SVG arc helpers for the wheel of fate
@@ -1497,7 +1489,7 @@ export default function GamePage({ user }) {
                 position: 'relative',
               }}
             >
-              <img src="/icons/backpack.png" alt="" width={18} height={18} style={{ objectFit: 'contain' }} />
+              <Backpack size={18} color="var(--text)" />
               {inventory.length > 0 && (
                 <span style={{
                   position: 'absolute',
@@ -1536,7 +1528,7 @@ export default function GamePage({ user }) {
               }}
               title="Tüccar Dükkânı"
             >
-              <img src="/icons/shop.png" alt="" width={18} height={18} style={{ objectFit: 'contain' }} />
+              <Store size={18} color="var(--text)" />
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
@@ -2073,7 +2065,7 @@ export default function GamePage({ user }) {
             <div style={{ padding: '0.6rem 0.75rem', overflowY: 'auto', maxHeight: '44vh' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <span className="font-fantasy gold-text" style={{ fontSize: '0.85rem', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <img src="/icons/backpack.png" alt="" width={16} height={16} style={{ objectFit: 'contain' }} /> Envanter
+                  <Backpack size={16} color="var(--gold)" /> Envanter
                 </span>
                 <span style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.75rem' }}>
                   {inventory.length} eşya
@@ -2100,7 +2092,7 @@ export default function GamePage({ user }) {
               {inventory.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-dim)' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.3rem' }}>
-                    <img src="/icons/backpack.png" alt="" width={24} height={24} style={{ objectFit: 'contain', opacity: 0.6 }} />
+                    <Backpack size={24} color="var(--text-dim)" />
                   </div>
                   <p style={{ fontFamily: "'Crimson Text', serif", fontSize: '0.85rem', margin: 0 }}>Envanterin boş</p>
                 </div>
@@ -2843,7 +2835,7 @@ export default function GamePage({ user }) {
                   gap: '0.35rem',
                 }}
               >
-                <img src="/icons/dice.png" alt="" width={15} height={15} style={{ objectFit: 'contain' }} /> {diceRolling ? 'Zar atılıyor...' : `Otomatik ${lastDice?.stat || ''} Zarı`}
+                <Dices size={15} color="var(--gold)" /> {diceRolling ? 'Zar atılıyor...' : `Otomatik ${lastDice?.stat || ''} Zarı`}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.3rem' }}>
                 <DiceRoll
@@ -2976,7 +2968,7 @@ export default function GamePage({ user }) {
                     : combatResult.isCritical
                     ? <><Zap size={18} /> KRİTİK İSABET!</>
                     : combatResult.isHit
-                    ? <><img src="/icons/sword.png" alt="" width={18} height={18} style={{ objectFit: 'contain' }} /> İSABET!</>
+                    ? <><Sword size={18} color="var(--gold)" /> İSABET!</>
                     : <><Wind size={18} /> ISKALADI!</>}
                 </div>
 
@@ -3229,7 +3221,7 @@ export default function GamePage({ user }) {
             cursor: !input.trim() || loading || isDead ? 'not-allowed' : 'pointer',
           }}
         >
-          <img src="/icons/send.png" alt="" width={18} height={18} style={{ objectFit: 'contain' }} />
+          <Send size={18} color="var(--text)" />
         </motion.button>
       </div>
 

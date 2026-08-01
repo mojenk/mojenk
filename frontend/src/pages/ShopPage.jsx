@@ -77,7 +77,11 @@ export default function ShopPage({ user }) {
       ]);
       setCharacter(charData.character);
       setInventory(charData.inventory || []);
-      setCatalog(catData.items || []);
+      const items = catData.items || [];
+      setCatalog(items);
+      // Varsayılan olarak eşya olan ilk kategoriyi seç
+      const firstWithItems = CATEGORY_ORDER.find((cat) => items.some((i) => i.category === cat));
+      if (firstWithItems) setActiveCategory(firstWithItems);
     } catch (err) {
       showToast('Yüklenemedi', 'error');
     } finally {
@@ -319,6 +323,11 @@ export default function ShopPage({ user }) {
                   </motion.div>
                 );
               })}
+              {(categorized[activeCategory] || []).length === 0 && (
+                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif" }}>
+                  Bu kategoride satılacak eşya yok
+                </div>
+              )}
             </div>
           </div>
         </div>
