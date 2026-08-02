@@ -376,6 +376,12 @@ const TR = {
   tts_pitch: 'Ses Tonu',
   tts_test: 'Sesi Dene',
   tts_test_text: 'Karanlık ormanın derinliklerinden bir uğultu yükseldi. Kaderin, bu geceye yazılmayı bekliyor kahraman.',
+
+  // ── Reklam / günlük hak ──
+  daily_moves_left: 'Kalan günlük hamle hakkın',
+  ad_mobile_only: 'Ödüllü reklam yalnızca mobil uygulamada kullanılabilir.',
+  ad_not_verified: 'Reklamın izlendiği doğrulanamadı. Lütfen reklamı sonuna kadar izle.',
+  ad_failed: 'Reklam yüklenemedi veya tamamlanmadı. Lütfen tekrar dene.',
 };
 
 const EN = {
@@ -754,6 +760,12 @@ const EN = {
   tts_pitch: 'Voice Pitch',
   tts_test: 'Test Voice',
   tts_test_text: 'A low rumble rose from the depths of the dark forest. Your fate waits to be written tonight, hero.',
+
+  // ── Ads / daily limit ──
+  daily_moves_left: 'Daily moves remaining',
+  ad_mobile_only: 'Rewarded ads are only available in the mobile app.',
+  ad_not_verified: 'We could not verify that the ad was watched. Please watch it to the end.',
+  ad_failed: 'The ad could not be loaded or completed. Please try again.',
 };
 
 const DICTS = { tr: TR, en: EN };

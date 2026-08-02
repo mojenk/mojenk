@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward, claimDailyBonus, sendHeartbeat, spinWheel } from '../utils/api';
-import { showRewardedAd, showInterstitialAd } from '../utils/ads';
+import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward, claimDailyBonus, getDailyStatus, startAdSession, sendHeartbeat, spinWheel } from '../utils/api';
+import { showRewardedAd, showInterstitialAd, isRewardedAdAvailable } from '../utils/ads';
 import { useSound } from '../hooks/useSound';
 import TypewriterText from '../components/TypewriterText';
 import Particles from '../components/Particles';
@@ -137,35 +137,41 @@ function stripPlayerFacingArtifacts(text) {
     .trim();
 }
 
-// Parse A/B/C or 1/2/3 options from narrator text
-function parseOptions(text) {
+// Parse A/B/C or 1/2/3 options from narrator text.
+// Ayrıca seçeneklerin metinde nerede başladığını döndürür ki anlatım gövdesinden
+// kesilebilsin — aksi halde seçenekler hem düz yazı hem buton olarak görünür.
+function parseOptionsWithIndex(text) {
   const t = stripPlayerFacingArtifacts(stripEvents(text || ''));
-  const options = [];
+  const patterns = [
+    // **A)** metin
+    /\*\*\s*([A-Fa-f])\s*[)\.\-:]\s*\*\*\s*([^\n]+?)(?=\s*\*\*|$)/g,
+    // A) metin / A. metin / A: metin / A - metin (satır başı)
+    /(?:^|\n)\s*([A-Fa-f])\s*[)\.\-:]\s*(.+?)(?=(?:\n\s*[A-Fa-f]\s*[)\.\-:]\s*)|$)/g,
+    // 1. metin / 2) metin
+    /(?:^|\n)\s*(\d+)\s*[\.\-:]\s*(.+?)(?=(?:\n\s*\d+\s*[\.\-:]\s*)|$)/g,
+  ];
 
-  // Pattern: **A)** text, **B)** text, **C)** text (markdown bold)
-  const boldLetterRegex = /\*\*\s*([A-Fa-f])\s*[)\.\-:]\s*\*\*\s*([^\n]+?)(?=\s*\*\*|$)/g;
-  let m;
-  while ((m = boldLetterRegex.exec(t)) !== null) {
-    options.push({ label: m[1].toUpperCase(), text: m[2].trim() });
+  for (const regex of patterns) {
+    const options = [];
+    let firstIndex = -1;
+    let m;
+    regex.lastIndex = 0;
+    while ((m = regex.exec(t)) !== null) {
+      if (firstIndex === -1) {
+        // Eşleşme satır başı için "\n" içerebilir; gerçek seçenek başlangıcını bul
+        const offset = m[0].length - m[0].replace(/^[\s\n]+/, '').length;
+        firstIndex = m.index + offset;
+      }
+      options.push({ label: String(m[1]).toUpperCase(), text: m[2].trim() });
+    }
+    if (options.length > 0) return { options, body: t.slice(0, firstIndex).trimEnd(), full: t };
   }
 
-  if (options.length > 0) return options;
+  return { options: [], body: t, full: t };
+}
 
-  // Pattern: A) text / A. text / A: text / A - text (line-based)
-  const letterRegex = /(?:^|\n)\s*([A-Fa-f])\s*[)\.\-:]\s*(.+?)(?=(?:\n\s*[A-Fa-f]\s*[)\.\-:]\s*)|$)/g;
-  while ((m = letterRegex.exec(t)) !== null) {
-    options.push({ label: m[1].toUpperCase(), text: m[2].trim() });
-  }
-
-  if (options.length > 0) return options;
-
-  // Pattern: 1. text / 2. text / 1) text
-  const numberRegex = /(?:^|\n)\s*(\d+)\s*[\.\-:]\s*(.+?)(?=(?:\n\s*\d+\s*[\.\-:]\s*)|$)/g;
-  while ((m = numberRegex.exec(t)) !== null) {
-    options.push({ label: m[1], text: m[2].trim() });
-  }
-
-  return options;
+function parseOptions(text) {
+  return parseOptionsWithIndex(text).options;
 }
 
 export default function GamePage({ user }) {
@@ -225,7 +231,9 @@ export default function GamePage({ user }) {
   const [answeredMsgId, setAnsweredMsgId] = useState(null);
   const [turnRewardDue, setTurnRewardDue] = useState(false);
   const [turnAdLoading, setTurnAdLoading] = useState(false);
-  const [dailyLimitInfo, setDailyLimitInfo] = useState(null);
+  const [dailyLimitInfo, setDailyLimitInfo] = useState(null);   // sadece hak bitince modal
+  const [dailyStatus, setDailyStatus] = useState(null);          // header sayacı (her zaman)
+  const [adError, setAdError] = useState('');
   const [dailyBonusLoading, setDailyBonusLoading] = useState(false);
   const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [sceneAmbience, setSceneAmbience] = useState(null);
@@ -347,8 +355,9 @@ export default function GamePage({ user }) {
               playNarrator();
             }
             if (data.character) setCharacter(data.character);
+            // Başarılı yanıtta SADECE sayaç güncellenir — limit modalı açılmaz
             if (data.dailyLimit != null) {
-              setDailyLimitInfo({
+              setDailyStatus({
                 used: data.dailyUsed,
                 limit: data.dailyLimit,
                 bonusAdsUsed: data.bonusAdsUsed,
@@ -378,12 +387,14 @@ export default function GamePage({ user }) {
           }).catch((err) => {
             setStarting(false);
             if (err.status === 429 && err.data?.error === 'DAILY_LIMIT_REACHED') {
-              setDailyLimitInfo({
+              const limitInfo = {
                 used: err.data.dailyUsed,
                 limit: err.data.dailyLimit,
                 bonusAdsUsed: err.data.bonusAdsUsed,
                 maxBonusAds: err.data.maxBonusAds,
-              });
+              };
+              setDailyStatus(limitInfo);
+              setDailyLimitInfo(limitInfo);
             } else {
               setChatError(err.message || 'Macera başlatılamadı');
               playError();
@@ -505,6 +516,15 @@ export default function GamePage({ user }) {
     speak(message.content, { id: message.id, lang: getLang() });
   }, []);
 
+  // Günlük hamle hakkını sayfa açılışında hak harcamadan oku
+  const refreshDailyStatus = useCallback(() => {
+    getDailyStatus()
+      .then((status) => { if (status && !status.premium) setDailyStatus(status); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { refreshDailyStatus(); }, [refreshDailyStatus]);
+
   // TTS konuşma durumunu takip et; sayfadan çıkarken konuşmayı kes
   useEffect(() => {
     const unsubscribe = onSpeechChange(setSpeakingMsgId);
@@ -574,8 +594,9 @@ export default function GamePage({ user }) {
         playNarrator();
       }
       if (data.character) setCharacter(data.character);
+      // Başarılı yanıtta SADECE sayaç güncellenir — limit modalı açılmaz
       if (data.dailyLimit != null) {
-        setDailyLimitInfo({
+        setDailyStatus({
           used: data.dailyUsed,
           limit: data.dailyLimit,
           bonusAdsUsed: data.bonusAdsUsed,
@@ -666,12 +687,14 @@ export default function GamePage({ user }) {
     } catch (err) {
       setMessages((m) => m.filter((msg) => msg.id !== userMsgId));
       if (err.status === 429 && err.data?.error === 'DAILY_LIMIT_REACHED') {
-        setDailyLimitInfo({
+        const limitInfo = {
           used: err.data.dailyUsed,
           limit: err.data.dailyLimit,
           bonusAdsUsed: err.data.bonusAdsUsed,
           maxBonusAds: err.data.maxBonusAds,
-        });
+        };
+        setDailyStatus(limitInfo);
+        setDailyLimitInfo(limitInfo);
       } else {
         setChatError(err.message || 'Mesaj gönderilemedi');
         setLastFailedSend({ text, diceResult: finalDice });
@@ -1036,6 +1059,11 @@ export default function GamePage({ user }) {
               <p style={{ color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", lineHeight: 1.5 }}>
                 Maceraya devam etmek için kısa reklamı izle. Reklam tamamlandığında 10 altın da kazanacaksın.
               </p>
+              {adError && (
+                <p style={{ color: '#e53935', fontFamily: "'Crimson Text', serif", fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                  {adError}
+                </p>
+              )}
               <div style={{ marginTop: '1rem' }}>
                 <button
                   className="btn-gold"
@@ -1044,6 +1072,7 @@ export default function GamePage({ user }) {
                   onClick={async () => {
                     const currentTurn = session?.turn_count || 0;
                     setTurnAdLoading(true);
+                    setAdError('');
                     try {
                       await showRewardedAd(async () => {
                         const result = await applyAdReward(characterId, sessionId, currentTurn);
@@ -1052,9 +1081,10 @@ export default function GamePage({ user }) {
                           : previousCharacter);
                         localStorage.setItem(`dnd_turn_reward_${sessionId}_${currentTurn}`, 'claimed');
                         setTurnRewardDue(false);
-                        setTurnAdLoading(false);
                       });
-                    } catch {
+                    } catch (err) {
+                      setAdError(err?.code === 'AD_NOT_AVAILABLE' ? t('ad_mobile_only') : t('ad_failed'));
+                    } finally {
                       setTurnAdLoading(false);
                     }
                   }}
@@ -1090,11 +1120,20 @@ export default function GamePage({ user }) {
               <h3 className="font-fantasy" style={{ color: 'var(--gold)', margin: '0 0 0.5rem' }}>
                 Günlük Ücretsiz Hakkın Bitti
               </h3>
-              {dailyLimitInfo.bonusAdsUsed < dailyLimitInfo.maxBonusAds ? (
+              {!isRewardedAdAvailable() ? (
+                <p style={{ color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", lineHeight: 1.5 }}>
+                  {t('ad_mobile_only')}
+                </p>
+              ) : dailyLimitInfo.bonusAdsUsed < dailyLimitInfo.maxBonusAds ? (
                 <>
                   <p style={{ color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", lineHeight: 1.5 }}>
                     Bugünkü ücretsiz hamlelerin bitti. Kısa bir reklam izleyerek {15} ekstra hamle kazanabilirsin.
                   </p>
+                  {adError && (
+                    <p style={{ color: '#e53935', fontFamily: "'Crimson Text', serif", fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                      {adError}
+                    </p>
+                  )}
                   <div style={{ marginTop: '1rem' }}>
                     <button
                       className="btn-gold"
@@ -1102,13 +1141,29 @@ export default function GamePage({ user }) {
                       style={{ width: '100%', opacity: dailyBonusLoading ? 0.65 : 1 }}
                       onClick={async () => {
                         setDailyBonusLoading(true);
+                        setAdError('');
+                        // Bilet, reklam ekrana gelmeden hemen önce sunucudan alınır;
+                        // ödül yalnızca bu bilet + minimum izleme süresi doğrulanınca verilir.
+                        let ticketId = null;
                         try {
-                          await showRewardedAd(async () => {
-                            await claimDailyBonus();
-                            setDailyLimitInfo(null);
-                            setDailyBonusLoading(false);
-                          });
-                        } catch {
+                          await showRewardedAd(
+                            async () => {
+                              const result = await claimDailyBonus(ticketId);
+                              setDailyStatus({
+                                used: result.used,
+                                limit: result.limit,
+                                bonusAdsUsed: result.bonusAdsUsed,
+                                maxBonusAds: result.maxBonusAds,
+                              });
+                              setDailyLimitInfo(null);
+                            },
+                            async () => { ticketId = (await startAdSession()).ticketId; },
+                          );
+                        } catch (err) {
+                          setAdError(err?.status === 403
+                            ? t('ad_not_verified')
+                            : t('ad_failed'));
+                        } finally {
                           setDailyBonusLoading(false);
                         }
                       }}
@@ -1602,11 +1657,11 @@ export default function GamePage({ user }) {
             >
               <Star size={14} />{Math.min(100, Math.round(((character.experience ?? 0) / 300) * 100))}%
             </span>
-            {dailyLimitInfo && (
+            {dailyStatus && (
               <span
-                title="Günlük hamle hakkın"
+                title={t('daily_moves_left')}
                 style={{
-                  color: dailyLimitInfo.premium || (dailyLimitInfo.limit - dailyLimitInfo.used) > 5 ? 'var(--text-dim)' : '#e53935',
+                  color: dailyStatus.premium || (dailyStatus.limit - dailyStatus.used) > 5 ? 'var(--text-dim)' : '#e53935',
                   fontFamily: "'Crimson Text', serif",
                   fontSize: '0.78rem',
                   display: 'inline-flex',
@@ -1615,7 +1670,9 @@ export default function GamePage({ user }) {
                 }}
               >
                 <Dices size={14} />
-                {dailyLimitInfo.premium ? '∞' : `${Math.max(0, dailyLimitInfo.limit - dailyLimitInfo.used)}`}
+                {dailyStatus.premium || dailyStatus.limit == null
+                  ? '∞'
+                  : `${Math.max(0, dailyStatus.limit - dailyStatus.used)}/${dailyStatus.limit}`}
               </span>
             )}
             {/* Wheel of Fate button */}
@@ -2539,7 +2596,13 @@ export default function GamePage({ user }) {
           {/* Messages */}
           {messages.map((msg) => {
             const isNew = msg.id === lastMsgId && msg.role === 'assistant';
-            const options = msg.role === 'assistant' ? parseOptions(msg.content) : [];
+            const parsed = msg.role === 'assistant'
+              ? parseOptionsWithIndex(msg.content)
+              : { options: [], body: stripEvents(msg.content) };
+            const options = parsed.options;
+            // Seçenekler buton olarak gösterildiği için anlatım gövdesinden çıkarılır;
+            // gövde boş kalırsa (tüm mesaj seçenek listesiyse) tam metne geri dönülür.
+            const displayText = options.length > 0 && parsed.body ? parsed.body : (parsed.full || parsed.body);
             return (
               <motion.div
                 key={msg.id || msg.created_at}
@@ -2616,7 +2679,7 @@ export default function GamePage({ user }) {
                 )}
                 {isNew ? (
                   <TypewriterText
-                    text={stripEvents(msg.content)}
+                    text={displayText}
                     speed={14}
                     onComplete={() => setLastMsgId(null)}
                     style={{
@@ -2639,7 +2702,7 @@ export default function GamePage({ user }) {
                       whiteSpace: 'pre-wrap',
                     }}
                   >
-                    {stripEvents(msg.content)}
+                    {displayText}
                   </p>
                 )}
 

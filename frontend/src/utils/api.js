@@ -139,8 +139,21 @@ export async function applyAdReward(characterId, sessionId, turnCount) {
   });
 }
 
-export async function claimDailyBonus() {
-  return safeFetch(`${API}/narrator/daily-bonus`, { method: 'POST' });
+export async function claimDailyBonus(ticketId) {
+  return safeFetch(`${API}/narrator/daily-bonus`, {
+    method: 'POST',
+    body: JSON.stringify({ ticketId }),
+  });
+}
+
+// Günlük hamle durumunu hak harcamadan okur
+export async function getDailyStatus() {
+  return safeFetch(`${API}/narrator/daily-status`);
+}
+
+// Ödüllü reklam gösterimi öncesi tek kullanımlık bilet alır
+export async function startAdSession() {
+  return safeFetch(`${API}/narrator/ad-start`, { method: 'POST' });
 }
 
 export async function getSessions(characterId) {

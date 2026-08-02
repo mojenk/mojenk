@@ -48,9 +48,47 @@ async function checkAndConsumeDailyTurn(uid) {
   });
 }
 
+// Reads the current daily-turn status WITHOUT consuming a turn.
+// The game screen uses this to show the remaining-moves counter on load.
+async function getDailyStatus(uid) {
+  if (await isPremium(uid)) {
+    return { used: 0, limit: Infinity, bonusAdsUsed: 0, maxBonusAds: MAX_BONUS_ADS_PER_DAY, premium: true };
+  }
+  const doc = await firestore.collection('users').doc(uid).get();
+  const data = doc.exists ? doc.data() : {};
+  const isNewDay = data.dailyTurnDate !== getTodayIstanbul();
+  const bonusTurns = isNewDay ? 0 : (data.dailyBonusTurns || 0);
+  return {
+    used: isNewDay ? 0 : (data.dailyTurnsUsed || 0),
+    limit: FREE_DAILY_TURNS + bonusTurns,
+    bonusAdsUsed: isNewDay ? 0 : (data.dailyBonusAdsUsed || 0),
+    maxBonusAds: MAX_BONUS_ADS_PER_DAY,
+    premium: false,
+  };
+}
+
+// ── Ödüllü reklam doğrulaması ──────────────────────────────────────────────
+// Ödül SADECE sunucunun verdiği tek kullanımlık bir bilet ile alınabilir.
+// Bilet, reklam gösterilmeye başlandığında üretilir; ödül talebinde biletin
+// yaşı en az MIN_AD_WATCH_MS olmalıdır. Böylece reklam izlenmeden (veya
+// doğrudan API çağrılarak) ödül alınması engellenir.
+const MIN_AD_WATCH_MS = 5000;        // AdMob ödüllü reklamlarında minimum izleme süresi
+const MAX_AD_TICKET_AGE_MS = 15 * 60 * 1000;
+
+// Reklam gösterimi başlarken çağrılır; tek kullanımlık bilet üretir.
+async function startAdSession(uid) {
+  const ticketId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  await firestore.collection('users').doc(uid).set({
+    adTicketId: ticketId,
+    adTicketAt: Date.now(),
+    adTicketUsed: false,
+  }, { merge: true });
+  return { ticketId, minWatchMs: MIN_AD_WATCH_MS };
+}
+
 // Grants a rewarded-ad bonus of extra daily turns, up to MAX_BONUS_ADS_PER_DAY per day.
 // Premium users do not need rewarded ads.
-async function claimDailyBonus(uid) {
+async function claimDailyBonus(uid, ticketId) {
   if (await isPremium(uid)) {
     const error = new Error('Premium kullanıcılar reklama ihtiyaç duymaz');
     error.code = 'PREMIUM_NO_ADS';
@@ -61,6 +99,15 @@ async function claimDailyBonus(uid) {
   return firestore.runTransaction(async (transaction) => {
     const doc = await transaction.get(userRef);
     const data = doc.exists ? doc.data() : {};
+
+    // Reklam biletini doğrula — izlenmeden ödül alınmasını engeller
+    const invalidTicket = new Error('Reklam izlendiği doğrulanamadı');
+    invalidTicket.code = 'AD_NOT_VERIFIED';
+    if (!ticketId || data.adTicketId !== ticketId) throw invalidTicket;
+    if (data.adTicketUsed) throw invalidTicket;
+    const ticketAge = Date.now() - (data.adTicketAt || 0);
+    if (ticketAge < MIN_AD_WATCH_MS || ticketAge > MAX_AD_TICKET_AGE_MS) throw invalidTicket;
+
     const isNewDay = data.dailyTurnDate !== today;
     const used = isNewDay ? 0 : (data.dailyTurnsUsed || 0);
     const bonusTurns = isNewDay ? 0 : (data.dailyBonusTurns || 0);
@@ -79,6 +126,7 @@ async function claimDailyBonus(uid) {
       dailyTurnsUsed: used,
       dailyBonusTurns: newBonusTurns,
       dailyBonusAdsUsed: newBonusAdsUsed,
+      adTicketUsed: true,
     }, { merge: true });
     return {
       used,
@@ -122,6 +170,8 @@ async function claimWheelTurns(uid, amount) {
 
 module.exports = {
   checkAndConsumeDailyTurn,
+  getDailyStatus,
+  startAdSession,
   claimDailyBonus,
   claimWheelTurns,
   FREE_DAILY_TURNS,

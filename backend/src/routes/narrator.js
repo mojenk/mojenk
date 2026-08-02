@@ -8,7 +8,7 @@ const { getSetting } = require('../settings');
 const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
-const { checkAndConsumeDailyTurn, claimDailyBonus } = require('../utils/dailyLimit');
+const { checkAndConsumeDailyTurn, claimDailyBonus, getDailyStatus, startAdSession } = require('../utils/dailyLimit');
 const { CATALOG, pickWeightedItem, RARITY } = require('../data/items');
 const { bumpStats } = require('../utils/achievements');
 
@@ -946,13 +946,39 @@ router.post('/chat', async (req, res) => {
   }
 });
 
+// Günlük hamle durumunu hak harcamadan okur (hikaye ekranındaki sayaç için)
+router.get('/daily-status', async (req, res) => {
+  try {
+    const status = await getDailyStatus(req.firebaseUser.uid);
+    res.json({ ...status, limit: status.limit === Infinity ? null : status.limit });
+  } catch (err) {
+    console.error('Daily status error:', err.message);
+    res.status(500).json({ error: 'Durum okunamadı' });
+  }
+});
+
+// Ödüllü reklam gösterimi başlarken tek kullanımlık bilet üretir.
+// Ödül yalnızca bu bilet + minimum izleme süresi doğrulanınca verilir.
+router.post('/ad-start', async (req, res) => {
+  try {
+    const ticket = await startAdSession(req.firebaseUser.uid);
+    res.json(ticket);
+  } catch (err) {
+    console.error('Ad start error:', err.message);
+    res.status(500).json({ error: 'Reklam oturumu başlatılamadı' });
+  }
+});
+
 router.post('/daily-bonus', async (req, res) => {
   try {
-    const result = await claimDailyBonus(req.firebaseUser.uid);
+    const result = await claimDailyBonus(req.firebaseUser.uid, req.body?.ticketId);
     res.json({ ok: true, ...result });
   } catch (err) {
     if (err.code === 'MAX_BONUS_REACHED') {
       return res.status(409).json({ error: err.message });
+    }
+    if (err.code === 'AD_NOT_VERIFIED') {
+      return res.status(403).json({ error: err.message, code: 'AD_NOT_VERIFIED' });
     }
     console.error('Daily bonus error:', err.message);
     res.status(500).json({ error: 'Ödül uygulanamadı' });

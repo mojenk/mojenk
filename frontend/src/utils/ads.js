@@ -28,10 +28,25 @@ export async function initializeAdMob() {
   }
 }
 
-export async function showRewardedAd(onReward) {
+export function isRewardedAdAvailable() {
+  return isMobile();
+}
+
+/**
+ * Ödüllü reklam gösterir. Ödül SADECE AdMob'un `onRewardedVideoAdReward`
+ * olayı geldiğinde verilir — `showRewardVideoAd()` promise'i reklam
+ * gösterilir gösterilmez çözülebildiği için ona güvenilmez.
+ *
+ * @param {Function} onReward  Ödül hak edildiğinde çağrılır
+ * @param {Function} [onAdStart] Reklam ekrana gelmeden hemen önce çağrılır
+ *                               (sunucudan doğrulama bileti almak için)
+ */
+export async function showRewardedAd(onReward, onAdStart) {
   if (!isMobile()) {
-    await onReward({ type: 'gold', amount: 10 });
-    return;
+    // Web'de AdMob yok; ödül vermek istismara açık olurdu.
+    const error = new Error('Ödüllü reklam yalnızca mobil uygulamada kullanılabilir');
+    error.code = 'AD_NOT_AVAILABLE';
+    throw error;
   }
   await initializeAdMob();
 
@@ -84,11 +99,17 @@ export async function showRewardedAd(onReward) {
         adId: AD_UNITS.rewarded,
         isTesting: false,
       })
-        .then(() => AdMob.showRewardVideoAd())
-        .then((rewardItem) => {
-          if (rewardItem && !rewardEarned) {
-            rewardEarned = rewardItem;
-            settle();
+        .then(async () => {
+          // Reklam ekrana gelmeden hemen önce sunucudan doğrulama bileti al
+          if (onAdStart) await onAdStart();
+          return AdMob.showRewardVideoAd();
+        })
+        .then(() => {
+          // showRewardVideoAd() reklam gösterilir gösterilmez çözülebiliyor;
+          // ödülü burada VERMİYORUZ. Yalnızca reward/dismiss olayları karar verir.
+          if (!rewardEarned && !dismissed) {
+            // Kapanış sinyali gecikirse arayüz kilitlenmesin diye ek güvenlik
+            setTimeout(() => { dismissed = true; settle(); }, 90000);
           }
         })
         .catch((e) => {

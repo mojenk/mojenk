@@ -136,8 +136,8 @@ export default function ScenarioPage({ user }) {
 
   return (
     <div
-      className="stone-bg"
-      style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      className="stone-bg screen-full"
+      style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
       <Particles type="magic" count={10} />
       <div
@@ -267,7 +267,8 @@ export default function ScenarioPage({ user }) {
                       fontWeight: 700,
                       lineHeight: 1.2,
                       textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-                      overflowWrap: 'anywhere',
+                      overflowWrap: 'break-word',
+                      wordBreak: 'break-word',
                       minWidth: 0,
                     }}
                   >
@@ -281,7 +282,8 @@ export default function ScenarioPage({ user }) {
                     fontSize: '0.8rem',
                     lineHeight: 1.35,
                     marginBottom: '0.4rem',
-                    overflowWrap: 'anywhere',
+                    overflowWrap: 'break-word',
+                    wordBreak: 'break-word',
                   }}
                 >
                   {s.desc}
