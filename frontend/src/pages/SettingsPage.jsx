@@ -12,6 +12,7 @@ import { getLang, setLang, useLang, t } from '../utils/i18n';
 import { claimAdmin, deleteAccount, updateCharacterSettings, activatePremium, apiGetCurrentUser, verifyPurchase } from '../utils/api';
 import {
   isBillingAvailable,
+  isNative,
   initBilling,
   purchaseProduct,
   restoreBillingPurchases,
@@ -406,15 +407,15 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
               </ul>
 
               {!billingAvailable ? (
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  onClick={handleActivatePremium}
-                  disabled={purchasingId !== null}
-                  className="btn-primary"
-                  style={{ width: '100%', marginBottom: '0.75rem' }}
-                >
-                  {purchasingId === 'activate' ? t('premium_purchasing') : t('premium_activate_btn')}
-                </motion.button>
+                isNative() ? (
+                  <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center' }}>
+                    {t('premium_no_offerings')}
+                  </p>
+                ) : (
+                  <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', textAlign: 'center', marginBottom: '0.75rem' }}>
+                    {t('premium_web_only_mobile')}
+                  </p>
+                )
               ) : loadingProducts ? (
                 <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', textAlign: 'center' }}>
                   {t('premium_loading_offerings')}

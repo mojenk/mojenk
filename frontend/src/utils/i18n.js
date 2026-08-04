@@ -81,6 +81,7 @@ const TR = {
   premium_restore_none: 'Geri yüklenecek aktif bir satın alım bulunamadı',
   premium_activate_btn: 'Şimdi Premium Ol',
   premium_activate_success: 'Premium hesabın aktif edildi!',
+  premium_web_only_mobile: 'Premium satın alma şu an yalnızca Android uygulaması üzerinden yapılabilir. Lütfen Google Play Store\'dan Kader\'in Sesi\'ni indirin.',
 
   // Characters page
   welcome: 'Hoş geldin',
@@ -485,6 +486,7 @@ const EN = {
   premium_restore_none: 'No active purchase was found to restore',
   premium_activate_btn: 'Get Premium Now',
   premium_activate_success: 'Your Premium account is now active!',
+  premium_web_only_mobile: 'Premium purchases are currently only available through the Android app. Please download Kader\'in Sesi from the Google Play Store.',
 
   // Characters page
   welcome: 'Welcome',
