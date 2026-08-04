@@ -29,7 +29,14 @@ jobs:
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
-          echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > backend/service-account.json
+          # GitHub secret may be base64-encoded; decode it if it doesn't start with '{'
+          if echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | head -c 1 | grep -q '{'; then
+            echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > backend/service-account.json
+          else
+            echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | base64 -d > backend/service-account.json
+          fi
+          # Validate JSON
+          python3 -m json.tool backend/service-account.json > /dev/null
 
       - name: Set Firebase Functions secret
         uses: w9jds/firebase-action@master
