@@ -308,6 +308,7 @@ export default function GamePage({ user }) {
   }, []);
 
   // Banner ad: show for non-premium users, hide for premium / cleanup on unmount
+  const showBanner = !isPremiumUser && typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
   useEffect(() => {
     if (isPremiumUser) {
       hideBannerAd();
@@ -1030,6 +1031,7 @@ export default function GamePage({ user }) {
         background: '#0d0a05',
         overflow: 'hidden',
         position: 'relative',
+        paddingBottom: showBanner ? '60px' : 0,
       }}
     >
       <AnnouncementsBar />
