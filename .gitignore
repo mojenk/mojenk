@@ -23,6 +23,7 @@ backend/.gemini-key.local
 backend/.env.*
 !backend/.env.example
 !backend/.env.kaderin-sesi
+backend/service-account.json
 .verdent/uploads/
 .firebase/
 firebase-debug.log

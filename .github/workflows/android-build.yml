@@ -25,6 +25,20 @@ jobs:
           cd backend
           npm install --legacy-peer-deps
 
+      - name: Write Google Play service account
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > backend/service-account.json
+
+      - name: Set Firebase Functions secret
+        uses: w9jds/firebase-action@master
+        with:
+          args: functions:secrets:set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON --data-file=backend/service-account.json
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PROJECT_ID: kaderin-sesi
+
       - name: Build web assets (web)
         run: |
           cd frontend
