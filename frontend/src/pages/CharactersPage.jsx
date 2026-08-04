@@ -147,7 +147,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
                 margin: '0.15rem 0 0',
               }}
             >
-              Hoş geldin,{' '}
+              {t('welcome')},{' '}
               <span style={{ color: 'var(--gold2)' }}>{user.username}</span>
             </p>
           </div>
@@ -184,7 +184,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
             className="btn-dark"
             style={{ fontSize: '0.75rem', padding: '0.35rem 0.85rem', minHeight: '36px' }}
           >
-            Ayarlar
+            {t('settings_btn')}
           </motion.button>
           {isAdmin && (
             <motion.button
@@ -193,7 +193,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
               className="btn-dark"
               style={{ fontSize: '0.75rem', padding: '0.35rem 0.85rem', minHeight: '36px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
             >
-              Tanrı Modu
+              {t('admin_mode_btn')}
             </motion.button>
           )}
         </div>
@@ -217,7 +217,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
             className="font-fantasy"
             style={{ color: 'var(--text)', fontSize: '1.1rem', margin: 0 }}
           >
-            Kahramanlarım
+            {t('my_heroes')}
           </h2>
           <motion.button
             whileTap={{ scale: 0.96 }}
@@ -225,7 +225,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
             className="btn-gold"
             style={{ fontSize: '0.8rem', padding: '0.45rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
           >
-            <Sparkles size={14} /> Yeni Kahraman
+            <Sparkles size={14} /> {t('new_hero')}
           </motion.button>
         </div>
 
@@ -263,7 +263,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
                 fontSize: '0.8rem',
               }}
             >
-              Tamam
+              {t('ok')}
             </button>
           </motion.div>
         )}
@@ -319,10 +319,10 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
           >
             <div className="animate-float" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center', color: 'var(--gold)' }}><Castle size={56} /></div>
             <p style={{ color: 'var(--text)', fontFamily: "'Crimson Text', serif", fontSize: '1.1rem', marginBottom: '0.4rem' }}>
-              Henüz kahramanın yok
+              {t('no_heroes_yet')}
             </p>
             <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-              Efsaneni yazmaya hazır mısın?
+              {t('ready_to_write_legend')}
             </p>
             <motion.button
               whileTap={{ scale: 0.96 }}
@@ -330,7 +330,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
               className="btn-gold"
               style={{ fontSize: '1rem', padding: '0.75rem 2rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
             >
-              <Swords size={18} /> İlk Kahramanını Yarat
+              <Swords size={18} /> {t('create_first_hero')}
             </motion.button>
           </motion.div>
         ) : (

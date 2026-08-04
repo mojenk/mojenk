@@ -247,7 +247,7 @@ export default function CreateCharacterPage({ user }) {
             className="font-fantasy gold-text"
             style={{ fontSize: '1.15rem', margin: 0, letterSpacing: '0.08em' }}
           >
-            Kahraman Yarat
+            {t('create_hero_title')}
           </h1>
           <p
             style={{
@@ -300,7 +300,7 @@ export default function CreateCharacterPage({ user }) {
                   className="font-fantasy gold-text"
                   style={{ fontSize: '1.4rem', margin: 0 }}
                 >
-                  Kahramanının Adı
+                  {t('hero_name_title')}
                 </h2>
                 <p
                   style={{
@@ -310,7 +310,7 @@ export default function CreateCharacterPage({ user }) {
                     marginTop: '0.3rem',
                   }}
                 >
-                  Bu isim efsanelere yazılacak
+                  {t('hero_name_subtitle')}
                 </p>
               </div>
 
@@ -319,7 +319,7 @@ export default function CreateCharacterPage({ user }) {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Adını gir..."
+                placeholder={t('hero_name_placeholder')}
                 maxLength={30}
                 autoFocus
                 style={{
@@ -367,7 +367,7 @@ export default function CreateCharacterPage({ user }) {
                 className="font-fantasy gold-text"
                 style={{ fontSize: '1.3rem', textAlign: 'center', margin: '1.25rem 0 1rem' }}
               >
-                Irk Seç
+                {t('choose_race_title')}
               </h2>
               <div
                 style={{
@@ -455,7 +455,7 @@ export default function CreateCharacterPage({ user }) {
                       letterSpacing: '0.04em',
                     }}
                   >
-                    Geçmiş Hikayesi Seç
+                    {t('choose_backstory_title')}
                   </h3>
                   <p style={{
                     color: 'var(--text-dim)',
@@ -464,7 +464,7 @@ export default function CreateCharacterPage({ user }) {
                     textAlign: 'center',
                     marginBottom: '0.6rem',
                   }}>
-                    AI bu geçmişe göre hikayeyi şekillendirecek
+                    {t('choose_backstory_subtitle')}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {RACE_BACKSTORIES[race].map((bs) => {
@@ -526,7 +526,7 @@ export default function CreateCharacterPage({ user }) {
                 className="font-fantasy gold-text"
                 style={{ fontSize: '1.3rem', textAlign: 'center', margin: '1.25rem 0 1rem' }}
               >
-                Sınıf Seç
+                {t('choose_class_title')}
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                 {CLASSES.map((c) => {
@@ -594,7 +594,7 @@ export default function CreateCharacterPage({ user }) {
                 className="font-fantasy gold-text"
                 style={{ fontSize: '1.3rem', textAlign: 'center', margin: '1.25rem 0 0.5rem' }}
               >
-                Özellikler
+                {t('attributes_title')}
               </h2>
               {/* Points remaining */}
               <div
@@ -616,7 +616,7 @@ export default function CreateCharacterPage({ user }) {
                   alignItems: 'center',
                   gap: '0.35rem',
                 }}>
-                  <Target size={15} /> Kalan Puan: <strong style={{ fontSize: '1rem' }}>{pointsLeft}</strong> / {TOTAL_POINTS}
+                  <Target size={15} /> {t('points_remaining')}: <strong style={{ fontSize: '1rem' }}>{pointsLeft}</strong> / {TOTAL_POINTS}
                 </span>
               </div>
 
@@ -709,7 +709,7 @@ export default function CreateCharacterPage({ user }) {
                 className="input-dark"
                 value={background}
                 onChange={(e) => setBackground(e.target.value)}
-                placeholder="Geçmiş hikayesi (isteğe bağlı)..."
+                placeholder={t('backstory_placeholder')}
                 rows={3}
                 style={{
                   width: '100%',
@@ -760,7 +760,7 @@ export default function CreateCharacterPage({ user }) {
                       textAlign: 'center',
                     }}
                   >
-                    Nihai Özellikler
+                    {t('final_attributes_title')}
                   </div>
                   <div
                     style={{
