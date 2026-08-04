@@ -9,8 +9,15 @@ import {
   getPreferredVoiceUri, setPreferredVoiceUri, getAvailableVoices, speak,
 } from '../utils/tts';
 import { getLang, setLang, useLang, t } from '../utils/i18n';
-import { claimAdmin, deleteAccount, updateCharacterSettings, syncPremium, activatePremium, apiGetCurrentUser } from '../utils/api';
-import { isPurchasesAvailable, fetchOfferings, purchasePackage, restorePurchases } from '../utils/purchases';
+import { claimAdmin, deleteAccount, updateCharacterSettings, activatePremium, apiGetCurrentUser, verifyPurchase } from '../utils/api';
+import {
+  isBillingAvailable,
+  initBilling,
+  purchaseProduct,
+  restoreBillingPurchases,
+  getPurchaseToken,
+  getProductId,
+} from '../utils/billing';
 import { auth } from '../firebase';
 import Particles from '../components/Particles';
 import { Sparkles, Crown } from 'lucide-react';
@@ -43,6 +50,10 @@ const TONES = [
   { key: 'epic', labelKey: 'tone_epic_label', descKey: 'tone_epic_desc' },
 ];
 
+const PREMIUM_PRODUCT_ID = 'premium_lifetime';      // Tek seferlik ödeme
+const PREMIUM_SUBSCRIPTION_ID = 'premium_monthly';  // Aylık abonelik (kullanılacaksa)
+const USE_SUBSCRIPTION = false;                      // true yaparsan aylık abonelik kullanılır
+
 export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
   const navigate = useNavigate();
   const [sound, setSound] = useState(isSoundEnabled());
@@ -69,13 +80,16 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
   });
   const [activeCharacterId, setActiveCharacterId] = useState(null);
   const [toneSaving, setToneSaving] = useState(false);
-  const [offerings, setOfferings] = useState([]);
-  const [loadingOfferings, setLoadingOfferings] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
   const [purchasingId, setPurchasingId] = useState(null);
   const [restoring, setRestoring] = useState(false);
   const [premiumMsg, setPremiumMsg] = useState('');
 
   const isPremiumActive = Boolean(user?.is_premium);
+  const billingAvailable = isBillingAvailable();
+
+  const activeProductId = USE_SUBSCRIPTION ? PREMIUM_SUBSCRIPTION_ID : PREMIUM_PRODUCT_ID;
 
   useEffect(() => {
     try {
@@ -101,41 +115,55 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
   useEffect(() => () => stopSpeech(), []);
 
   useEffect(() => {
-    if (isPremiumActive || !isPurchasesAvailable()) return;
-    setLoadingOfferings(true);
-    fetchOfferings().then((result) => {
-      setOfferings(result.current?.availablePackages || []);
-      setLoadingOfferings(false);
-    });
-  }, [isPremiumActive]);
+    if (isPremiumActive || !billingAvailable) return;
+    setLoadingProducts(true);
+    initBilling([PREMIUM_PRODUCT_ID], USE_SUBSCRIPTION ? [PREMIUM_SUBSCRIPTION_ID] : [])
+      .then(() => {
+        setProducts(getBillingProducts());
+        setLoadingProducts(false);
+      })
+      .catch((err) => {
+        console.error('billing init error:', err);
+        setPremiumMsg(err.message || t('premium_purchase_error'));
+        setLoadingProducts(false);
+      });
+  }, [isPremiumActive, billingAvailable]);
 
-  const handlePurchase = async (pkg) => {
-    setPurchasingId(pkg.identifier);
+  const handleBillingPurchase = async (productId) => {
+    setPurchasingId(productId);
     setPremiumMsg('');
     try {
-      const active = await purchasePackage(pkg);
-      if (active) {
-        const result = await syncPremium();
-        onUserUpdate?.(result.user);
-        setPremiumMsg(t('premium_purchase_success'));
-        playClick();
-      } else {
-        setPremiumMsg(t('premium_purchase_error'));
+      const transaction = await purchaseProduct(productId);
+      const token = getPurchaseToken(transaction);
+      const pid = getProductId(transaction);
+      if (!token || !pid) {
+        throw new Error('Purchase token alınamadı');
       }
+      const result = await verifyPurchase(pid, token, USE_SUBSCRIPTION);
+      onUserUpdate?.(result.user);
+      setPremiumMsg(t('premium_purchase_success'));
+      playClick();
     } catch (err) {
-      if (err?.userCancelled) setPremiumMsg(t('premium_purchase_cancelled'));
-      else setPremiumMsg(err.message || t('premium_purchase_error'));
+      if (err?.userCancelled || err?.code === 'USER_CANCELED') {
+        setPremiumMsg(t('premium_purchase_cancelled'));
+      } else {
+        setPremiumMsg(err.message || t('premium_purchase_error'));
+      }
     }
     setPurchasingId(null);
   };
 
-  const handleRestore = async () => {
+  const handleBillingRestore = async () => {
     setRestoring(true);
     setPremiumMsg('');
     try {
-      const active = await restorePurchases();
-      if (active) {
-        const result = await syncPremium();
+      await restoreBillingPurchases();
+      // Try to verify the active premium purchase if found
+      const activeProduct = getBillingProducts().find((p) => p.id === activeProductId);
+      const transaction = activeProduct?.transactions?.[0] || activeProduct?.purchase?.transaction;
+      const token = transaction ? getPurchaseToken(transaction) : null;
+      if (token) {
+        const result = await verifyPurchase(activeProductId, token, USE_SUBSCRIPTION);
         onUserUpdate?.(result.user);
         setPremiumMsg(t('premium_purchase_success'));
       } else {
@@ -749,7 +777,7 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
                 <li>{t('premium_benefit_wheel_spins')}</li>
               </ul>
 
-              {!isPurchasesAvailable() ? (
+              {!billingAvailable ? (
                 <motion.button
                   whileTap={{ scale: 0.96 }}
                   onClick={handleActivatePremium}
@@ -759,21 +787,21 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
                 >
                   {purchasingId === 'activate' ? t('premium_purchasing') : t('premium_activate_btn')}
                 </motion.button>
-              ) : loadingOfferings ? (
+              ) : loadingProducts ? (
                 <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', textAlign: 'center' }}>
                   {t('premium_loading_offerings')}
                 </p>
-              ) : offerings.length === 0 ? (
+              ) : products.length === 0 ? (
                 <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center' }}>
                   {t('premium_no_offerings')}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '0.75rem' }}>
-                  {offerings.map((pkg) => (
+                  {products.map((product) => (
                     <motion.button
-                      key={pkg.identifier}
+                      key={product.id}
                       whileTap={{ scale: 0.97 }}
-                      onClick={() => handlePurchase(pkg)}
+                      onClick={() => handleBillingPurchase(product.id)}
                       disabled={purchasingId !== null}
                       style={{
                         width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', minHeight: '48px',
@@ -783,17 +811,17 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
                         cursor: purchasingId !== null ? 'wait' : 'pointer', opacity: purchasingId !== null ? 0.7 : 1,
                       }}
                     >
-                      <span>{pkg.product?.title || pkg.identifier}</span>
-                      <span>{purchasingId === pkg.identifier ? t('premium_purchasing') : (pkg.product?.priceString || '')}</span>
+                      <span>{product.title || product.id}</span>
+                      <span>{purchasingId === product.id ? t('premium_purchasing') : (product.prices?.[0]?.price || product.price || '')}</span>
                     </motion.button>
                   ))}
                 </div>
               )}
 
-              {isPurchasesAvailable() && (
+              {billingAvailable && (
                 <motion.button
                   whileTap={{ scale: 0.96 }}
-                  onClick={handleRestore}
+                  onClick={handleBillingRestore}
                   disabled={restoring}
                   className="btn-dark"
                   style={{ width: '100%', fontSize: '0.82rem', padding: '0.55rem 1rem' }}

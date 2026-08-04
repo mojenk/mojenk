@@ -3,6 +3,7 @@ const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 const { isPremium, grantPremium } = require('../utils/premium');
+const { verifyProduct, verifySubscription, isProductActive, isSubscriptionActive } = require('../utils/googlePlay');
 
 const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v1';
 const ENTITLEMENT_ID = 'premium';
@@ -55,7 +56,7 @@ router.get('/status', verifyFirebaseToken, async (req, res) => {
 });
 
 // RevenueCat dışı kendi ödeme/demo akışımız: kullanıcıyı premium yapar.
-// İleride gerçek bir ödeme gateway'i entegre edildiğinde buradan geçirilir.
+// Test/destek amaçlıdır. Canlıda gerçek ödeme verify-purchase üzerinden gider.
 router.post('/activate', verifyFirebaseToken, async (req, res) => {
   const uid = req.firebaseUser.uid;
   const { days = null } = req.body;
@@ -65,6 +66,44 @@ router.post('/activate', verifyFirebaseToken, async (req, res) => {
   } catch (err) {
     console.error('premium/activate error:', err.message);
     return res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// Google Play Billing doğrulama endpointi.
+// Uygulama satın alma sonrası purchaseToken + productId + isSubscription gönderir.
+router.post('/verify-purchase', verifyFirebaseToken, async (req, res) => {
+  const uid = req.firebaseUser.uid;
+  const { productId, purchaseToken, isSubscription = false } = req.body;
+
+  if (!productId || !purchaseToken) {
+    return res.status(400).json({ error: 'productId ve purchaseToken gerekli' });
+  }
+
+  try {
+    let active = false;
+    let premiumUntil = null;
+
+    if (isSubscription) {
+      const sub = await verifySubscription(productId, purchaseToken);
+      active = isSubscriptionActive(sub);
+      premiumUntil = sub?.expiryTimeMillis ? new Date(parseInt(sub.expiryTimeMillis, 10)) : null;
+    } else {
+      const product = await verifyProduct(productId, purchaseToken);
+      active = isProductActive(product);
+      // One-time lifetime purchase: no expiry
+      premiumUntil = null;
+    }
+
+    if (!active) {
+      return res.status(402).json({ error: 'Satın alım aktif değil veya doğrulanamadı' });
+    }
+
+    await applyPremiumUpdate(uid, { isPremium: true, premiumUntil }, 'google_play_billing');
+    const userDoc = docData(await firestore.collection('users').doc(uid).get());
+    return res.json({ ok: true, isPremium: true, premiumUntil, user: userDoc });
+  } catch (err) {
+    console.error('premium/verify-purchase error:', err.message);
+    return res.status(500).json({ error: 'Satın alım doğrulanırken hata oluştu', detail: err.message });
   }
 });
 

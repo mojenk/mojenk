@@ -146,6 +146,14 @@ export async function claimDailyBonus(ticketId) {
   });
 }
 
+export async function verifyPurchase(productId, purchaseToken, isSubscription = false) {
+  return safeFetch(`${API}/premium/verify-purchase`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productId, purchaseToken, isSubscription }),
+  });
+}
+
 export async function getPremiumStatus() {
   return safeFetch(`${API}/premium/status`);
 }

@@ -20,6 +20,7 @@
     "@capacitor/core": "^8.4.2",
     "@codetrix-studio/capacitor-google-auth": "^3.3.6",
     "@revenuecat/purchases-capacitor": "^13.2.4",
+    "cordova-plugin-purchase": "^13.18.0",
     "firebase": "^12.15.0",
     "framer-motion": "^10.18.0",
     "lucide-react": "^0.309.0",
