@@ -116,19 +116,50 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
   useEffect(() => () => stopSpeech(), []);
 
   useEffect(() => {
-    if (isPremiumActive || !billingAvailable) return;
+    if (isPremiumActive || !billingAvailable) return undefined;
     setLoadingProducts(true);
-    initBilling([PREMIUM_PRODUCT_ID], USE_SUBSCRIPTION ? [PREMIUM_SUBSCRIPTION_ID] : [])
-      .then(() => {
-        setProducts(getBillingProducts());
+    let timeoutId = null;
+    let retryCount = 0;
+
+    const updateProducts = () => {
+      const list = getBillingProducts();
+      setProducts(list);
+      if (list.length > 0) {
         setLoadingProducts(false);
+        return true;
+      }
+      return false;
+    };
+
+    const scheduleRetry = () => {
+      if (retryCount >= 6) {
+        setLoadingProducts(false);
+        return;
+      }
+      retryCount += 1;
+      timeoutId = setTimeout(() => {
+        if (!updateProducts()) scheduleRetry();
+      }, 1000);
+    };
+
+    initBilling(
+      [PREMIUM_PRODUCT_ID],
+      USE_SUBSCRIPTION ? [PREMIUM_SUBSCRIPTION_ID] : [],
+      { onProductUpdated: updateProducts }
+    )
+      .then(() => {
+        if (!updateProducts()) scheduleRetry();
       })
       .catch((err) => {
         console.error('billing init error:', err);
         setPremiumMsg(err.message || t('premium_purchase_error'));
         setLoadingProducts(false);
       });
-  }, [isPremiumActive, billingAvailable]);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isPremiumActive, billingAvailable, t]);
 
   const handleBillingPurchase = async (productId) => {
     setPurchasingId(productId);

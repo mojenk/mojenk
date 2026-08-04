@@ -48,11 +48,17 @@ function addWhenListener(store, event, callback) {
   return when[event](callback);
 }
 
-export async function initBilling(productIds = [], subscriptionIds = []) {
+export async function initBilling(productIds = [], subscriptionIds = [], callbacks = {}) {
   if (!isBillingAvailable()) {
     throw new Error('Billing is only available on Android native builds');
   }
-  if (initialized) return;
+  if (initialized) {
+    if (typeof callbacks.onProductUpdated === 'function') {
+      // Already initialized; immediately report current products and register callback for future updates.
+      products.forEach((p) => callbacks.onProductUpdated(p));
+    }
+    return;
+  }
 
   const store = getStore();
   const CdvPurchase = getCdvPurchase();
@@ -75,6 +81,9 @@ export async function initBilling(productIds = [], subscriptionIds = []) {
     const idx = products.findIndex((p) => p.id === product.id);
     if (idx >= 0) products[idx] = product;
     else products.push(product);
+    if (typeof callbacks.onProductUpdated === 'function') {
+      try { callbacks.onProductUpdated(product); } catch (e) { console.error(e); }
+    }
   });
 
   addWhenListener(store, 'approved', async (transaction) => {
