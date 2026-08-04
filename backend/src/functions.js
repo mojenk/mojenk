@@ -3,6 +3,7 @@ const { defineSecret } = require('firebase-functions/params');
 const app = require('./index');
 
 const geminiApiKey = defineSecret('GEMINI_API_KEY');
+const googlePlayServiceAccountJson = defineSecret('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON');
 // NOT: REVENUECAT_SECRET_KEY / REVENUECAT_WEBHOOK_AUTH henuz Secret Manager'da
 // olusturulmadigi icin gecici olarak devre disi birakildi (deploy'u bloke ediyordu).
 // RevenueCat API key'leri alinip `firebase functions:secrets:set` ile eklendikten
@@ -17,7 +18,12 @@ exports.api = onRequest(
     timeoutSeconds: 120,
     minInstances: 0,
     maxInstances: 10,
-    secrets: [geminiApiKey],
+    secrets: [geminiApiKey, googlePlayServiceAccountJson],
   },
-  app
+  (req, res) => {
+    // Inject secrets as environment variables so existing utils can read them.
+    process.env.GEMINI_API_KEY = geminiApiKey.value();
+    process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON = googlePlayServiceAccountJson.value();
+    return app(req, res);
+  }
 );

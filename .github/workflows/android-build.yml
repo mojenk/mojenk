@@ -1,4 +1,4 @@
-name: Android Release Build + Web Deploy
+name: Android Release Build + Web Deploy + Backend Deploy
 
 on:
   workflow_dispatch:
@@ -20,6 +20,11 @@ jobs:
           cd frontend
           npm install --legacy-peer-deps
 
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm install --legacy-peer-deps
+
       - name: Build web assets (web)
         run: |
           cd frontend
@@ -32,6 +37,14 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
           projectId: kaderin-sesi
+
+      - name: Deploy Firebase Functions
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only functions
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PROJECT_ID: kaderin-sesi
 
       - name: Build web assets (Android)
         run: |
