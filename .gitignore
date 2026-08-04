@@ -23,7 +23,7 @@ backend/.gemini-key.local
 backend/.env.*
 !backend/.env.example
 !backend/.env.kaderin-sesi
-.verdent/uploads/*.json
+.verdent/uploads/
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
@@ -36,6 +36,13 @@ backend/public/
 /public/
 releases/
 *.aab
+
+# Ad / marketing assets (large binary files, keep local or use release attachments)
+ad/
+
+# Python
+__pycache__/
+*.pyc
 
 # Logs
 *.log

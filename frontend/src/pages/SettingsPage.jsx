@@ -17,6 +17,7 @@ import {
   restoreBillingPurchases,
   getPurchaseToken,
   getProductId,
+  getBillingProducts,
 } from '../utils/billing';
 import { auth } from '../firebase';
 import Particles from '../components/Particles';
