@@ -8,6 +8,7 @@ const isMobile = () => {
 const AD_UNITS = {
   rewarded: 'ca-app-pub-8440103571072982/3242234831',
   interstitial: 'ca-app-pub-8440103571072982/9877448450',
+  banner: 'ca-app-pub-8440103571072982/7762662259',
 };
 
 let admobInitialized = false;
@@ -150,6 +151,42 @@ export async function showInterstitialAd() {
   }
 }
 
-// Banner fonksiyonları artık kullanılmıyor, geriye dönük uyumluluk için boş bırakıldı
-export async function showBannerAd() {}
-export async function hideBannerAd() {}
+let bannerVisible = false;
+
+export async function showBannerAd() {
+  if (!isMobile()) return;
+  if (bannerVisible) return;
+  await initializeAdMob();
+  try {
+    await AdMob.showBanner({
+      adId: AD_UNITS.banner,
+      position: 'bottom-center',
+      margin: 0,
+      isTesting: false,
+    });
+    bannerVisible = true;
+  } catch (e) {
+    console.warn('Banner ad failed:', e);
+  }
+}
+
+export async function hideBannerAd() {
+  if (!isMobile()) return;
+  if (!bannerVisible) return;
+  try {
+    await AdMob.hideBanner();
+    bannerVisible = false;
+  } catch (e) {
+    console.warn('Banner hide failed:', e);
+  }
+}
+
+export async function removeBannerAd() {
+  if (!isMobile()) return;
+  try {
+    await AdMob.removeBanner();
+  } catch (e) {
+    console.warn('Banner remove failed:', e);
+  }
+  bannerVisible = false;
+}

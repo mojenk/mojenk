@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCharacter, getMessages, getSession, sendChat, startAdventure, useItem, equipItem, dropItem, combatAttack, levelUpStat, finalDeathSave, getNpcs, getQuests, hireNpc, dismissNpc, abandonQuest, applyAdReward, claimDailyBonus, getDailyStatus, startAdSession, sendHeartbeat, spinWheel } from '../utils/api';
-import { showRewardedAd, showInterstitialAd, isRewardedAdAvailable } from '../utils/ads';
+import { showRewardedAd, showInterstitialAd, isRewardedAdAvailable, showBannerAd, hideBannerAd } from '../utils/ads';
 import { useSound } from '../hooks/useSound';
 import TypewriterText from '../components/TypewriterText';
 import Particles from '../components/Particles';
@@ -306,6 +306,18 @@ export default function GamePage({ user }) {
       setIsPremiumUser(Boolean(saved?.is_premium));
     } catch { setIsPremiumUser(false); }
   }, []);
+
+  // Banner ad: show for non-premium users, hide for premium / cleanup on unmount
+  useEffect(() => {
+    if (isPremiumUser) {
+      hideBannerAd();
+    } else {
+      showBannerAd();
+    }
+    return () => {
+      hideBannerAd();
+    };
+  }, [isPremiumUser]);
 
   useEffect(() => {
     sendHeartbeat().catch(() => {});
