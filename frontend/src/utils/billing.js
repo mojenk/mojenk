@@ -1,20 +1,21 @@
 // Google Play Billing wrapper via cordova-plugin-purchase
 // https://github.com/j3k0/cordova-plugin-purchase
 
-const PLATFORM = {
-  GOOGLE_PLAY: 'google-play',
-  APPLE_APPSTORE: 'apple-appstore',
-  TEST: 'test',
-};
-
 let initialized = false;
 let products = [];
 let errorHandler = null;
 
 function getStore() {
-  // Cordova plugin exposes CdvPurchase global
+  // Cordova plugin v13 exposes CdvPurchase global.
+  // Do NOT fall back to window.store; that is the legacy v11 API and its
+  // when() chain does not include unverified()/verified().
   const w = typeof window !== 'undefined' ? window : {};
-  return w.CdvPurchase?.store || w.store;
+  return w.CdvPurchase?.store;
+}
+
+function getCdvPurchase() {
+  const w = typeof window !== 'undefined' ? window : {};
+  return w.CdvPurchase;
 }
 
 function isNative() {
@@ -33,6 +34,20 @@ export function setBillingErrorHandler(handler) {
   errorHandler = handler;
 }
 
+function safeWhen(store) {
+  return typeof store.when === 'function' ? store.when() : null;
+}
+
+function addWhenListener(store, event, callback) {
+  const when = safeWhen(store);
+  if (!when) return null;
+  if (typeof when[event] !== 'function') {
+    console.warn(`[billing] store.when().${event} is not available`);
+    return null;
+  }
+  return when[event](callback);
+}
+
 export async function initBilling(productIds = [], subscriptionIds = []) {
   if (!isBillingAvailable()) {
     throw new Error('Billing is only available on Android native builds');
@@ -40,7 +55,12 @@ export async function initBilling(productIds = [], subscriptionIds = []) {
   if (initialized) return;
 
   const store = getStore();
-  const { Platform, ProductType } = window.CdvPurchase || {};
+  const CdvPurchase = getCdvPurchase();
+  const { Platform, ProductType } = CdvPurchase || {};
+
+  if (!ProductType || !Platform) {
+    throw new Error('CdvPurchase API not ready');
+  }
 
   store.register(
     productIds.map((id) => ({ id, type: ProductType.CONSUMABLE })),
@@ -49,39 +69,59 @@ export async function initBilling(productIds = [], subscriptionIds = []) {
     subscriptionIds.map((id) => ({ id, type: ProductType.PAID_SUBSCRIPTION })),
   );
 
-  store.when()
-    .productUpdated((product) => {
-      const idx = products.findIndex((p) => p.id === product.id);
-      if (idx >= 0) products[idx] = product;
-      else products.push(product);
-    })
-    .approved(async (transaction) => {
-      // Finish/acknowledge the transaction on the device.
-      // Backend verification happens after purchase() resolves.
-      try {
-        await transaction.finish();
-      } catch (err) {
-        console.error('transaction.finish error:', err);
-      }
-    })
-    .verified((receipt) => receipt.finish())
-    .unverified((receipt) => {
-      console.warn('Unverified receipt:', receipt);
-      if (errorHandler) errorHandler('unverified', receipt);
-    })
-    .error((err) => {
-      console.error('Billing error:', err);
-      if (errorHandler) errorHandler('error', err);
-    });
+  // Use individual listeners instead of chaining to avoid runtime issues if
+  // the deployed plugin build is missing any of the chained methods.
+  addWhenListener(store, 'productUpdated', (product) => {
+    const idx = products.findIndex((p) => p.id === product.id);
+    if (idx >= 0) products[idx] = product;
+    else products.push(product);
+  });
+
+  addWhenListener(store, 'approved', async (transaction) => {
+    // Finish/acknowledge the transaction on the device.
+    // Backend verification happens after purchase() resolves.
+    try {
+      await transaction.finish();
+    } catch (err) {
+      console.error('transaction.finish error:', err);
+    }
+  });
+
+  // verified/unverified only fire when a receipt validator is configured.
+  // They are not required for our manual backend verification flow, so skip
+  // them if the current plugin build does not expose them.
+  addWhenListener(store, 'verified', (receipt) => {
+    try {
+      receipt.finish();
+    } catch (err) {
+      console.error('receipt.finish error:', err);
+    }
+  });
+
+  addWhenListener(store, 'unverified', (receipt) => {
+    console.warn('Unverified receipt:', receipt);
+    if (errorHandler) errorHandler('unverified', receipt);
+  });
+
+  addWhenListener(store, 'error', (err) => {
+    console.error('Billing error:', err);
+    if (errorHandler) errorHandler('error', err);
+  });
 
   await store.initialize([Platform.GOOGLE_PLAY]);
+
+  // Refresh product metadata after initialization.
+  if (typeof store.update === 'function') {
+    await store.update();
+  }
+
   initialized = true;
 }
 
 export function getBillingProducts() {
   const store = getStore();
   if (!store) return [];
-  // v13 API: store.products array
+  // v13 API: store.products getter
   return store.products || [];
 }
 
@@ -98,22 +138,30 @@ export async function purchaseProduct(productId) {
   if (!offer) {
     throw new Error(`Product ${productId} has no offer`);
   }
-  const order = await store.order(offer);
-  // Wait for the approved/verified event and extract transaction
+  await store.order(offer);
+
+  // Wait for the approved event and extract transaction.
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error('Purchase timed out')), 60000);
 
-    const unsubscribe = store.when().approved((transaction) => {
+    let approvedUnsub = null;
+    let errorUnsub = null;
+
+    function cleanup() {
+      clearTimeout(timeout);
+      if (typeof approvedUnsub === 'function') approvedUnsub();
+      if (typeof errorUnsub === 'function') errorUnsub();
+    }
+
+    approvedUnsub = addWhenListener(store, 'approved', (transaction) => {
       if (transaction.products?.some((p) => p.id === productId)) {
-        clearTimeout(timeout);
-        unsubscribe();
+        cleanup();
         resolve(transaction);
       }
     });
 
-    store.when().error((err) => {
-      clearTimeout(timeout);
-      unsubscribe();
+    errorUnsub = addWhenListener(store, 'error', (err) => {
+      cleanup();
       reject(err);
     });
   });
@@ -123,13 +171,16 @@ export async function restoreBillingPurchases() {
   if (!isBillingAvailable()) return [];
   const store = getStore();
   await store.restorePurchases();
-  return products;
+  if (typeof store.update === 'function') {
+    await store.update();
+  }
+  return getBillingProducts();
 }
 
 export function getPurchaseToken(transaction) {
   // Native Google Play purchase token is usually inside transaction.nativePurchase
   const native = transaction?.nativePurchase;
-  return native?.purchaseToken || native?.purchaseToken || transaction?.purchaseToken || null;
+  return native?.purchaseToken || transaction?.purchaseToken || null;
 }
 
 export function getProductId(transaction) {
