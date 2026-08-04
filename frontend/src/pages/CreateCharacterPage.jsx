@@ -184,7 +184,7 @@ export default function CreateCharacterPage({ user }) {
         ...stats, background,
       });
       if (data.character) {
-        await showInterstitialAd();
+        if (!user?.is_premium) await showInterstitialAd();
         navigate('/', { replace: true, state: { createdCharacterId: data.character.id } });
       }
       else setError(data.error || 'Hata oluştu');

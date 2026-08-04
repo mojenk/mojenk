@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
+const { isPremium, grantPremium } = require('../utils/premium');
 
 const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v1';
 const ENTITLEMENT_ID = 'premium';
@@ -35,6 +36,37 @@ async function applyPremiumUpdate(uid, { isPremium, premiumUntil }, source) {
     premium_updated_by: source,
   }, { merge: true });
 }
+
+// Mevcut premium durumunu döner (RevenueCat'siz de çalışır).
+router.get('/status', verifyFirebaseToken, async (req, res) => {
+  const uid = req.firebaseUser.uid;
+  try {
+    const premium = await isPremium(uid);
+    const userDoc = docData(await firestore.collection('users').doc(uid).get());
+    return res.json({
+      ok: true,
+      isPremium: premium,
+      premiumUntil: userDoc?.premium_until || null,
+    });
+  } catch (err) {
+    console.error('premium/status error:', err.message);
+    return res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// RevenueCat dışı kendi ödeme/demo akışımız: kullanıcıyı premium yapar.
+// İleride gerçek bir ödeme gateway'i entegre edildiğinde buradan geçirilir.
+router.post('/activate', verifyFirebaseToken, async (req, res) => {
+  const uid = req.firebaseUser.uid;
+  const { days = null } = req.body;
+  try {
+    const result = await grantPremium(uid, days, 'self_activate');
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('premium/activate error:', err.message);
+    return res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
 
 // Called by the app right after a purchase/restore completes, so the user's
 // premium flag updates immediately instead of waiting for the webhook.

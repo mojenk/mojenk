@@ -9,7 +9,7 @@ import {
   getPreferredVoiceUri, setPreferredVoiceUri, getAvailableVoices, speak,
 } from '../utils/tts';
 import { getLang, setLang, useLang, t } from '../utils/i18n';
-import { claimAdmin, deleteAccount, updateCharacterSettings, syncPremium } from '../utils/api';
+import { claimAdmin, deleteAccount, updateCharacterSettings, syncPremium, activatePremium, apiGetCurrentUser } from '../utils/api';
 import { isPurchasesAvailable, fetchOfferings, purchasePackage, restorePurchases } from '../utils/purchases';
 import { auth } from '../firebase';
 import Particles from '../components/Particles';
@@ -145,6 +145,22 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
       setPremiumMsg(err.message || t('premium_purchase_error'));
     }
     setRestoring(false);
+  };
+
+  const handleActivatePremium = async () => {
+    setPurchasingId('activate');
+    setPremiumMsg('');
+    try {
+      await activatePremium();
+      const token = await auth.currentUser.getIdToken();
+      const current = await apiGetCurrentUser(token);
+      onUserUpdate?.(current.user);
+      setPremiumMsg(t('premium_activate_success'));
+      playClick();
+    } catch (err) {
+      setPremiumMsg(err.message || t('premium_purchase_error'));
+    }
+    setPurchasingId(null);
   };
 
   const handleDeleteAccount = async () => {
@@ -734,9 +750,15 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
               </ul>
 
               {!isPurchasesAvailable() ? (
-                <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center' }}>
-                  {t('premium_web_note')}
-                </p>
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleActivatePremium}
+                  disabled={purchasingId !== null}
+                  className="btn-primary"
+                  style={{ width: '100%', marginBottom: '0.75rem' }}
+                >
+                  {purchasingId === 'activate' ? t('premium_purchasing') : t('premium_activate_btn')}
+                </motion.button>
               ) : loadingOfferings ? (
                 <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', textAlign: 'center' }}>
                   {t('premium_loading_offerings')}

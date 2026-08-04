@@ -146,6 +146,18 @@ export async function claimDailyBonus(ticketId) {
   });
 }
 
+export async function getPremiumStatus() {
+  return safeFetch(`${API}/premium/status`);
+}
+
+export async function activatePremium(days = null) {
+  return safeFetch(`${API}/premium/activate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ days }),
+  });
+}
+
 // Günlük hamle durumunu hak harcamadan okur
 export async function getDailyStatus() {
   return safeFetch(`${API}/narrator/daily-status`);

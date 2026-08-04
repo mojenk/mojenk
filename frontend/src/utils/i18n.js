@@ -79,6 +79,8 @@ const TR = {
   premium_purchase_error: 'Satın alma tamamlanamadı, tekrar dene',
   premium_purchase_cancelled: 'Satın alma iptal edildi',
   premium_restore_none: 'Geri yüklenecek aktif bir satın alım bulunamadı',
+  premium_activate_btn: 'Şimdi Premium Ol',
+  premium_activate_success: 'Premium hesabın aktif edildi!',
 
   // Characters page
   my_heroes: 'KAHRAMANLARIM',
@@ -463,6 +465,8 @@ const EN = {
   premium_purchase_error: 'Purchase could not be completed, try again',
   premium_purchase_cancelled: 'Purchase cancelled',
   premium_restore_none: 'No active purchase was found to restore',
+  premium_activate_btn: 'Get Premium Now',
+  premium_activate_success: 'Your Premium account is now active!',
 
   // Characters page
   my_heroes: 'MY HEROES',
