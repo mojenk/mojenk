@@ -52,7 +52,7 @@ const TONES = [
 
 const PREMIUM_PRODUCT_ID = 'premium_lifetime';      // Tek seferlik ödeme
 const PREMIUM_SUBSCRIPTION_ID = 'premium_monthly';  // Aylık abonelik (kullanılacaksa)
-const USE_SUBSCRIPTION = false;                      // true yaparsan aylık abonelik kullanılır
+const USE_SUBSCRIPTION = true;                       // true = aylık abonelik kullanılır
 
 export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
   const navigate = useNavigate();
