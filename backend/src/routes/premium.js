@@ -3,7 +3,8 @@ const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 const { isPremium, grantPremium } = require('../utils/premium');
-const { verifyProduct, verifySubscription, isProductActive, isSubscriptionActive } = require('../utils/googlePlay');
+const { verifyProduct, verifySubscription, isProductActive, isSubscriptionActive, getServiceAccountJson } = require('../utils/googlePlay');
+const { google } = require('googleapis');
 
 const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v1';
 const ENTITLEMENT_ID = 'premium';
@@ -162,6 +163,60 @@ router.post('/webhook', async (req, res) => {
   } catch (err) {
     console.error('premium/webhook error:', err.message);
     return res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// Test endpoint: verifies the backend can connect to Google Play API and
+// that the configured service account can see the premium_monthly subscription.
+router.get('/test-connection', verifyFirebaseToken, async (req, res) => {
+  const results = {
+    serviceAccountConfigured: false,
+    serviceAccountClientEmail: null,
+    androidPublisherAuth: false,
+    subscriptionFound: false,
+    subscriptionDetails: null,
+    error: null,
+  };
+
+  try {
+    const credentials = getServiceAccountJson();
+    if (!credentials) {
+      throw new Error('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON not configured');
+    }
+    results.serviceAccountConfigured = true;
+    results.serviceAccountClientEmail = credentials.client_email || null;
+
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/androidpublisher'],
+    });
+    const androidpublisher = google.androidpublisher({ version: 'v3', auth });
+    results.androidPublisherAuth = true;
+
+    try {
+      const subRes = await androidpublisher.monetization.subscriptions.get({
+        packageName: process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.kaderinsesi.app',
+        productId: 'premium_monthly',
+      });
+      results.subscriptionFound = true;
+      results.subscriptionDetails = {
+        productId: subRes.data.productId,
+        packageName: subRes.data.packageName,
+        status: subRes.data.status,
+      };
+    } catch (subErr) {
+      results.error = {
+        step: 'subscription_lookup',
+        message: subErr.message,
+        code: subErr.code,
+      };
+    }
+
+    return res.json({ ok: true, results });
+  } catch (err) {
+    console.error('premium/test-connection error:', err.message);
+    results.error = { step: 'auth', message: err.message };
+    return res.status(500).json({ ok: false, results });
   }
 });
 
