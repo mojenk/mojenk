@@ -4,6 +4,23 @@
 let initialized = false;
 let products = [];
 let errorHandler = null;
+let logs = [];
+
+function log(level, message, data) {
+  const entry = { ts: Date.now(), level, message, data };
+  logs.push(entry);
+  if (logs.length > 200) logs.shift();
+  // eslint-disable-next-line no-console
+  console.log(`[billing] ${message}`, data || '');
+}
+
+export function getBillingLogs() {
+  return [...logs];
+}
+
+export function clearBillingLogs() {
+  logs = [];
+}
 
 function getStore() {
   // Cordova plugin v13 exposes CdvPurchase global.
@@ -49,12 +66,15 @@ function addWhenListener(store, event, callback) {
 }
 
 export async function initBilling(productIds = [], subscriptionIds = [], callbacks = {}) {
+  log('info', 'initBilling called', { productIds, subscriptionIds, isNative: isNative(), platform: typeof window !== 'undefined' ? window.Capacitor?.getPlatform?.() : null });
   if (!isBillingAvailable()) {
+    const reason = !isNative() ? 'not_native' : (!getStore() ? 'no_store' : 'unknown');
+    log('error', 'Billing not available', { reason });
     throw new Error('Billing is only available on Android native builds');
   }
   if (initialized) {
+    log('info', 'Billing already initialized');
     if (typeof callbacks.onProductUpdated === 'function') {
-      // Already initialized; immediately report current products and register callback for future updates.
       products.forEach((p) => callbacks.onProductUpdated(p));
     }
     return;
@@ -64,10 +84,14 @@ export async function initBilling(productIds = [], subscriptionIds = [], callbac
   const CdvPurchase = getCdvPurchase();
   const { Platform, ProductType } = CdvPurchase || {};
 
+  log('info', 'CdvPurchase check', { hasCdvPurchase: Boolean(CdvPurchase), hasPlatform: Boolean(Platform), hasProductType: Boolean(ProductType) });
+
   if (!ProductType || !Platform) {
+    log('error', 'CdvPurchase API not ready');
     throw new Error('CdvPurchase API not ready');
   }
 
+  log('info', 'Registering products', { consumables: productIds, subscriptions: subscriptionIds });
   store.register(
     productIds.map((id) => ({ id, type: ProductType.CONSUMABLE })),
   );
@@ -75,9 +99,8 @@ export async function initBilling(productIds = [], subscriptionIds = [], callbac
     subscriptionIds.map((id) => ({ id, type: ProductType.PAID_SUBSCRIPTION })),
   );
 
-  // Use individual listeners instead of chaining to avoid runtime issues if
-  // the deployed plugin build is missing any of the chained methods.
   addWhenListener(store, 'productUpdated', (product) => {
+    log('info', 'productUpdated', { id: product.id, title: product.title, state: product.state });
     const idx = products.findIndex((p) => p.id === product.id);
     if (idx >= 0) products[idx] = product;
     else products.push(product);
@@ -87,43 +110,49 @@ export async function initBilling(productIds = [], subscriptionIds = [], callbac
   });
 
   addWhenListener(store, 'approved', async (transaction) => {
-    // Finish/acknowledge the transaction on the device.
-    // Backend verification happens after purchase() resolves.
+    log('info', 'approved', { transactionId: transaction.transactionId });
     try {
       await transaction.finish();
     } catch (err) {
-      console.error('transaction.finish error:', err);
+      log('error', 'transaction.finish error', { message: err.message });
     }
   });
 
-  // verified/unverified only fire when a receipt validator is configured.
-  // They are not required for our manual backend verification flow, so skip
-  // them if the current plugin build does not expose them.
   addWhenListener(store, 'verified', (receipt) => {
-    try {
-      receipt.finish();
-    } catch (err) {
-      console.error('receipt.finish error:', err);
-    }
+    log('info', 'verified');
+    try { receipt.finish(); } catch (err) { log('error', 'receipt.finish error', { message: err.message }); }
   });
 
   addWhenListener(store, 'unverified', (receipt) => {
-    console.warn('Unverified receipt:', receipt);
+    log('warn', 'unverified', receipt);
     if (errorHandler) errorHandler('unverified', receipt);
   });
 
   addWhenListener(store, 'error', (err) => {
-    console.error('Billing error:', err);
+    log('error', 'billing error event', { message: err.message, code: err.code });
     if (errorHandler) errorHandler('error', err);
   });
 
-  await store.initialize([Platform.GOOGLE_PLAY]);
-
-  // Refresh product metadata after initialization.
-  if (typeof store.update === 'function') {
-    await store.update();
+  try {
+    log('info', 'Calling store.initialize', { platform: Platform.GOOGLE_PLAY });
+    await store.initialize([Platform.GOOGLE_PLAY]);
+    log('info', 'store.initialize done');
+  } catch (initErr) {
+    log('error', 'store.initialize failed', { message: initErr.message });
+    throw initErr;
   }
 
+  if (typeof store.update === 'function') {
+    try {
+      log('info', 'Calling store.update');
+      await store.update();
+      log('info', 'store.update done');
+    } catch (updateErr) {
+      log('error', 'store.update failed', { message: updateErr.message });
+    }
+  }
+
+  log('info', 'Billing initialized', { productCount: products.length });
   initialized = true;
 }
 
@@ -179,9 +208,19 @@ export async function purchaseProduct(productId) {
 export async function restoreBillingPurchases() {
   if (!isBillingAvailable()) return [];
   const store = getStore();
-  await store.restorePurchases();
+  log('info', 'Calling restorePurchases');
+  try {
+    await store.restorePurchases();
+    log('info', 'restorePurchases done');
+  } catch (err) {
+    log('error', 'restorePurchases failed', { message: err.message });
+  }
   if (typeof store.update === 'function') {
-    await store.update();
+    try {
+      await store.update();
+    } catch (err) {
+      log('error', 'store.update after restore failed', { message: err.message });
+    }
   }
   return getBillingProducts();
 }

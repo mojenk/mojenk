@@ -19,6 +19,7 @@ import {
   getPurchaseToken,
   getProductId,
   getBillingProducts,
+  getBillingLogs,
 } from '../utils/billing';
 import { auth } from '../firebase';
 import Particles from '../components/Particles';
@@ -87,6 +88,8 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
   const [purchasingId, setPurchasingId] = useState(null);
   const [restoring, setRestoring] = useState(false);
   const [premiumMsg, setPremiumMsg] = useState('');
+  const [billingLogs, setBillingLogs] = useState([]);
+  const [showLogs, setShowLogs] = useState(false);
 
   const isPremiumActive = Boolean(user?.is_premium);
   const billingAvailable = isBillingAvailable();
@@ -125,6 +128,7 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     const updateProducts = () => {
       const list = getBillingProducts();
       setProducts(list);
+      setBillingLogs(getBillingLogs());
       if (list.length > 0) {
         setLoadingProducts(false);
         return true;
@@ -135,6 +139,7 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     const scheduleRetry = () => {
       if (retryCount >= 6) {
         setLoadingProducts(false);
+        setBillingLogs(getBillingLogs());
         return;
       }
       retryCount += 1;
@@ -154,6 +159,7 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
       .catch((err) => {
         console.error('billing init error:', err);
         setPremiumMsg(err.message || t('premium_purchase_error'));
+        setBillingLogs(getBillingLogs());
         setLoadingProducts(false);
       });
 
@@ -191,7 +197,7 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     setPremiumMsg('');
     try {
       await restoreBillingPurchases();
-      // Try to verify the active premium purchase if found
+      setBillingLogs(getBillingLogs());
       const activeProduct = getBillingProducts().find((p) => p.id === activeProductId);
       const transaction = activeProduct?.transactions?.[0] || activeProduct?.purchase?.transaction;
       const token = transaction ? getPurchaseToken(transaction) : null;
@@ -204,6 +210,7 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
       }
     } catch (err) {
       setPremiumMsg(err.message || t('premium_purchase_error'));
+      setBillingLogs(getBillingLogs());
     }
     setRestoring(false);
   };
@@ -465,6 +472,33 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
             <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text)', fontSize: '0.82rem', marginTop: '0.75rem', textAlign: 'center' }}>
               {premiumMsg}
             </p>
+          )}
+
+          {billingAvailable && (
+            <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setShowLogs((s) => !s)}
+                style={{
+                  background: 'transparent', border: 'none', color: 'var(--gold)', fontSize: '0.7rem',
+                  fontFamily: "'Cinzel', serif", textDecoration: 'underline', cursor: 'pointer',
+                }}
+              >
+                {showLogs ? 'Debug loglarını gizle' : 'Debug loglarını göster'}
+              </button>
+            </div>
+          )}
+
+          {showLogs && (
+            <pre
+              style={{
+                marginTop: '0.75rem', padding: '0.75rem', borderRadius: '8px',
+                background: 'rgba(0,0,0,0.5)', color: 'var(--text-dim)', fontSize: '0.65rem',
+                maxHeight: '200px', overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              }}
+            >
+              {billingLogs.map((l) => `[${new Date(l.ts).toLocaleTimeString()}] ${l.level}: ${l.message} ${l.data ? JSON.stringify(l.data) : ''}`).join('\n') || 'Henüz log yok.'}
+            </pre>
           )}
         </div>
 
