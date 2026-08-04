@@ -220,4 +220,60 @@ router.get('/test-connection', verifyFirebaseToken, async (req, res) => {
   }
 });
 
+// Public test endpoint: verifies backend can connect to Google Play API.
+// No auth required; only exposes whether the service account is configured and
+// whether the configured subscription can be looked up.
+router.get('/public-test', async (req, res) => {
+  const results = {
+    serviceAccountConfigured: false,
+    serviceAccountClientEmail: null,
+    androidPublisherAuth: false,
+    subscriptionFound: false,
+    subscriptionDetails: null,
+    packageName: process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.kaderinsesi.app',
+    error: null,
+  };
+
+  try {
+    const credentials = getServiceAccountJson();
+    if (!credentials) {
+      throw new Error('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON not configured');
+    }
+    results.serviceAccountConfigured = true;
+    results.serviceAccountClientEmail = credentials.client_email || null;
+
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/androidpublisher'],
+    });
+    const androidpublisher = google.androidpublisher({ version: 'v3', auth });
+    results.androidPublisherAuth = true;
+
+    try {
+      const subRes = await androidpublisher.monetization.subscriptions.get({
+        packageName: results.packageName,
+        productId: 'premium_monthly',
+      });
+      results.subscriptionFound = true;
+      results.subscriptionDetails = {
+        productId: subRes.data.productId,
+        packageName: subRes.data.packageName,
+        status: subRes.data.status,
+      };
+    } catch (subErr) {
+      results.error = {
+        step: 'subscription_lookup',
+        message: subErr.message,
+        code: subErr.code,
+      };
+    }
+
+    return res.json({ ok: !results.error, results });
+  } catch (err) {
+    console.error('premium/public-test error:', err.message);
+    results.error = { step: 'auth', message: err.message };
+    return res.status(500).json({ ok: false, results });
+  }
+});
+
 module.exports = router;
