@@ -82,7 +82,7 @@ export async function initBilling(productIds = [], subscriptionIds = [], callbac
 
   const store = getStore();
   const CdvPurchase = getCdvPurchase();
-  const { Platform, ProductType } = CdvPurchase || {};
+  const { Platform, ProductType, LogLevel } = CdvPurchase || {};
 
   log('info', 'CdvPurchase check', { hasCdvPurchase: Boolean(CdvPurchase), hasPlatform: Boolean(Platform), hasProductType: Boolean(ProductType) });
 
@@ -91,12 +91,16 @@ export async function initBilling(productIds = [], subscriptionIds = [], callbac
     throw new Error('CdvPurchase API not ready');
   }
 
-  log('info', 'Registering products', { consumables: productIds, subscriptions: subscriptionIds });
+  // Enable maximum plugin logging so we can see native bridge activity.
+  try { store.verbosity = LogLevel.DEBUG; } catch (e) { log('warn', 'Could not set verbosity', { message: e.message }); }
+
+  const targetPlatform = Platform.GOOGLE_PLAY;
+  log('info', 'Registering products with platform', { platform: targetPlatform });
   store.register(
-    productIds.map((id) => ({ id, type: ProductType.CONSUMABLE })),
+    productIds.map((id) => ({ id, type: ProductType.CONSUMABLE, platform: targetPlatform })),
   );
   store.register(
-    subscriptionIds.map((id) => ({ id, type: ProductType.PAID_SUBSCRIPTION })),
+    subscriptionIds.map((id) => ({ id, type: ProductType.PAID_SUBSCRIPTION, platform: targetPlatform })),
   );
 
   addWhenListener(store, 'productUpdated', (product) => {
@@ -143,7 +147,7 @@ export async function initBilling(productIds = [], subscriptionIds = [], callbac
   }
 
   // Try to refresh product metadata multiple ways.
-  const refreshMethods = ['update', 'refresh', 'restorePurchases'];
+  const refreshMethods = ['update', 'restorePurchases'];
   for (const method of refreshMethods) {
     if (typeof store[method] === 'function') {
       try {
@@ -156,11 +160,11 @@ export async function initBilling(productIds = [], subscriptionIds = [], callbac
     }
   }
 
-  // Direct product lookup fallback.
+  // Direct product lookup fallback (include platform for v13 lookup).
   for (const id of [...productIds, ...subscriptionIds]) {
     try {
-      const p = store.get(id);
-      log('info', `store.get('${id}') result`, { found: Boolean(p), state: p?.state });
+      const p = store.get(id, targetPlatform);
+      log('info', `store.get('${id}', platform) result`, { found: Boolean(p), state: p?.state, title: p?.title });
       if (p && !products.find((x) => x.id === id)) {
         products.push(p);
         if (typeof callbacks.onProductUpdated === 'function') {
@@ -168,7 +172,7 @@ export async function initBilling(productIds = [], subscriptionIds = [], callbac
         }
       }
     } catch (err) {
-      log('warn', `store.get('${id}') failed`, { message: err.message });
+      log('warn', `store.get('${id}', platform) failed`, { message: err.message });
     }
   }
 
