@@ -1582,7 +1582,7 @@ export default function GamePage({ user }) {
             />
           </div>
 
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, maxWidth: 'calc(100% - 6rem)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <span
                 className="font-fantasy gold-text"
@@ -1646,7 +1646,7 @@ export default function GamePage({ user }) {
             </div>
           </div>
 
-          <div className="game-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          <div className="game-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0, maxWidth: '60%', overflowX: 'auto', scrollbarWidth: 'none' }}>
             <span
               style={{
                 color: 'var(--gold)',
@@ -1724,8 +1724,8 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); toggleSound(); }}
               style={{
-                width: '2.1rem',
-                height: '2.1rem',
+                width: '2rem',
+                height: '2rem',
                 borderRadius: '8px',
                 background: 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
@@ -1748,8 +1748,8 @@ export default function GamePage({ user }) {
               }}
               title={character.hp <= 0 ? 'Baygınken envantere erişilemez' : currentEnemy ? 'Savaşta envantere erişilemez' : 'Çanta'}
               style={{
-                width: '2.1rem',
-                height: '2.1rem',
+                width: '2rem',
+                height: '2rem',
                 borderRadius: '8px',
                 background: showBag
                   ? 'rgba(201,150,58,0.25)'
@@ -1790,8 +1790,8 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); navigate(`/shop/${characterId}?scenario=${session?.scenario || scenario || ''}`); }}
               style={{
-                width: '2.1rem',
-                height: '2.1rem',
+                width: '2rem',
+                height: '2rem',
                 borderRadius: '8px',
                 background: 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
@@ -1809,8 +1809,8 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); setShowStats((s) => !s); }}
               style={{
-                width: '2.1rem',
-                height: '2.1rem',
+                width: '2rem',
+                height: '2rem',
                 borderRadius: '8px',
                 background: showStats
                   ? 'rgba(201,150,58,0.25)'
@@ -1830,8 +1830,8 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); setShowNpcs((s) => !s); setShowQuests(false); }}
               style={{
-                width: '2.1rem',
-                height: '2.1rem',
+                width: '2rem',
+                height: '2rem',
                 borderRadius: '8px',
                 background: showNpcs
                   ? 'rgba(201,150,58,0.25)'

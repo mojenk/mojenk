@@ -142,13 +142,33 @@ export async function initBilling(productIds = [], subscriptionIds = [], callbac
     throw initErr;
   }
 
-  if (typeof store.update === 'function') {
+  // Try to refresh product metadata multiple ways.
+  const refreshMethods = ['update', 'refresh', 'restorePurchases'];
+  for (const method of refreshMethods) {
+    if (typeof store[method] === 'function') {
+      try {
+        log('info', `Calling store.${method}`);
+        await store[method]();
+        log('info', `store.${method} done`);
+      } catch (err) {
+        log('warn', `store.${method} failed`, { message: err.message });
+      }
+    }
+  }
+
+  // Direct product lookup fallback.
+  for (const id of [...productIds, ...subscriptionIds]) {
     try {
-      log('info', 'Calling store.update');
-      await store.update();
-      log('info', 'store.update done');
-    } catch (updateErr) {
-      log('error', 'store.update failed', { message: updateErr.message });
+      const p = store.get(id);
+      log('info', `store.get('${id}') result`, { found: Boolean(p), state: p?.state });
+      if (p && !products.find((x) => x.id === id)) {
+        products.push(p);
+        if (typeof callbacks.onProductUpdated === 'function') {
+          try { callbacks.onProductUpdated(p); } catch (e) { console.error(e); }
+        }
+      }
+    } catch (err) {
+      log('warn', `store.get('${id}') failed`, { message: err.message });
     }
   }
 
