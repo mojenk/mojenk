@@ -257,9 +257,9 @@ export default function ScenarioPage({ user }) {
                 <Icon
                     size={15}
                     color={selected === s.id ? 'var(--gold2)' : 'var(--text-dim)'}
-                    style={{ flexShrink: 0, marginTop: '0.35rem' }}
+                    style={{ flexShrink: 0, marginTop: '0.15rem' }}
                   />
-                <span
+                  <span
                     className="font-fantasy"
                     style={{
                       color: selected === s.id ? 'var(--gold2)' : '#fff',
@@ -270,8 +270,6 @@ export default function ScenarioPage({ user }) {
                       overflowWrap: 'break-word',
                       wordBreak: 'break-word',
                       minWidth: 0,
-                      display: 'block',
-                      paddingTop: '0.15rem',
                     }}
                   >
                     {s.name}
