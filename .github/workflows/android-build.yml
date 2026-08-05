@@ -91,7 +91,10 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          test -n "$GOOGLE_SERVICES_JSON"
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::warning::GOOGLE_SERVICES_JSON secret is not set. Skipping FCM config. Push notifications will not work until this secret is added."
+            exit 0
+          fi
           first_char=$(printf '%s' "$GOOGLE_SERVICES_JSON" | head -c 1)
           if [ "$first_char" = "{" ]; then
             printf '%s' "$GOOGLE_SERVICES_JSON" > frontend/android/app/google-services.json
