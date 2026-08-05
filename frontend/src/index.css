@@ -713,7 +713,9 @@ body {
   }
   .game-header-actions {
     flex-basis: 100%;
-    justify-content: space-between;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.35rem;
   }
 }
 

@@ -3,9 +3,36 @@ const { isPremium } = require('./premium');
 
 // Balance: generous enough for a full free session per day, but caps worst-case
 // Gemini cost exposure per user. Extra turns are unlocked via rewarded ads.
-const FREE_DAILY_TURNS = 40;
-const BONUS_PER_AD = 15;
-const MAX_BONUS_ADS_PER_DAY = 3;
+const DEFAULT_FREE_DAILY_TURNS = 40;
+const DEFAULT_BONUS_PER_AD = 15;
+const DEFAULT_MAX_BONUS_ADS_PER_DAY = 3;
+
+const settingsCache = { value: null, at: 0 };
+const SETTINGS_CACHE_MS = 30_000;
+
+async function getAppSettings() {
+  const now = Date.now();
+  if (settingsCache.value && now - settingsCache.at < SETTINGS_CACHE_MS) {
+    return settingsCache.value;
+  }
+  try {
+    const doc = await firestore.collection('appSettings').doc('global').get();
+    const data = doc.exists ? doc.data() : {};
+    settingsCache.value = {
+      freeDailyTurns: Number.isFinite(data.freeDailyTurns) ? data.freeDailyTurns : DEFAULT_FREE_DAILY_TURNS,
+      bonusPerAd: Number.isFinite(data.bonusPerAd) ? data.bonusPerAd : DEFAULT_BONUS_PER_AD,
+      maxBonusAdsPerDay: Number.isFinite(data.maxBonusAdsPerDay) ? data.maxBonusAdsPerDay : DEFAULT_MAX_BONUS_ADS_PER_DAY,
+    };
+  } catch (err) {
+    settingsCache.value = {
+      freeDailyTurns: DEFAULT_FREE_DAILY_TURNS,
+      bonusPerAd: DEFAULT_BONUS_PER_AD,
+      maxBonusAdsPerDay: DEFAULT_MAX_BONUS_ADS_PER_DAY,
+    };
+  }
+  settingsCache.at = now;
+  return settingsCache.value;
+}
 
 function getTodayIstanbul() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
@@ -15,8 +42,9 @@ function getTodayIstanbul() {
 // consumes one. Premium users bypass the limit entirely.
 async function checkAndConsumeDailyTurn(uid) {
   if (await isPremium(uid)) {
-    return { allowed: true, used: 0, limit: Infinity, bonusAdsUsed: 0, maxBonusAds: MAX_BONUS_ADS_PER_DAY, premium: true };
+    return { allowed: true, used: 0, limit: Infinity, bonusAdsUsed: 0, maxBonusAds: (await getAppSettings()).maxBonusAdsPerDay, premium: true };
   }
+  const settings = await getAppSettings();
   const userRef = firestore.collection('users').doc(uid);
   const today = getTodayIstanbul();
   return firestore.runTransaction(async (transaction) => {
@@ -26,7 +54,7 @@ async function checkAndConsumeDailyTurn(uid) {
     const used = isNewDay ? 0 : (data.dailyTurnsUsed || 0);
     const bonusTurns = isNewDay ? 0 : (data.dailyBonusTurns || 0);
     const bonusAdsUsed = isNewDay ? 0 : (data.dailyBonusAdsUsed || 0);
-    const limit = FREE_DAILY_TURNS + bonusTurns;
+    const limit = settings.freeDailyTurns + bonusTurns;
 
     if (used >= limit) {
       transaction.set(userRef, {
@@ -35,7 +63,7 @@ async function checkAndConsumeDailyTurn(uid) {
         dailyBonusTurns: bonusTurns,
         dailyBonusAdsUsed: bonusAdsUsed,
       }, { merge: true });
-      return { allowed: false, used, limit, bonusAdsUsed, maxBonusAds: MAX_BONUS_ADS_PER_DAY };
+      return { allowed: false, used, limit, bonusAdsUsed, maxBonusAds: settings.maxBonusAdsPerDay };
     }
 
     transaction.set(userRef, {
@@ -44,7 +72,7 @@ async function checkAndConsumeDailyTurn(uid) {
       dailyBonusTurns: bonusTurns,
       dailyBonusAdsUsed: bonusAdsUsed,
     }, { merge: true });
-    return { allowed: true, used: used + 1, limit, bonusAdsUsed, maxBonusAds: MAX_BONUS_ADS_PER_DAY };
+    return { allowed: true, used: used + 1, limit, bonusAdsUsed, maxBonusAds: settings.maxBonusAdsPerDay };
   });
 }
 
@@ -52,17 +80,19 @@ async function checkAndConsumeDailyTurn(uid) {
 // The game screen uses this to show the remaining-moves counter on load.
 async function getDailyStatus(uid) {
   if (await isPremium(uid)) {
-    return { used: 0, limit: Infinity, bonusAdsUsed: 0, maxBonusAds: MAX_BONUS_ADS_PER_DAY, premium: true };
+    const settings = await getAppSettings();
+    return { used: 0, limit: Infinity, bonusAdsUsed: 0, maxBonusAds: settings.maxBonusAdsPerDay, premium: true };
   }
+  const settings = await getAppSettings();
   const doc = await firestore.collection('users').doc(uid).get();
   const data = doc.exists ? doc.data() : {};
   const isNewDay = data.dailyTurnDate !== getTodayIstanbul();
   const bonusTurns = isNewDay ? 0 : (data.dailyBonusTurns || 0);
   return {
     used: isNewDay ? 0 : (data.dailyTurnsUsed || 0),
-    limit: FREE_DAILY_TURNS + bonusTurns,
+    limit: settings.freeDailyTurns + bonusTurns,
     bonusAdsUsed: isNewDay ? 0 : (data.dailyBonusAdsUsed || 0),
-    maxBonusAds: MAX_BONUS_ADS_PER_DAY,
+    maxBonusAds: settings.maxBonusAdsPerDay,
     premium: false,
   };
 }
@@ -86,9 +116,10 @@ async function startAdSession(uid) {
   return { ticketId, minWatchMs: MIN_AD_WATCH_MS };
 }
 
-// Grants a rewarded-ad bonus of extra daily turns, up to MAX_BONUS_ADS_PER_DAY per day.
+// Grants a rewarded-ad bonus of extra daily turns, up to maxBonusAdsPerDay per day.
 // Premium users do not need rewarded ads.
 async function claimDailyBonus(uid, ticketId) {
+  const settings = await getAppSettings();
   if (await isPremium(uid)) {
     const error = new Error('Premium kullanıcılar reklama ihtiyaç duymaz');
     error.code = 'PREMIUM_NO_ADS';
@@ -113,13 +144,13 @@ async function claimDailyBonus(uid, ticketId) {
     const bonusTurns = isNewDay ? 0 : (data.dailyBonusTurns || 0);
     const bonusAdsUsed = isNewDay ? 0 : (data.dailyBonusAdsUsed || 0);
 
-    if (bonusAdsUsed >= MAX_BONUS_ADS_PER_DAY) {
+    if (bonusAdsUsed >= settings.maxBonusAdsPerDay) {
       const error = new Error('Bugün için ekstra hak sınırına ulaştın, yarın tekrar dene');
       error.code = 'MAX_BONUS_REACHED';
       throw error;
     }
 
-    const newBonusTurns = bonusTurns + BONUS_PER_AD;
+    const newBonusTurns = bonusTurns + settings.bonusPerAd;
     const newBonusAdsUsed = bonusAdsUsed + 1;
     transaction.set(userRef, {
       dailyTurnDate: today,
@@ -130,18 +161,19 @@ async function claimDailyBonus(uid, ticketId) {
     }, { merge: true });
     return {
       used,
-      limit: FREE_DAILY_TURNS + newBonusTurns,
+      limit: settings.freeDailyTurns + newBonusTurns,
       bonusAdsUsed: newBonusAdsUsed,
-      maxBonusAds: MAX_BONUS_ADS_PER_DAY,
+      maxBonusAds: settings.maxBonusAdsPerDay,
     };
   });
 }
 
 // Grants a wheel-spin bonus of extra daily turns.
 async function claimWheelTurns(uid, amount) {
+  const settings = await getAppSettings();
   if (await isPremium(uid)) {
     // Premium users do not consume daily turns, so no bonus storage is needed.
-    return { used: 0, limit: Infinity, bonusAdsUsed: 0, maxBonusAds: MAX_BONUS_ADS_PER_DAY, premium: true };
+    return { used: 0, limit: Infinity, bonusAdsUsed: 0, maxBonusAds: settings.maxBonusAdsPerDay, premium: true };
   }
   const userRef = firestore.collection('users').doc(uid);
   const today = getTodayIstanbul();
@@ -161,9 +193,9 @@ async function claimWheelTurns(uid, amount) {
     }, { merge: true });
     return {
       used,
-      limit: FREE_DAILY_TURNS + newBonusTurns,
+      limit: settings.freeDailyTurns + newBonusTurns,
       bonusAdsUsed,
-      maxBonusAds: MAX_BONUS_ADS_PER_DAY,
+      maxBonusAds: settings.maxBonusAdsPerDay,
     };
   });
 }
@@ -174,7 +206,8 @@ module.exports = {
   startAdSession,
   claimDailyBonus,
   claimWheelTurns,
-  FREE_DAILY_TURNS,
-  BONUS_PER_AD,
-  MAX_BONUS_ADS_PER_DAY,
+  getAppSettings,
+  FREE_DAILY_TURNS: DEFAULT_FREE_DAILY_TURNS,
+  BONUS_PER_AD: DEFAULT_BONUS_PER_AD,
+  MAX_BONUS_ADS_PER_DAY: DEFAULT_MAX_BONUS_ADS_PER_DAY,
 };

@@ -19,14 +19,13 @@ import {
 } from '../utils/sounds';
 import { startAmbience, stopAmbience, cleanupAmbience, mapScenarioToAmbience, detectAmbienceFromScene } from '../utils/ambient';
 import { useLang, t, getLang } from '../utils/i18n';
-import { speak, stopSpeech, onSpeechChange, isTtsSupported, isTtsEnabled } from '../utils/tts';
 import { StatIcon, ItemIcon } from '../utils/icons';
 import {
   Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX,
   BarChart3, ScrollText, Skull, X, AlertTriangle,
   CheckCircle2, XCircle, Dices, Zap, Wind, Bomb, Sparkles, RotateCcw, Target, Wand2,
   Crown, ArrowLeft, Users, Store, Backpack, Send, Trophy, Flame, Scroll,
-  Package, Gem, BookOpen, Compass, Square,
+  Package, Gem, BookOpen, Compass,
 } from 'lucide-react';
 
 // Başarım rozeti görselleri (AchievementsPage ile aynı eşleme)
@@ -201,7 +200,6 @@ export default function GamePage({ user }) {
   const [followerJoinShow, setFollowerJoinShow] = useState(null);
   const [achievementToast, setAchievementToast] = useState(null); // { id, tier, icon, xp, gold }
   const [restBanner, setRestBanner] = useState(null); // { healed, followers, nightEvent } | { cooldownLeft }
-  const [speakingMsgId, setSpeakingMsgId] = useState(null);
   const [statSelectOpen, setStatSelectOpen] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [chatError, setChatError] = useState('');
@@ -418,7 +416,6 @@ export default function GamePage({ user }) {
     const handleVisibility = () => {
       if (document.hidden) {
         stopAmbience();
-        stopSpeech();
       } else if (sceneAmbience) {
         startAmbience(allEnemies.length > 0 ? 'combat' : sceneAmbience);
       }
@@ -509,13 +506,6 @@ export default function GamePage({ user }) {
     });
   }, []);
 
-  // Sesli anlatım: bir anlatıcı mesajını oku / durdur
-  const toggleSpeak = useCallback((message) => {
-    if (!isTtsSupported()) return;
-    playClick();
-    speak(message.content, { id: message.id, lang: getLang() });
-  }, []);
-
   // Günlük hamle hakkını sayfa açılışında hak harcamadan oku
   const refreshDailyStatus = useCallback(() => {
     getDailyStatus()
@@ -524,20 +514,6 @@ export default function GamePage({ user }) {
   }, []);
 
   useEffect(() => { refreshDailyStatus(); }, [refreshDailyStatus]);
-
-  // TTS konuşma durumunu takip et; sayfadan çıkarken konuşmayı kes
-  useEffect(() => {
-    const unsubscribe = onSpeechChange(setSpeakingMsgId);
-    return () => { unsubscribe(); stopSpeech(); };
-  }, []);
-
-  // Otomatik seslendirme açıksa yeni anlatıcı mesajını oku
-  useEffect(() => {
-    if (!isTtsEnabled() || !isTtsSupported()) return;
-    const last = messages[messages.length - 1];
-    if (!last || last.role !== 'assistant' || !last.content) return;
-    speak(last.content, { id: last.id, lang: getLang() });
-  }, [messages]);
 
   const handleSend = async (messageText, diceResult = null) => {
     const charDead = character && (character.status === 'dead' || character.status === 'unconscious' || character.hp <= 0) || !!finalJourney;
@@ -1701,7 +1677,7 @@ export default function GamePage({ user }) {
                     color: remaining > 0 ? 'var(--gold)' : 'var(--text-dim)',
                   }}
                 >
-                  <WheelIcon size={18} />
+                  <WheelIcon size={16} />
                 </motion.button>
               );
             })()}
@@ -1710,8 +1686,8 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); toggleSound(); }}
               style={{
-                width: '2.1rem',
-                height: '2.1rem',
+                width: '1.85rem',
+                height: '1.85rem',
                 borderRadius: '8px',
                 background: 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
@@ -1722,7 +1698,7 @@ export default function GamePage({ user }) {
                 cursor: 'pointer',
               }}
             >
-              {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+              {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
@@ -1734,8 +1710,8 @@ export default function GamePage({ user }) {
               }}
               title={character.hp <= 0 ? 'Baygınken envantere erişilemez' : currentEnemy ? 'Savaşta envantere erişilemez' : 'Çanta'}
               style={{
-                width: '2.1rem',
-                height: '2.1rem',
+                width: '1.85rem',
+                height: '1.85rem',
                 borderRadius: '8px',
                 background: showBag
                   ? 'rgba(201,150,58,0.25)'
@@ -1750,7 +1726,7 @@ export default function GamePage({ user }) {
                 position: 'relative',
               }}
             >
-              <Backpack size={18} color="var(--text)" />
+              <Backpack size={16} color="var(--text)" />
               {inventory.length > 0 && (
                 <span style={{
                   position: 'absolute',
@@ -1776,8 +1752,8 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); navigate(`/shop/${characterId}?scenario=${session?.scenario || scenario || ''}`); }}
               style={{
-                width: '2.1rem',
-                height: '2.1rem',
+                width: '1.85rem',
+                height: '1.85rem',
                 borderRadius: '8px',
                 background: 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
@@ -1789,14 +1765,14 @@ export default function GamePage({ user }) {
               }}
               title="Tüccar Dükkânı"
             >
-              <Store size={18} color="var(--text)" />
+              <Store size={16} color="var(--text)" />
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); setShowStats((s) => !s); }}
               style={{
-                width: '2.1rem',
-                height: '2.1rem',
+                width: '1.85rem',
+                height: '1.85rem',
                 borderRadius: '8px',
                 background: showStats
                   ? 'rgba(201,150,58,0.25)'
@@ -1809,15 +1785,15 @@ export default function GamePage({ user }) {
                 cursor: 'pointer',
               }}
             >
-              <BarChart3 size={18} />
+              <BarChart3 size={16} />
             </motion.button>
             {/* NPC button */}
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); setShowNpcs((s) => !s); setShowQuests(false); }}
               style={{
-                width: '2.1rem',
-                height: '2.1rem',
+                width: '1.85rem',
+                height: '1.85rem',
                 borderRadius: '8px',
                 background: showNpcs
                   ? 'rgba(201,150,58,0.25)'
@@ -1832,7 +1808,7 @@ export default function GamePage({ user }) {
               }}
               title={`Tanınan NPC'ler (${npcs.length})`}
             >
-              <Users size={18} />
+              <Users size={16} />
               {npcs.length > 0 && (
                 <span style={{
                   position: 'absolute', top: '-4px', right: '-4px',
@@ -1868,7 +1844,7 @@ export default function GamePage({ user }) {
                   }}
                   title={`Görevler (${activeQuests.length} aktif)`}
                 >
-                  <ScrollText size={18} />
+                  <ScrollText size={16} />
                   {activeQuests.length > 0 && (
                     <span style={{
                       position: 'absolute', top: '-4px', right: '-4px',
@@ -2638,31 +2614,6 @@ export default function GamePage({ user }) {
                     >
                       KADER'İN SESİ
                     </span>
-                    {isTtsSupported() && (
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => toggleSpeak(msg)}
-                        title={speakingMsgId === msg.id ? t('tts_stop') : t('tts_play')}
-                        aria-label={speakingMsgId === msg.id ? t('tts_stop') : t('tts_play')}
-                        style={{
-                          marginLeft: 'auto',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: 26,
-                          height: 26,
-                          padding: 0,
-                          borderRadius: 6,
-                          border: `1px solid ${speakingMsgId === msg.id ? 'var(--gold)' : 'var(--border)'}`,
-                          background: speakingMsgId === msg.id ? 'rgba(230,180,34,0.16)' : 'transparent',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {speakingMsgId === msg.id
-                          ? <Square size={12} color="var(--gold)" fill="var(--gold)" />
-                          : <Volume2 size={13} color="var(--text-dim)" />}
-                      </motion.button>
-                    )}
                   </div>
                 )}
                 {msg.role === 'user' && (

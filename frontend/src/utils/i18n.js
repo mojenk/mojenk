@@ -82,6 +82,7 @@ const TR = {
   premium_activate_btn: 'Şimdi Premium Ol',
   premium_activate_success: 'Premium hesabın aktif edildi!',
   premium_web_only_mobile: 'Premium satın alma şu an yalnızca Android uygulaması üzerinden yapılabilir. Lütfen Google Play Store\'dan Kader\'in Sesi\'ni indirin.',
+  premium_info_note: 'Premium üyelik ile reklamları kaldırır, sınırsız hamle hakkı kazanır ve Kader Çarkı\'nı günde 3 kez çevirebilirsin. Satın alma işlemi Google Play güvenli altyapısıyla yapılır.',
 
   // Characters page
   welcome: 'Hoş geldin',
@@ -487,6 +488,7 @@ const EN = {
   premium_activate_btn: 'Get Premium Now',
   premium_activate_success: 'Your Premium account is now active!',
   premium_web_only_mobile: 'Premium purchases are currently only available through the Android app. Please download Kader\'in Sesi from the Google Play Store.',
+  premium_info_note: 'A Premium membership removes ads, gives you unlimited moves, and lets you spin the Wheel of Fate 3 times per day. Purchases are processed securely through Google Play.',
 
   // Characters page
   welcome: 'Welcome',

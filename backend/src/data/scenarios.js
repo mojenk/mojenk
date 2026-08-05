@@ -1,0 +1,15 @@
+module.exports = [
+  { id: 'dungeon', title: 'Karanlık Zindan', description: 'Tehlikeli zindanlar, tuzaklar ve lanetli hazineler', image: '/scenarios/dungeon.png' },
+  { id: 'forest', title: 'Gizemli Orman', description: 'Antik büyüler, kayıp köyler ve mistik yaratıklar', image: '/scenarios/forest.png' },
+  { id: 'tavern', title: 'Taverna Sırları', description: 'Entrikalar, sırlar ve tehlikeli görevler', image: '/scenarios/tavern.png' },
+  { id: 'city', title: 'Şehir Karanlığı', description: 'Suç örgütleri, siyasi entrikalar ve gizem', image: '/scenarios/city.png' },
+  { id: 'dragon', title: 'Ejderha Arayışı', description: 'Efsanevi canavara karşı ölüm kalım mücadelesi', image: '/scenarios/dragon.png' },
+  { id: 'mountain', title: 'Dağların Çağrısı', description: 'Kayıp tapınaklar, fırtınalar ve zirvedeki ölümsüz bilge', image: '/scenarios/mountain.png' },
+  { id: 'sea', title: 'Deniz Yolculuğu', description: 'Korsan gemileri, batık hazineler ve fırtınalı denizler', image: '/scenarios/sea.png' },
+  { id: 'caravan', title: 'Kervan Yolu', description: 'Ticaret kervanı, yol haydutları ve çöl kasabaları', image: '/scenarios/caravan.png' },
+  { id: 'realistic', title: 'Gerçekçi Macera', description: 'Büyü yok, canavar yok — sadece insan dramı, siyaset ve hayatta kalma', image: '/scenarios/realistic.png' },
+  { id: 'horror', title: 'Korku Kâbusu', description: 'Lanetli malikaneler, karanlık varlıklar ve tüyler ürperten gizemler', image: '/scenarios/horror.png' },
+  { id: 'scifi', title: 'Yıldızlararası Görev', description: 'Uzay gemileri, yapay zekalar, uzaylı ırklar ve unutulmuş koloniler', image: '/scenarios/scifi.png' },
+  { id: 'western', title: 'Vahşi Batı', description: 'Silahşörler, çöl kasabaları, tren soygunları ve kanun kaçakları', image: '/scenarios/western.png' },
+  { id: 'custom', title: 'Serbest Macera', description: "AI'nın sürpriz senaryosuyla özgür keşif", image: '/scenarios/custom.png' },
+];

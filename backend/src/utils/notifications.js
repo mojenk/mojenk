@@ -63,6 +63,10 @@ async function sendPushNotification({ uid, title, body, data = {}, tag = 'kaderi
   }
 }
 
+async function sendNotificationToUser(uid, { title, body, data = {}, tag = 'kaderin-sesi-admin' }) {
+  return sendPushNotification({ uid, title, body, data, tag });
+}
+
 async function sendNotificationToAll({ title, body, data = {}, tag = 'kaderin-sesi-admin' }) {
   try {
     const snapshot = await firestore.collection('users').get();

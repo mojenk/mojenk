@@ -4,22 +4,10 @@
 let initialized = false;
 let products = [];
 let errorHandler = null;
-let logs = [];
 
 function log(level, message, data) {
-  const entry = { ts: Date.now(), level, message, data };
-  logs.push(entry);
-  if (logs.length > 200) logs.shift();
   // eslint-disable-next-line no-console
-  console.log(`[billing] ${message}`, data || '');
-}
-
-export function getBillingLogs() {
-  return [...logs];
-}
-
-export function clearBillingLogs() {
-  logs = [];
+  console.log(`[billing] ${level}: ${message}`, data || '');
 }
 
 function getStore() {

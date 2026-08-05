@@ -3,27 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { isSoundEnabled, toggleSound, getSoundVolume, setVolume, playClick } from '../utils/sounds';
-import {
-  isTtsSupported, isTtsEnabled, setTtsEnabled, getTtsRate, setTtsRate, stopSpeech,
-  getTtsPitch, setTtsPitch, getTtsGender, setTtsGender,
-  getPreferredVoiceUri, setPreferredVoiceUri, getAvailableVoices, speak,
-} from '../utils/tts';
 import { getLang, setLang, useLang, t } from '../utils/i18n';
-import { claimAdmin, deleteAccount, updateCharacterSettings, activatePremium, apiGetCurrentUser, verifyPurchase } from '../utils/api';
-import {
-  isBillingAvailable,
-  isNative,
-  initBilling,
-  purchaseProduct,
-  restoreBillingPurchases,
-  getPurchaseToken,
-  getProductId,
-  getBillingProducts,
-  getBillingLogs,
-} from '../utils/billing';
+import { deleteAccount, updateCharacterSettings } from '../utils/api';
+import { isBillingAvailable, isNative, initBilling, purchaseProduct, getPurchaseToken, getProductId, getBillingProducts } from '../utils/billing';
 import { auth } from '../firebase';
 import Particles from '../components/Particles';
-import { Sparkles, Crown } from 'lucide-react';
+import { Sparkles, Crown, Info } from 'lucide-react';
 
 const TEXT_SIZES = [
   { key: 'small', labelKey: 'text_small', px: '13px' },
@@ -57,25 +42,16 @@ const PREMIUM_PRODUCT_ID = 'premium_lifetime';      // Tek seferlik ödeme
 const PREMIUM_SUBSCRIPTION_ID = 'premium_monthly';  // Aylık abonelik (kullanılacaksa)
 const USE_SUBSCRIPTION = true;                       // true = aylık abonelik kullanılır
 
-export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
+export default function SettingsPage({ user, onUserUpdate }) {
   const navigate = useNavigate();
   const [sound, setSound] = useState(isSoundEnabled());
   const [vol, setVol] = useState(getSoundVolume());
-  const [ttsSupported] = useState(isTtsSupported);
-  const [tts, setTts] = useState(isTtsEnabled);
-  const [ttsRate, setTtsRateState] = useState(getTtsRate);
-  const [ttsPitch, setTtsPitchState] = useState(getTtsPitch);
-  const [ttsGender, setTtsGenderState] = useState(getTtsGender);
-  const [ttsVoice, setTtsVoiceState] = useState(getPreferredVoiceUri);
-  const [ttsVoices, setTtsVoices] = useState([]);
   const [textSize, setTextSize] = useState(getTextSize());
   const [theme, setTheme] = useState(
     () => localStorage.getItem('dnd_theme') || 'dark'
   );
   const [lang, setLangState] = useState(getLang);
   useLang(); // re-render on language change
-  const [adminMsg, setAdminMsg] = useState('');
-  const [claimingAdmin, setClaimingAdmin] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [tone, setTone] = useState(() => {
@@ -86,10 +62,7 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [purchasingId, setPurchasingId] = useState(null);
-  const [restoring, setRestoring] = useState(false);
   const [premiumMsg, setPremiumMsg] = useState('');
-  const [billingLogs, setBillingLogs] = useState([]);
-  const [showLogs, setShowLogs] = useState(false);
 
   const isPremiumActive = Boolean(user?.is_premium);
   const billingAvailable = isBillingAvailable();
@@ -103,22 +76,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     } catch {}
   }, []);
 
-  // Cihazdaki TTS sesleri asenkron yüklenir; liste hazır olunca tazele.
-  useEffect(() => {
-    if (!ttsSupported) return undefined;
-    const refresh = () => setTtsVoices(getAvailableVoices(lang === 'en' ? 'en' : 'tr'));
-    refresh();
-    window.speechSynthesis.addEventListener?.('voiceschanged', refresh);
-    const retry = setTimeout(refresh, 600);
-    return () => {
-      clearTimeout(retry);
-      window.speechSynthesis.removeEventListener?.('voiceschanged', refresh);
-    };
-  }, [ttsSupported, lang]);
-
-  // Sayfadan ayrılırken test seslendirmesi devam etmesin
-  useEffect(() => () => stopSpeech(), []);
-
   useEffect(() => {
     if (isPremiumActive || !billingAvailable) return undefined;
     setLoadingProducts(true);
@@ -128,7 +85,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     const updateProducts = () => {
       const list = getBillingProducts();
       setProducts(list);
-      setBillingLogs(getBillingLogs());
       if (list.length > 0) {
         setLoadingProducts(false);
         return true;
@@ -139,7 +95,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     const scheduleRetry = () => {
       if (retryCount >= 6) {
         setLoadingProducts(false);
-        setBillingLogs(getBillingLogs());
         return;
       }
       retryCount += 1;
@@ -159,7 +114,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
       .catch((err) => {
         console.error('billing init error:', err);
         setPremiumMsg(err.message || t('premium_purchase_error'));
-        setBillingLogs(getBillingLogs());
         setLoadingProducts(false);
       });
 
@@ -192,45 +146,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     setPurchasingId(null);
   };
 
-  const handleBillingRestore = async () => {
-    setRestoring(true);
-    setPremiumMsg('');
-    try {
-      await restoreBillingPurchases();
-      setBillingLogs(getBillingLogs());
-      const activeProduct = getBillingProducts().find((p) => p.id === activeProductId);
-      const transaction = activeProduct?.transactions?.[0] || activeProduct?.purchase?.transaction;
-      const token = transaction ? getPurchaseToken(transaction) : null;
-      if (token) {
-        const result = await verifyPurchase(activeProductId, token, USE_SUBSCRIPTION);
-        onUserUpdate?.(result.user);
-        setPremiumMsg(t('premium_purchase_success'));
-      } else {
-        setPremiumMsg(t('premium_restore_none'));
-      }
-    } catch (err) {
-      setPremiumMsg(err.message || t('premium_purchase_error'));
-      setBillingLogs(getBillingLogs());
-    }
-    setRestoring(false);
-  };
-
-  const handleActivatePremium = async () => {
-    setPurchasingId('activate');
-    setPremiumMsg('');
-    try {
-      await activatePremium();
-      const token = await auth.currentUser.getIdToken();
-      const current = await apiGetCurrentUser(token);
-      onUserUpdate?.(current.user);
-      setPremiumMsg(t('premium_activate_success'));
-      playClick();
-    } catch (err) {
-      setPremiumMsg(err.message || t('premium_purchase_error'));
-    }
-    setPurchasingId(null);
-  };
-
   const handleDeleteAccount = async () => {
     if (!window.confirm(t('delete_account_confirm1'))) return;
     if (!window.confirm(t('delete_account_confirm2'))) return;
@@ -246,19 +161,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     }
   };
 
-  const handleClaimAdmin = async () => {
-    setClaimingAdmin(true);
-    setAdminMsg('');
-    try {
-      await claimAdmin();
-      playClick();
-      setAdminMsg(t('admin_claimed'));
-    } catch (err) {
-      setAdminMsg(err.message || t('admin_fail'));
-    }
-    setClaimingAdmin(false);
-  };
-
   const handleSoundToggle = () => {
     const next = toggleSound();
     setSound(next);
@@ -268,46 +170,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
     const v = parseFloat(e.target.value);
     setVolume(v);
     setVol(v);
-  };
-
-  const handleTtsToggle = () => {
-    const next = !tts;
-    setTtsEnabled(next);
-    setTts(next);
-    if (!next) stopSpeech();
-    playClick();
-  };
-
-  const handleTtsRate = (e) => {
-    const rate = parseFloat(e.target.value);
-    setTtsRate(rate);
-    setTtsRateState(rate);
-  };
-
-  const handleTtsPitch = (e) => {
-    const pitch = parseFloat(e.target.value);
-    setTtsPitch(pitch);
-    setTtsPitchState(pitch);
-  };
-
-  const handleTtsGender = (gender) => {
-    setTtsGender(gender);
-    setTtsGenderState(gender);
-    // Elle seçilmiş ses varsa cinsiyet tercihini ezmesin diye sıfırla
-    setPreferredVoiceUri('');
-    setTtsVoiceState('');
-    playClick();
-  };
-
-  const handleTtsVoice = (e) => {
-    const uri = e.target.value;
-    setPreferredVoiceUri(uri);
-    setTtsVoiceState(uri);
-  };
-
-  const handleTtsTest = () => {
-    stopSpeech();
-    speak(t('tts_test_text'), { id: `tts-test-${Date.now()}`, lang: getLang() });
   };
 
   const handleTextSize = (size) => {
@@ -390,6 +252,21 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
             <Crown size={16} /> {t('premium_title')}
           </h2>
 
+          {!isPremiumActive && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'flex-start', gap: '0.5rem',
+                padding: '0.75rem', borderRadius: '10px', marginBottom: '0.9rem',
+                background: 'rgba(201,150,58,0.12)', border: '1px solid rgba(201,150,58,0.35)',
+              }}
+            >
+              <Info size={16} color="var(--gold)" style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+              <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.78rem', margin: 0, lineHeight: 1.4 }}>
+                {t('premium_info_note')}
+              </p>
+            </div>
+          )}
+
           {isPremiumActive ? (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -453,18 +330,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
                   ))}
                 </div>
               )}
-
-              {billingAvailable && (
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  onClick={handleBillingRestore}
-                  disabled={restoring}
-                  className="btn-dark"
-                  style={{ width: '100%', fontSize: '0.82rem', padding: '0.55rem 1rem' }}
-                >
-                  {restoring ? t('premium_restoring') : t('premium_restore_btn')}
-                </motion.button>
-              )}
             </div>
           )}
 
@@ -472,33 +337,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
             <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text)', fontSize: '0.82rem', marginTop: '0.75rem', textAlign: 'center' }}>
               {premiumMsg}
             </p>
-          )}
-
-          {billingAvailable && (
-            <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={() => setShowLogs((s) => !s)}
-                style={{
-                  background: 'transparent', border: 'none', color: 'var(--gold)', fontSize: '0.7rem',
-                  fontFamily: "'Cinzel', serif", textDecoration: 'underline', cursor: 'pointer',
-                }}
-              >
-                {showLogs ? 'Debug loglarını gizle' : 'Debug loglarını göster'}
-              </button>
-            </div>
-          )}
-
-          {showLogs && (
-            <pre
-              style={{
-                marginTop: '0.75rem', padding: '0.75rem', borderRadius: '8px',
-                background: 'rgba(0,0,0,0.5)', color: 'var(--text-dim)', fontSize: '0.65rem',
-                maxHeight: '200px', overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              }}
-            >
-              {billingLogs.map((l) => `[${new Date(l.ts).toLocaleTimeString()}] ${l.level}: ${l.message} ${l.data ? JSON.stringify(l.data) : ''}`).join('\n') || 'Henüz log yok.'}
-            </pre>
           )}
         </div>
 
@@ -560,171 +398,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
                 style={{ flex: 1, accentColor: 'var(--gold)', height: '20px' }}
               />
             </div>
-          )}
-        </div>
-
-        {/* Voice narration (TTS) */}
-        <div className="stone-card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
-          <h2
-            className="font-fantasy"
-            style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 1rem' }}
-          >
-            {t('tts_title')}
-          </h2>
-
-          {!ttsSupported ? (
-            <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-              {t('tts_unsupported')}
-            </p>
-          ) : (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tts ? '1rem' : 0 }}>
-                <div style={{ minWidth: 0 }}>
-                  <span style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text)', fontSize: '1rem' }}>
-                    {t('tts_title')}
-                  </span>
-                  <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.78rem', margin: '0.1rem 0 0' }}>
-                    {t('tts_desc')}
-                  </p>
-                </div>
-                <motion.button
-                  whileTap={{ scale: 0.93 }}
-                  onClick={handleTtsToggle}
-                  aria-label={t('tts_title')}
-                  style={{
-                    width: '54px', height: '30px', borderRadius: '15px', flexShrink: 0,
-                    background: tts ? 'rgba(201,150,58,0.65)' : 'rgba(50,40,30,0.9)',
-                    border: `1px solid ${tts ? 'var(--gold)' : 'var(--border)'}`,
-                    cursor: 'pointer', position: 'relative',
-                    transition: 'background 0.25s, border-color 0.25s',
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute', top: '4px',
-                      left: tts ? '26px' : '4px',
-                      width: '20px', height: '20px', borderRadius: '50%',
-                      background: tts ? 'var(--gold)' : '#555',
-                      transition: 'left 0.25s',
-                    }}
-                  />
-                </motion.button>
-              </div>
-
-              {tts && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {/* Ses cinsiyeti */}
-                  <div>
-                    <span
-                      style={{
-                        display: 'block', marginBottom: '0.5rem',
-                        fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.9rem',
-                      }}
-                    >
-                      {t('tts_gender')}
-                    </span>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      {[
-                        { id: 'male', label: t('tts_male') },
-                        { id: 'female', label: t('tts_female') },
-                        { id: 'auto', label: t('tts_auto') },
-                      ].map((option) => (
-                        <motion.button
-                          key={option.id}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleTtsGender(option.id)}
-                          style={{
-                            flex: 1, minHeight: '40px', borderRadius: '8px', cursor: 'pointer',
-                            fontFamily: "'Crimson Text', serif", fontSize: '0.88rem',
-                            color: ttsGender === option.id ? 'var(--gold)' : 'var(--text-dim)',
-                            background: ttsGender === option.id ? 'rgba(201,150,58,0.16)' : 'rgba(0,0,0,0.28)',
-                            border: `1px solid ${ttsGender === option.id ? 'var(--gold)' : 'var(--border)'}`,
-                          }}
-                        >
-                          {option.label}
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Ses seçimi (cihazda yüklü sesler) */}
-                  {ttsVoices.length > 0 && (
-                    <div>
-                      <span
-                        style={{
-                          display: 'block', marginBottom: '0.5rem',
-                          fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.9rem',
-                        }}
-                      >
-                        {t('tts_voice')}
-                      </span>
-                      <select
-                        value={ttsVoice}
-                        onChange={handleTtsVoice}
-                        style={{
-                          width: '100%', minHeight: '42px', padding: '0 0.6rem', borderRadius: '8px',
-                          fontFamily: "'Crimson Text', serif", fontSize: '0.9rem',
-                          color: 'var(--text)', background: 'rgba(0,0,0,0.35)',
-                          border: '1px solid var(--border)',
-                        }}
-                      >
-                        <option value="">{t('tts_voice_auto')}</option>
-                        {ttsVoices.map((voice) => (
-                          <option key={voice.voiceURI} value={voice.voiceURI}>
-                            {voice.name} ({voice.lang})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Okuma hızı */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                    <span
-                      style={{
-                        fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)',
-                        fontSize: '0.9rem', minWidth: '105px',
-                      }}
-                    >
-                      {t('tts_speed')} {ttsRate.toFixed(2)}x
-                    </span>
-                    <input
-                      type="range" min="0.6" max="1.5" step="0.05"
-                      value={ttsRate}
-                      onChange={handleTtsRate}
-                      style={{ flex: 1, accentColor: 'var(--gold)', height: '20px' }}
-                    />
-                  </div>
-
-                  {/* Ses tonu (kalınlık) */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                    <span
-                      style={{
-                        fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)',
-                        fontSize: '0.9rem', minWidth: '105px',
-                      }}
-                    >
-                      {t('tts_pitch')} {ttsPitch.toFixed(2)}
-                    </span>
-                    <input
-                      type="range" min="0.5" max="1.3" step="0.05"
-                      value={ttsPitch}
-                      onChange={handleTtsPitch}
-                      style={{ flex: 1, accentColor: 'var(--gold)', height: '20px' }}
-                    />
-                  </div>
-
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleTtsTest}
-                    className="btn-dark"
-                    style={{ minHeight: '44px', fontSize: '0.9rem' }}
-                  >
-                    {t('tts_test')}
-                  </motion.button>
-                </div>
-              )}
-            </>
           )}
         </div>
 
@@ -905,35 +578,6 @@ export default function SettingsPage({ user, isAdmin, onUserUpdate }) {
             </p>
           )}
         </div>
-
-        {/* One-time admin claim (only until an admin account is set) */}
-        {!isAdmin && (
-          <div className="stone-card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
-            <h2
-              className="font-fantasy"
-              style={{ color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '0.12em', margin: '0 0 0.75rem' }}
-            >
-              YÖNETİCİ ERİŞİMİ
-            </h2>
-            <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.82rem', margin: '0 0 0.75rem' }}>
-              Bu hesabı Tanrı Modu yöneticisi yap. Bu işlem yalnızca hiç yönetici atanmamışsa çalışır ve tek seferliktir.
-            </p>
-            <motion.button
-              whileTap={{ scale: 0.96 }}
-              onClick={handleClaimAdmin}
-              disabled={claimingAdmin}
-              className="btn-dark"
-              style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', borderColor: 'var(--gold)', color: 'var(--gold)' }}
-            >
-              {claimingAdmin ? '...' : 'Bu Hesabı Yönetici Yap'}
-            </motion.button>
-            {adminMsg && (
-              <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text)', fontSize: '0.82rem', marginTop: '0.6rem' }}>
-                {adminMsg}
-              </p>
-            )}
-          </div>
-        )}
 
         {/* App info */}
         <div className="stone-card" style={{ padding: '1.25rem', textAlign: 'center', marginBottom: '1rem' }}>

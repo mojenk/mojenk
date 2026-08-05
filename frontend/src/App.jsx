@@ -18,7 +18,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import AccountDeletionPage from './pages/AccountDeletionPage';
 import { playPageTransition } from './utils/sounds';
 import { apiGetCurrentUser, adminCheck } from './utils/api';
-import { initPush } from './utils/push';
+import { requestPushPermission, registerPushToken } from './utils/push';
 import { configurePurchases } from './utils/purchases';
 
 // Apply saved text size and theme on startup
@@ -124,7 +124,7 @@ function AnimatedRoutes({ user, onLogout, isAdmin, onUserUpdate }) {
           path="/settings"
           element={
             <motion.div {...pageVariants} style={{ flex: 1 }}>
-              <SettingsPage user={user} isAdmin={isAdmin} onUserUpdate={onUserUpdate} />
+              <SettingsPage user={user} onUserUpdate={onUserUpdate} />
             </motion.div>
           }
         />
@@ -192,6 +192,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Bildirim iznini uygulama ilk açılışında hemen iste (kullanıcı login olsun olmasın).
+  useEffect(() => {
+    requestPushPermission().catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (firebaseInitError || !auth) {
       setLoading(false);
@@ -201,7 +206,7 @@ export default function App() {
       setFirebaseUser(fbUser);
       if (fbUser) {
         try { localStorage.setItem('dnd_user_fb_uid', fbUser.uid); } catch {}
-        initPush().catch(() => {});
+        registerPushToken(fbUser.uid).catch(() => {});
         configurePurchases(fbUser.uid).catch(() => {});
         try {
           await adminCheck();

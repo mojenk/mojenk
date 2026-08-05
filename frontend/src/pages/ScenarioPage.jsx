@@ -249,7 +249,7 @@ export default function ScenarioPage({ user }) {
                 <div
                   style={{
                     display: 'flex',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                     gap: '0.4rem',
                     marginBottom: '0.25rem',
                   }}
@@ -257,7 +257,7 @@ export default function ScenarioPage({ user }) {
                 <Icon
                     size={15}
                     color={selected === s.id ? 'var(--gold2)' : 'var(--text-dim)'}
-                    style={{ flexShrink: 0, marginTop: '0.15rem' }}
+                    style={{ flexShrink: 0 }}
                   />
                   <span
                     className="font-fantasy"

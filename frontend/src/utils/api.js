@@ -442,6 +442,62 @@ export async function adminCheck() {
   return safeFetch(`${API}/admin/check`);
 }
 
+export async function adminGetStats() {
+  return safeFetch(`${API}/admin/stats`);
+}
+
+export async function adminUpdateUserSuspension(uid, suspended, reason = '') {
+  return safeFetch(`${API}/admin/users/${uid}/suspend`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ suspended, reason }),
+  });
+}
+
+export async function adminSendTestPush(uid, title, body) {
+  return safeFetch(`${API}/admin/users/${uid}/push-test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, body }),
+  });
+}
+
+export async function adminGetSettings() {
+  return safeFetch(`${API}/admin/settings`);
+}
+
+export async function adminUpdateSettings(settings) {
+  return safeFetch(`${API}/admin/settings`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  });
+}
+
+export async function adminListItems() {
+  return safeFetch(`${API}/admin/items`);
+}
+
+export async function adminUpdateItem(id, data) {
+  return safeFetch(`${API}/admin/items/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function adminCreateItem(data) {
+  return safeFetch(`${API}/admin/items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function adminListContent(type) {
+  return safeFetch(`${API}/admin/content/${type}`);
+}
+
 export async function getAnnouncements() {
   return safeFetch(`${API}/announcements`);
 }

@@ -4,7 +4,7 @@ const { firestore, docData, serverTimestamp } = require('../firestore');
 const { grantXpAndLevelUp } = require('../utils/leveling');
 const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 
-const { sendNotificationToAll } = require('../utils/notifications');
+const { sendNotificationToAll, sendNotificationToUser } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -24,6 +24,114 @@ router.get('/check', (req, res) => {
   res.json({ isAdmin: true });
 });
 
+// ── Dashboard İstatistikleri ───────────────────────────────────────────────
+router.get('/stats', async (req, res) => {
+  try {
+    const today = new Date();
+    const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+    const [
+      usersSnap,
+      charactersSnap,
+      announcementsSnap,
+      worldEventsSnap,
+      recentUsersSnap,
+      recentCharactersSnap,
+      recentMessagesSnap,
+    ] = await Promise.all([
+      firestore.collection('users').count().get(),
+      firestore.collection('characters').count().get(),
+      firestore.collection('announcements').where('active', '==', true).count().get(),
+      firestore.collection('worldEvents').where('active', '==', true).count().get(),
+      firestore.collection('users').where('created_at', '>=', sevenDaysAgo).orderBy('created_at', 'desc').get(),
+      firestore.collection('characters').where('created_at', '>=', sevenDaysAgo).orderBy('created_at', 'desc').get(),
+      firestore.collection('messages').where('created_at', '>=', sevenDaysAgo).orderBy('created_at', 'desc').limit(7000).get(),
+    ]);
+
+    const usersDocs = usersSnap.data().count;
+    const charactersDocs = charactersSnap.data().count;
+    const activeAnnouncements = announcementsSnap.data().count;
+    const activeWorldEvents = worldEventsSnap.data().count;
+
+    // Son 7 gün günlük yeni kullanıcı/karakter/mesaj
+    const daily = {};
+    for (let i = 0; i < 7; i += 1) {
+      const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().slice(0, 10);
+      daily[key] = { users: 0, characters: 0, messages: 0 };
+    }
+
+    recentUsersSnap.docs.forEach((doc) => {
+      const data = docData(doc);
+      const date = data.created_at?.toDate?.() || new Date(data.created_at);
+      const key = date.toISOString().slice(0, 10);
+      if (daily[key]) daily[key].users += 1;
+    });
+
+    recentCharactersSnap.docs.forEach((doc) => {
+      const data = docData(doc);
+      const date = data.created_at?.toDate?.() || new Date(data.created_at);
+      const key = date.toISOString().slice(0, 10);
+      if (daily[key]) daily[key].characters += 1;
+    });
+
+    recentMessagesSnap.docs.forEach((doc) => {
+      const data = docData(doc);
+      const date = data.created_at?.toDate?.() || new Date(data.created_at);
+      const key = date.toISOString().slice(0, 10);
+      if (daily[key]) daily[key].messages += 1;
+    });
+
+    const dailyArray = Object.entries(daily)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => ({ date, ...v }));
+
+    // Ekonomi / durum özeti (örneklem)
+    const allCharacters = await firestore.collection('characters').limit(500).get();
+    let totalGold = 0;
+    let totalXp = 0;
+    let totalLevel = 0;
+    let downCount = 0;
+    let deadCount = 0;
+    allCharacters.docs.forEach((doc) => {
+      const c = docData(doc);
+      totalGold += c.gold || 0;
+      totalXp += c.xp || 0;
+      totalLevel += c.level || 1;
+      if (c.status === 'unconscious') downCount += 1;
+      if (c.status === 'dead') deadCount += 1;
+    });
+    const sampleSize = allCharacters.docs.length || 1;
+
+    const premiumUsersSnap = await firestore.collection('users').where('is_premium', '==', true).count().get();
+
+    res.json({
+      totals: {
+        users: usersDocs,
+        characters: charactersDocs,
+        activeAnnouncements,
+        activeWorldEvents,
+        premiumUsers: premiumUsersSnap.data().count,
+      },
+      economy: {
+        totalGold,
+        totalXp,
+        avgLevel: +(totalLevel / sampleSize).toFixed(2),
+        avgGold: +(totalGold / sampleSize).toFixed(0),
+        avgXp: +(totalXp / sampleSize).toFixed(0),
+        downCount,
+        deadCount,
+      },
+      daily: dailyArray,
+    });
+  } catch (err) {
+    console.error('Admin stats error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Karakterler ────────────────────────────────────────────────────────────
 router.get('/characters', async (req, res) => {
   try {
     const search = String(req.query.username || '').toLocaleLowerCase('tr');
@@ -128,7 +236,57 @@ router.post('/characters/:id/delete', async (req, res) => {
 router.get('/users', async (req, res) => {
   try {
     const snapshot = await firestore.collection('users').orderBy('created_at', 'desc').limit(500).get();
-    return res.json({ users: snapshot.docs.map(docData) });
+    const characterCounts = await firestore.collection('characters').select('ownerUid').get();
+    const countsByUser = {};
+    characterCounts.docs.forEach((doc) => {
+      const { ownerUid } = docData(doc);
+      countsByUser[ownerUid] = (countsByUser[ownerUid] || 0) + 1;
+    });
+    const users = snapshot.docs.map((doc) => {
+      const data = docData(doc);
+      return {
+        ...data,
+        characterCount: countsByUser[doc.id] || 0,
+        fcmTokens: data.fcmTokens || data.fcmToken ? [data.fcmToken].filter(Boolean) : [],
+      };
+    });
+    return res.json({ users });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/users/:uid/suspend', async (req, res) => {
+  try {
+    const { suspended, reason } = req.body;
+    const userRef = firestore.collection('users').doc(req.params.uid);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    const updates = {
+      is_suspended: Boolean(suspended),
+      suspension_updated_at: serverTimestamp(),
+      suspension_updated_by: req.firebaseUser.uid,
+    };
+    if (reason !== undefined) updates.suspension_reason = reason || null;
+    await userRef.update(updates);
+    return res.json({ ok: true, user: docData(await userRef.get()) });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/users/:uid/push-test', async (req, res) => {
+  try {
+    const { title = 'Test Bildirimi', body = 'Push servisi çalışıyor.' } = req.body;
+    const userDoc = await firestore.collection('users').doc(req.params.uid).get();
+    if (!userDoc.exists) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
+    const user = docData(userDoc);
+    const tokens = (user.fcmTokens || []).filter(Boolean);
+    if (user.fcmToken) tokens.push(user.fcmToken);
+    const uniqueTokens = [...new Set(tokens)];
+    if (!uniqueTokens.length) return res.status(400).json({ error: 'Kullanıcının kayıtlı FCM tokeni yok' });
+    const result = await sendNotificationToUser(req.params.uid, { title, body });
+    return res.json({ ok: true, sent: result.sent || 0, failed: result.failed || 0 });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -226,6 +384,123 @@ router.patch('/world-events/:id', async (req, res) => {
 router.delete('/world-events/:id', async (req, res) => {
   await firestore.collection('worldEvents').doc(req.params.id).delete();
   res.json({ ok: true });
+});
+
+// ── Uygulama Ayarları (Oyun Dengesi) ───────────────────────────────────────
+const DEFAULT_APP_SETTINGS = {
+  freeDailyTurns: 40,
+  bonusPerAd: 15,
+  maxBonusAdsPerDay: 3,
+  premiumDailyWheelSpins: 3,
+  adRewardGold: 10,
+  adRewardXp: 0,
+  shopPriceMultiplier: 1,
+  goldRewardMin: 2,
+  goldRewardMax: 50,
+};
+
+router.get('/settings', async (req, res) => {
+  try {
+    const doc = await firestore.collection('appSettings').doc('global').get();
+    const current = doc.exists ? docData(doc) : {};
+    res.json({ settings: { ...DEFAULT_APP_SETTINGS, ...current } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/settings', async (req, res) => {
+  try {
+    const allowed = Object.keys(DEFAULT_APP_SETTINGS);
+    const updates = {};
+    allowed.forEach((key) => {
+      if (req.body[key] !== undefined) {
+        const num = Number(req.body[key]);
+        if (!Number.isNaN(num)) updates[key] = num;
+      }
+    });
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'Güncellenecek geçerli alan yok' });
+    updates.updated_at = serverTimestamp();
+    updates.updated_by = req.firebaseUser.uid;
+    await firestore.collection('appSettings').doc('global').set(updates, { merge: true });
+    res.json({ ok: true, settings: { ...DEFAULT_APP_SETTINGS, ...updates } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── İçerik Yönetimi ────────────────────────────────────────────────────────
+const { CATALOG, RARITY } = require('../data/items');
+const SCENARIOS = require('../data/scenarios');
+const RACES = require('../data/races');
+const CLASSES = require('../data/classes');
+
+router.get('/items', async (req, res) => {
+  try {
+    const items = Object.entries(CATALOG).map(([id, item]) => ({
+      id,
+      ...item,
+      rarity: item.rarity || RARITY.COMMON,
+      image: item.image || null,
+    }));
+    res.json({ items });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/items/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const item = CATALOG[id];
+    if (!item) return res.status(404).json({ error: 'Eşya bulunamadı' });
+    const allowed = ['name', 'description', 'type', 'value', 'rarity', 'image', 'shopVisible'];
+    const updates = {};
+    allowed.forEach((key) => {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    });
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'Güncellenecek alan yok' });
+    Object.assign(item, updates);
+    res.json({ ok: true, item: { id, ...item } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/items', async (req, res) => {
+  try {
+    const { id, name, description = '', type = 'misc', value = 0, rarity = RARITY.COMMON, image = null, shopVisible = false } = req.body;
+    if (!id || !name) return res.status(400).json({ error: 'id ve name gerekli' });
+    if (CATALOG[id]) return res.status(409).json({ error: 'Bu id ile eşya zaten var' });
+    CATALOG[id] = { name, description, type, value, rarity, image, shopVisible };
+    res.status(201).json({ ok: true, item: { id, ...CATALOG[id] } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/content/scenarios', async (req, res) => {
+  try {
+    res.json({ scenarios: SCENARIOS.map((s) => ({ id: s.id, title: s.title, description: s.description, image: s.image })) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/content/races', async (req, res) => {
+  try {
+    res.json({ races: RACES.map((r) => ({ id: r.id, name: r.name, description: r.description, image: r.image })) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/content/classes', async (req, res) => {
+  try {
+    res.json({ classes: CLASSES.map((c) => ({ id: c.id, name: c.name, description: c.description, image: c.image })) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;
