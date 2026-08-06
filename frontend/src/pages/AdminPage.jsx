@@ -42,13 +42,13 @@ const CONTENT_SUBTABS = [
   { id: 'items', label: 'Eşyalar', icon: Package },
 ];
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-  { id: 'characters', label: 'Karakterler', icon: Shield },
-  { id: 'users', label: 'Kullanıcılar', icon: Users },
-  { id: 'balance', label: 'Oyun Dengesi', icon: SlidersHorizontal },
-  { id: 'content', label: 'İçerik', icon: BookOpen },
-  { id: 'announcements', label: 'Duyurular', icon: Megaphone },
-  { id: 'world-events', label: 'Dünya Olayları', icon: Globe },
+  { id: 'dashboard', label: 'Dashboard', shortLabel: 'Özet', icon: BarChart3 },
+  { id: 'characters', label: 'Karakterler', shortLabel: 'Kahramanlar', icon: Shield },
+  { id: 'users', label: 'Kullanıcılar', shortLabel: 'Kullanıcı', icon: Users },
+  { id: 'balance', label: 'Oyun Dengesi', shortLabel: 'Denge', icon: SlidersHorizontal },
+  { id: 'content', label: 'İçerik', shortLabel: 'İçerik', icon: BookOpen },
+  { id: 'announcements', label: 'Duyurular', shortLabel: 'Duyuru', icon: Megaphone },
+  { id: 'world-events', label: 'Dünya Olayları', shortLabel: 'Olaylar', icon: Globe },
 ];
 const DEFAULT_SETTINGS = {
   freeDailyTurns: 40,
@@ -343,34 +343,36 @@ export default function AdminPage({ user }) {
   const navItems = TABS.map((t) => {
     const Icon = t.icon;
     const active = activeTab === t.id;
-    const btn = (
+    const label = isMobile ? t.shortLabel : t.label;
+    return (
       <motion.button
         key={t.id}
         whileTap={{ scale: 0.95 }}
         onClick={() => { playClick(); setActiveTab(t.id); setNavOpen(false); }}
         style={{
-          width: isMobile ? 68 : '100%',
+          flex: isMobile ? 1 : 'initial',
+          width: isMobile ? 'auto' : '100%',
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
           alignItems: 'center',
           justifyContent: isMobile ? 'center' : 'flex-start',
-          gap: isMobile ? '0.15rem' : '0.6rem',
-          padding: isMobile ? '0.35rem 0' : '0.65rem 0.85rem',
+          gap: isMobile ? '0.2rem' : '0.6rem',
+          padding: isMobile ? '0.4rem 0.15rem' : '0.65rem 0.85rem',
           borderRadius: 8,
           border: 'none',
           background: active ? 'rgba(201,150,58,0.18)' : 'transparent',
           color: active ? 'var(--gold2)' : 'var(--text-dim)',
           fontFamily: "'Cinzel', serif",
-          fontSize: isMobile ? '0.6rem' : '0.8rem',
+          fontSize: isMobile ? '0.62rem' : '0.8rem',
           cursor: 'pointer',
           textAlign: 'center',
+          minWidth: 0,
         }}
       >
-        <Icon size={isMobile ? 18 : 18} />
-        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.label}</span>
+        <Icon size={isMobile ? 20 : 18} />
+        <span style={{ whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1 }}>{label}</span>
       </motion.button>
     );
-    return btn;
   });
 
   const sidebar = !isMobile ? (
@@ -602,10 +604,20 @@ function DashboardTab({ stats, users, characters, announcements, worldEvents }) 
 
 function CharactersTab({ characters, search, setSearch, filters, setFilters, loading, onUpdate, onCheat, onDelete }) {
   const [selected, setSelected] = useState(null);
+  const detailRef = useRef(null);
 
   useEffect(() => {
     setSelected(null);
   }, [search, filters]);
+
+  useEffect(() => {
+    if (selected && detailRef.current) {
+      const t = setTimeout(() => {
+        detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+      return () => clearTimeout(t);
+    }
+  }, [selected]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -681,14 +693,15 @@ function CharactersTab({ characters, search, setSearch, filters, setFilters, loa
 
       <AnimatePresence>
         {selected && (
-          <CharacterDetailPanel
-            key={selected.id}
-            character={selected}
-            onClose={() => setSelected(null)}
-            onUpdate={onUpdate}
-            onCheat={onCheat}
-            onDelete={onDelete}
-          />
+          <div ref={detailRef} key="detail-anchor">
+            <CharacterDetailPanel
+              character={selected}
+              onClose={() => setSelected(null)}
+              onUpdate={onUpdate}
+              onCheat={onCheat}
+              onDelete={onDelete}
+            />
+          </div>
         )}
       </AnimatePresence>
     </div>
@@ -1160,13 +1173,17 @@ function ItemForm({ value, onChange, submitLabel, onSubmit, onCancel }) {
 }
 
 function EventsTab({ title, type, items, onCreate, onToggle, onDelete }) {
-  const [form, setForm] = useState({ title: '', [type === 'announcement' ? 'content' : 'description']: '', type: type === 'announcement' ? 'info' : 'event', sendPush: false });
   const bodyKey = type === 'announcement' ? 'content' : 'description';
+  const typeOptions = type === 'announcement' ? ['info', 'update', 'event', 'warning'] : ['event', 'disaster', 'blessing', 'invasion'];
+  const typeLabels = type === 'announcement'
+    ? { info: 'Bilgi', update: 'Güncelleme', event: 'Etkinlik', warning: 'Uyarı' }
+    : { event: 'Olay', disaster: 'Felaket', blessing: 'Lütuf', invasion: 'İstila' };
+  const [form, setForm] = useState({ title: '', [bodyKey]: '', type: typeOptions[0], sendPush: false });
 
   const submit = () => {
     if (!form.title.trim() || !form[bodyKey].trim()) return;
     onCreate({ ...form });
-    setForm({ title: '', [bodyKey]: '', type: type === 'announcement' ? 'info' : 'event', sendPush: false });
+    setForm({ title: '', [bodyKey]: '', type: typeOptions[0], sendPush: false });
   };
 
   return (
@@ -1185,7 +1202,8 @@ function EventsTab({ title, type, items, onCreate, onToggle, onDelete }) {
           <SelectInput
             value={form.type}
             onChange={(v) => setForm((p) => ({ ...p, type: v }))}
-            options={type === 'announcement' ? ['info', 'update', 'event', 'warning'] : ['event', 'disaster', 'blessing', 'invasion']}
+            options={typeOptions}
+            labels={typeOptions.map((o) => typeLabels[o])}
           />
           {type === 'announcement' && (
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: 'var(--gold)', fontSize: '0.8rem', fontFamily: "'Crimson Text', serif", cursor: 'pointer' }}>
@@ -1213,7 +1231,7 @@ function EventsTab({ title, type, items, onCreate, onToggle, onDelete }) {
                   {item.content || item.description}
                 </div>
                 <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontFamily: "'Crimson Text', serif" }}>
-                  {item.created_at ? new Date(item.created_at).toLocaleString('tr-TR') : ''} · {item.active ? 'Aktif' : 'Pasif'} · {item.type}
+                  {item.created_at ? new Date(item.created_at).toLocaleString('tr-TR') : ''} · {item.active ? 'Aktif' : 'Pasif'} · {typeLabels[item.type] || item.type}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
