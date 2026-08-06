@@ -191,6 +191,7 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    {"event":"hp_change","value":-X}
    X = silah/düşman zar sonucu. Örn: kılıç isabeti 1d8=5 ise {"event":"hp_change","value":-5}.
    **KRİTİK KURAL:** Oyuncuya hasar veren HER düşman önce {"event":"enemy_spawn",...} ile tanıtılmış olmalı (aynı yanıtta veya önceki bir yanıtta). Hikayede adı geçmeyen, tanıtılmamış "görünmez" bir düşmandan hp_change asla gönderme — önce düşmanı isimlendirip sahneye çıkar, hasarı ondan sonra ver.
+   **KRİTİK KURAL:** Oyuncu hasar aldığında hikayede MUTLAKA şunları açıkça anlat: hangi düşmanın vurduğu, neyle vurduğu (silah/tırnak/büyü vb.), vücudun neresine isabet ettiği ve yaralanmanın etkisi. Örn: "Goblinin hançeri zırhının aralığından girip kaburgana saplandı; kan ağzından fışkırırken 5 can puanı kaybettin." Asla sadece "5 hasar aldın" gibi kuru mekanik cümleler yazma.
    **KRİTİK KURAL:** Zaten aktif bir düşmanla savaşırken yeni bir düşman daha eklemeden (enemy_spawn) ÖNCE hikayede bunun nereden geldiğini, neden ortaya çıktığını mutlaka 1 cümleyle anlat (örn: "Goblinin çığlığına başka bir goblin daha koştu geldi"). Anlatılmayan/sebepsiz düşman ekleme.
 8. Oyun olaylarını yanıtın SONUNA ayrı satırda JSON yaz:
    {"event":"hp_change","value":-5}

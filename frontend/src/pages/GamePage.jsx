@@ -445,21 +445,10 @@ export default function GamePage({ user }) {
       setHpEffect('damage');
       setShaking(true);
       playDamage();
-      const delta = character.hp - prevHp;
-      setHpDelta({ value: delta, id: Date.now() });
+      setHpDelta({ value: character.hp - prevHp, id: Date.now() });
       if (navigator.vibrate) navigator.vibrate(100);
       setTimeout(() => { setShaking(false); setHpEffect(null); }, 500);
       setTimeout(() => setHpDelta(null), 900);
-
-      // Sohbette hasar metni yoksa otomatik bilgi mesajı ekle
-      const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
-      const damageMentioned = /(hasar|vur|yaral|canın azald|can kayb|kan|yaralandın|acı|saldırı|saldır)/i.test(lastAssistantMsg?.content || '');
-      if (!damageMentioned && delta < 0) {
-        setMessages(current => [
-          ...current,
-          { role: 'assistant', content: `⚔️ Kahraman **${Math.abs(delta)}** can puanı kaybetti! Kalan can: **${character.hp}/${character.max_hp}**`, id: Date.now() + 1, system: true },
-        ]);
-      }
     } else if (character.hp > prevHp) {
       setHpEffect('heal');
       playHeal();
@@ -1301,54 +1290,55 @@ export default function GamePage({ user }) {
       <AnimatePresence>
         {achievementToast && (
           <motion.div
-            initial={{ opacity: 0, y: -40, scale: 0.9 }}
+            initial={{ opacity: 0, y: -20, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -30, scale: 0.9 }}
+            exit={{ opacity: 0, y: -16, scale: 0.92 }}
             transition={{ type: 'spring', stiffness: 320, damping: 24 }}
             style={{
               position: 'fixed',
-              top: 'calc(env(safe-area-inset-top) + 4.5rem)',
-              left: '50%',
-              transform: 'translateX(-50%)',
+              top: 'calc(env(safe-area-inset-top) + 4.25rem)',
+              left: '1rem',
+              right: '1rem',
               zIndex: 120,
-              width: 'min(92vw, 360px)',
+              maxWidth: 'min(92vw, 340px)',
+              margin: '0 auto',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.7rem',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 12,
-              background: 'linear-gradient(135deg, rgba(30,24,16,0.97), rgba(48,36,18,0.97))',
+              gap: '0.6rem',
+              padding: '0.55rem 0.75rem',
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, rgba(30,24,16,0.98), rgba(48,36,18,0.98))',
               border: `1px solid ${ACHIEVEMENT_TIER_COLORS[achievementToast.tier] || 'var(--gold)'}`,
-              boxShadow: '0 8px 28px rgba(0,0,0,0.55)',
+              boxShadow: '0 6px 22px rgba(0,0,0,0.5)',
               pointerEvents: 'none',
             }}
           >
             <div
               style={{
-                width: 42,
-                height: 42,
+                width: 36,
+                height: 36,
                 flexShrink: 0,
-                borderRadius: 9,
+                borderRadius: 8,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: `${ACHIEVEMENT_TIER_COLORS[achievementToast.tier] || '#e6b422'}26`,
+                background: `${ACHIEVEMENT_TIER_COLORS[achievementToast.tier] || '#e6b422'}22`,
                 border: `1px solid ${ACHIEVEMENT_TIER_COLORS[achievementToast.tier] || 'var(--gold)'}`,
               }}
             >
               {(() => {
                 const Icon = ACHIEVEMENT_ICONS[achievementToast.icon] || Trophy;
-                return <Icon size={22} color={ACHIEVEMENT_TIER_COLORS[achievementToast.tier] || '#e6b422'} />;
+                return <Icon size={18} color={ACHIEVEMENT_TIER_COLORS[achievementToast.tier] || '#e6b422'} />;
               })()}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.66rem', letterSpacing: '0.12em', color: 'var(--gold)', textTransform: 'uppercase' }}>
+            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ fontSize: '0.6rem', letterSpacing: '0.1em', color: 'var(--gold)', textTransform: 'uppercase', lineHeight: 1.2 }}>
                 {t('achievement_unlocked_toast')}
               </div>
-              <div className="font-fantasy" style={{ fontSize: '0.95rem', color: 'var(--text)', overflowWrap: 'anywhere' }}>
+              <div className="font-fantasy" style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {t(`ach_${achievementToast.id}`)}
               </div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>
+              <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', lineHeight: 1.2 }}>
                 {t('achievements_reward', achievementToast.xp, achievementToast.gold)}
               </div>
             </div>
