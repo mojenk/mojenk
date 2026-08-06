@@ -34,7 +34,11 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
   const location = useLocation();
 
   const loadData = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      setError(t('login_required'));
+      return;
+    }
     setLoading(true);
     setError('');
     try {

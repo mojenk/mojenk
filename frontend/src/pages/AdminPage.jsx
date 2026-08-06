@@ -120,12 +120,18 @@ export default function AdminPage({ user }) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  const [charactersError, setCharactersError] = useState('');
+
   const loadCharacters = useCallback(async () => {
     setLoading(true);
+    setCharactersError('');
     try {
       const data = await adminListCharacters({ username: search, ...filters });
       setCharacters(data.characters || []);
-    } catch (err) { showMessage(err.message, true); }
+    } catch (err) {
+      setCharactersError(err.message || 'Karakterler yüklenemedi');
+      showMessage(err.message, true);
+    }
     setLoading(false);
   }, [search, filters, showMessage]);
 
@@ -428,6 +434,8 @@ export default function AdminPage({ user }) {
             filters={filters}
             setFilters={setFilters}
             loading={loading}
+            charactersError={charactersError}
+            loadCharacters={loadCharacters}
             onUpdate={handleUpdateCharacter}
             onCheat={handleCheatCharacter}
             onDelete={handleDeleteCharacter}
@@ -602,7 +610,7 @@ function DashboardTab({ stats, users, characters, announcements, worldEvents }) 
   );
 }
 
-function CharactersTab({ characters, search, setSearch, filters, setFilters, loading, onUpdate, onCheat, onDelete }) {
+function CharactersTab({ characters, search, setSearch, filters, setFilters, loading, charactersError, loadCharacters, onUpdate, onCheat, onDelete }) {
   const [selected, setSelected] = useState(null);
   const detailRef = useRef(null);
 
@@ -642,6 +650,25 @@ function CharactersTab({ characters, search, setSearch, filters, setFilters, loa
         <SelectInput value={filters.status} onChange={(v) => setFilters((p) => ({ ...p, status: v }))} options={['', 'alive', 'unconscious', 'dead']} labels={['Tüm durumlar', 'Canlı', 'Baygın', 'Ölü']} />
         <Input type="number" value={filters.minLevel} onChange={(v) => setFilters((p) => ({ ...p, minLevel: v }))} placeholder="Min seviye" />
       </div>
+
+      {charactersError && (
+        <div style={{
+          padding: '0.75rem',
+          borderRadius: 10,
+          background: 'rgba(122,21,21,0.12)',
+          border: '1px solid rgba(122,21,21,0.35)',
+          color: 'var(--blood)',
+          fontFamily: "'Crimson Text', serif",
+          fontSize: '0.85rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.75rem',
+        }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><AlertTriangle size={15} /> {charactersError}</span>
+          <button onClick={loadCharacters} className="btn-dark" style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem' }}>Tekrar Dene</button>
+        </div>
+      )}
 
       {loading ? (
         <LoadingState />
@@ -687,7 +714,22 @@ function CharactersTab({ characters, search, setSearch, filters, setFilters, loa
               </motion.button>
             ))}
           </div>
-          {characters.length === 0 && <EmptyState>Karakter bulunamadı.</EmptyState>}
+          {characters.length === 0 && (
+            <EmptyState>
+              {search || filters.race || filters.class || filters.status || filters.minLevel ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
+                  <span>Seçili filtrelere uygun karakter bulunamadı.</span>
+                  <button
+                    onClick={() => { setSearch(''); setFilters({ race: '', class: '', status: '', minLevel: '' }); }}
+                    className="btn-gold"
+                    style={{ fontSize: '0.75rem', padding: '0.4rem 0.9rem' }}
+                  >
+                    Filtreleri Temizle
+                  </button>
+                </div>
+              ) : 'Karakter bulunamadı.'}
+            </EmptyState>
+          )}
         </>
       )}
 
@@ -708,7 +750,27 @@ function CharactersTab({ characters, search, setSearch, filters, setFilters, loa
   );
 }
 
-function CharacterDetailPanel({ character, onClose, onUpdate, onCheat, onDelete }) {
+function normalizeCharacter(c) {
+  return {
+    ...c,
+    name: c.name || 'İsimsiz',
+    race: c.race || '',
+    class: c.class || '',
+    level: c.level ?? 1,
+    gold: c.gold ?? 0,
+    hp: c.hp ?? 1,
+    max_hp: c.max_hp ?? 1,
+    strength: c.strength ?? 10,
+    dexterity: c.dexterity ?? 10,
+    constitution: c.constitution ?? 10,
+    intelligence: c.intelligence ?? 10,
+    wisdom: c.wisdom ?? 10,
+    charisma: c.charisma ?? 10,
+  };
+}
+
+function CharacterDetailPanel({ character: rawCharacter, onClose, onUpdate, onCheat, onDelete }) {
+  const character = useMemo(() => normalizeCharacter(rawCharacter), [rawCharacter]);
   const [draft, setDraft] = useState(() => ({ ...character }));
 
   useEffect(() => {

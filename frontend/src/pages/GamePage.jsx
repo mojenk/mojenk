@@ -157,13 +157,20 @@ function parseOptionsWithIndex(text) {
     regex.lastIndex = 0;
     while ((m = regex.exec(t)) !== null) {
       if (firstIndex === -1) {
-        // Eşleşme satır başı için "\n" içerebilir; gerçek seçenek başlangıcını bul
         const offset = m[0].length - m[0].replace(/^[\s\n]+/, '').length;
         firstIndex = m.index + offset;
       }
       options.push({ label: String(m[1]).toUpperCase(), text: m[2].trim() });
     }
-    if (options.length > 0) return { options, body: t.slice(0, firstIndex).trimEnd(), full: t };
+    if (options.length > 0) {
+      let body = t.slice(0, firstIndex).trimEnd();
+      // Seçenek metinlerinin body içinde tekrar geçmesini engelle
+      options.forEach((opt) => {
+        const escaped = opt.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        body = body.replace(new RegExp(`^[A-Fa-f0-9]\\s*[)\\.\\-:]\\s*${escaped}`, 'gmi'), '').trim();
+      });
+      return { options, body, full: t };
+    }
   }
 
   return { options: [], body: t, full: t };
@@ -509,7 +516,7 @@ export default function GamePage({ user }) {
   // Günlük hamle hakkını sayfa açılışında hak harcamadan oku
   const refreshDailyStatus = useCallback(() => {
     getDailyStatus()
-      .then((status) => { if (status && !status.premium) setDailyStatus(status); })
+      .then((status) => { if (status) setDailyStatus(status); })
       .catch(() => {});
   }, []);
 
@@ -1615,25 +1622,30 @@ export default function GamePage({ user }) {
               >
                 <Star size={12} />{Math.min(100, Math.round(((character.experience ?? 0) / 300) * 100))}%
               </span>
-              {dailyStatus && (
-                <span
-                  title={t('daily_moves_left')}
-                  style={{
-                    color: dailyStatus.premium || (dailyStatus.limit - dailyStatus.used) > 5 ? 'var(--text-dim)' : '#e53935',
-                    fontFamily: "'Crimson Text', serif",
-                    fontSize: '0.72rem',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.1rem',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Dices size={12} />
-                  {dailyStatus.premium || dailyStatus.limit == null
-                    ? '∞'
-                    : `${Math.max(0, dailyStatus.limit - dailyStatus.used)}/${dailyStatus.limit}`}
-                </span>
-              )}
+              {(() => {
+                const isPremium = dailyStatus?.premium;
+                const limit = dailyStatus?.limit;
+                const used = dailyStatus?.used ?? 0;
+                const left = limit != null ? Math.max(0, limit - used) : null;
+                const low = left != null && left <= 5 && !isPremium;
+                return (
+                  <span
+                    title={t('daily_moves_left')}
+                    style={{
+                      color: low ? '#e53935' : 'var(--text-dim)',
+                      fontFamily: "'Crimson Text', serif",
+                      fontSize: '0.72rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.1rem',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Dices size={12} />
+                    {isPremium ? '∞' : left != null ? `${left}/${limit}` : '…'}
+                  </span>
+                );
+              })()}
             </div>
             <div
               style={{
