@@ -189,40 +189,54 @@ export default function HallOfFamePage({ user }) {
 
                 {/* Summary — expandable */}
                 {hero.summary && (
-                  <>
+                  <div style={{ marginTop: '0.55rem' }}>
                     <button
                       onClick={() => { playClick(); setExpanded(expanded === hero.id ? null : hero.id); }}
                       style={{
-                        background: 'none', border: 'none', color: 'var(--text-muted)',
-                        fontFamily: "'Crimson Text', serif", fontSize: '0.78rem',
-                        cursor: 'pointer', padding: '0.4rem 0 0', display: 'flex',
-                        alignItems: 'center', gap: '0.3rem',
+                        background: 'rgba(201,150,58,0.08)', border: '1px solid var(--border)',
+                        color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif",
+                        fontSize: '0.8rem', borderRadius: '6px',
+                        cursor: 'pointer', padding: '0.35rem 0.7rem', display: 'inline-flex',
+                        alignItems: 'center', gap: '0.35rem', width: '100%',
+                        justifyContent: 'space-between',
                       }}
                     >
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          transform: expanded === hero.id ? 'rotate(90deg)' : 'none',
-                          transition: 'transform 0.2s',
-                        }}
-                      >
-                        ▶
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            transform: expanded === hero.id ? 'rotate(90deg)' : 'none',
+                            transition: 'transform 0.2s',
+                          }}
+                        >
+                          ▶
+                        </span>
+                        {expanded === hero.id ? t('hide_summary') : t('adventure_summary')}
                       </span>
-                      {expanded === hero.id ? t('hide_summary') : t('adventure_summary')}
+                      <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>
+                        {expanded === hero.id ? '▲' : '▼'}
+                      </span>
                     </button>
                     {expanded === hero.id && (
-                      <motion.p
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        style={{
-                          fontFamily: "'Crimson Text', serif", color: 'var(--text-muted)',
-                          fontSize: '0.83rem', lineHeight: 1.55, margin: '0.4rem 0 0',
-                        }}
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        style={{ overflow: 'hidden' }}
                       >
-                        {hero.summary}
-                      </motion.p>
+                        <p
+                          style={{
+                            fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)',
+                            fontSize: '0.88rem', lineHeight: 1.6, margin: '0.55rem 0 0',
+                            padding: '0.7rem 0.85rem', borderRadius: '6px',
+                            background: 'rgba(10,8,6,0.45)', border: '1px solid rgba(92,74,42,0.25)',
+                            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                          }}
+                        >
+                          {hero.summary}
+                        </p>
+                      </motion.div>
                     )}
-                  </>
+                  </div>
                 )}
               </motion.div>
             ))}

@@ -445,10 +445,21 @@ export default function GamePage({ user }) {
       setHpEffect('damage');
       setShaking(true);
       playDamage();
-      setHpDelta({ value: character.hp - prevHp, id: Date.now() });
+      const delta = character.hp - prevHp;
+      setHpDelta({ value: delta, id: Date.now() });
       if (navigator.vibrate) navigator.vibrate(100);
       setTimeout(() => { setShaking(false); setHpEffect(null); }, 500);
       setTimeout(() => setHpDelta(null), 900);
+
+      // Sohbette hasar metni yoksa otomatik bilgi mesajı ekle
+      const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+      const damageMentioned = /(hasar|vur|yaral|canın azald|can kayb|kan|yaralandın|acı|saldırı|saldır)/i.test(lastAssistantMsg?.content || '');
+      if (!damageMentioned && delta < 0) {
+        setMessages(current => [
+          ...current,
+          { role: 'assistant', content: `⚔️ Kahraman **${Math.abs(delta)}** can puanı kaybetti! Kalan can: **${character.hp}/${character.max_hp}**`, id: Date.now() + 1, system: true },
+        ]);
+      }
     } else if (character.hp > prevHp) {
       setHpEffect('heal');
       playHeal();
@@ -2958,20 +2969,28 @@ export default function GamePage({ user }) {
               {character.name} ölümün kıyısında. Yeniden doğma zarında 10+ atarsan 1 canla dirilirsin.
             </p>
 
-            {reviveRoll && (
+            {reviveState === 'rolling' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
+                <DiceRoll value={reviveRoll?.roll || 1} rolling={true} size={88} label="d20" />
+                <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif", fontSize: '0.85rem' }}>Kader çarkı dönüyor...</span>
+              </div>
+            )}
+
+            {reviveRoll && reviveState !== 'rolling' && (
               <motion.div
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                style={{
-                  width: '3.2rem', height: '3.2rem', borderRadius: '10px',
-                  background: reviveRoll.success ? 'rgba(74,222,128,0.15)' : 'rgba(220,38,38,0.15)',
-                  border: `1px solid ${reviveRoll.success ? '#4ade80' : 'var(--blood)'}`,
-                  color: reviveRoll.success ? '#4ade80' : 'var(--blood)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: "'Cinzel', serif", fontSize: '1.3rem',
-                }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}
               >
-                {reviveRoll.roll}
+                <DiceRoll value={reviveRoll.roll} rolling={false} size={88} label="d20" />
+                <span
+                  style={{
+                    color: reviveRoll.success ? '#4ade80' : 'var(--blood)',
+                    fontFamily: "'Cinzel', serif", fontSize: '1rem', textAlign: 'center',
+                  }}
+                >
+                  {reviveRoll.success ? 'Başarılı! Kahraman diriliyor...' : 'Başarısız... Kader seni çağırıyor.'}
+                </span>
               </motion.div>
             )}
 
@@ -2980,11 +2999,13 @@ export default function GamePage({ user }) {
                 whileTap={{ scale: 0.96 }}
                 onClick={async () => {
                   setReviveState('rolling');
+                  playDiceRoll();
                   try {
                     const result = await finalDeathSave(characterId, sessionId);
-                    await new Promise((resolve) => setTimeout(resolve, 1600));
+                    await new Promise((resolve) => setTimeout(resolve, 2200));
                     setReviveRoll({ roll: result.roll, success: result.success });
                     if (result.success) {
+                      playDiceResult();
                       setCharacter(result.character);
                       setCurrentEnemy(null);
                       setMessages((currentMessages) => [
@@ -2996,6 +3017,8 @@ export default function GamePage({ user }) {
                         setReviveState('idle');
                       }, 2500);
                     } else {
+                      playDamage();
+                      await new Promise((resolve) => setTimeout(resolve, 1200));
                       if (!isPremiumUser) await showInterstitialAd();
                       setFinalJourney({ summary: result.summary, finalMessage: result.finalMessage });
                     }
@@ -3008,10 +3031,6 @@ export default function GamePage({ user }) {
               >
                 Yeniden Doğma Zarını At
               </motion.button>
-            )}
-
-            {reviveState === 'rolling' && (
-              <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif" }}>Kader çarkı dönüyor...</span>
             )}
           </motion.div>
         )}
