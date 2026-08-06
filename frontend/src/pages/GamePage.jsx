@@ -1617,6 +1617,7 @@ export default function GamePage({ user }) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.2rem',
+                height: '2rem',
               }}
             >
               <Coins size={16} />{character.gold}
@@ -1629,6 +1630,7 @@ export default function GamePage({ user }) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.2rem',
+                height: '2rem',
               }}
             >
               <Star size={14} />{Math.min(100, Math.round(((character.experience ?? 0) / 300) * 100))}%
@@ -1643,6 +1645,7 @@ export default function GamePage({ user }) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.2rem',
+                  height: '2rem',
                 }}
               >
                 <Dices size={14} />
@@ -1664,8 +1667,8 @@ export default function GamePage({ user }) {
                   onClick={() => { playClick(); setShowWheel(true); }}
                   title={`Kader Çarkı — ${remaining} hakkın kaldı`}
                   style={{
-                    width: '2.1rem',
-                    height: '2.1rem',
+                    width: '2rem',
+                    height: '2rem',
                     borderRadius: '8px',
                     background: 'rgba(92,74,42,0.2)',
                     border: '1px solid var(--border)',
@@ -1675,6 +1678,7 @@ export default function GamePage({ user }) {
                     justifyContent: 'center',
                     cursor: 'pointer',
                     color: remaining > 0 ? 'var(--gold)' : 'var(--text-dim)',
+                    flexShrink: 0,
                   }}
                 >
                   <WheelIcon size={16} />
@@ -1686,8 +1690,8 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); toggleSound(); }}
               style={{
-                width: '1.85rem',
-                height: '1.85rem',
+                width: '2rem',
+                height: '2rem',
                 borderRadius: '8px',
                 background: 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
@@ -1696,6 +1700,7 @@ export default function GamePage({ user }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                flexShrink: 0,
               }}
             >
               {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -1710,8 +1715,8 @@ export default function GamePage({ user }) {
               }}
               title={character.hp <= 0 ? 'Baygınken envantere erişilemez' : currentEnemy ? 'Savaşta envantere erişilemez' : 'Çanta'}
               style={{
-                width: '1.85rem',
-                height: '1.85rem',
+                width: '2rem',
+                height: '2rem',
                 borderRadius: '8px',
                 background: showBag
                   ? 'rgba(201,150,58,0.25)'
@@ -1724,6 +1729,7 @@ export default function GamePage({ user }) {
                 cursor: character.hp <= 0 || currentEnemy ? 'not-allowed' : 'pointer',
                 opacity: character.hp <= 0 || currentEnemy ? 0.45 : 1,
                 position: 'relative',
+                flexShrink: 0,
               }}
             >
               <Backpack size={16} color="var(--text)" />
@@ -1752,8 +1758,8 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); navigate(`/shop/${characterId}?scenario=${session?.scenario || scenario || ''}`); }}
               style={{
-                width: '1.85rem',
-                height: '1.85rem',
+                width: '2rem',
+                height: '2rem',
                 borderRadius: '8px',
                 background: 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
@@ -1762,6 +1768,7 @@ export default function GamePage({ user }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                flexShrink: 0,
               }}
               title="Tüccar Dükkânı"
             >
@@ -1771,8 +1778,8 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); setShowStats((s) => !s); }}
               style={{
-                width: '1.85rem',
-                height: '1.85rem',
+                width: '2rem',
+                height: '2rem',
                 borderRadius: '8px',
                 background: showStats
                   ? 'rgba(201,150,58,0.25)'
@@ -1783,6 +1790,7 @@ export default function GamePage({ user }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                flexShrink: 0,
               }}
             >
               <BarChart3 size={16} />
@@ -1792,8 +1800,8 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); setShowNpcs((s) => !s); setShowQuests(false); }}
               style={{
-                width: '1.85rem',
-                height: '1.85rem',
+                width: '2rem',
+                height: '2rem',
                 borderRadius: '8px',
                 background: showNpcs
                   ? 'rgba(201,150,58,0.25)'
@@ -1805,6 +1813,7 @@ export default function GamePage({ user }) {
                 justifyContent: 'center',
                 cursor: 'pointer',
                 position: 'relative',
+                flexShrink: 0,
               }}
               title={`Tanınan NPC'ler (${npcs.length})`}
             >
@@ -1828,8 +1837,8 @@ export default function GamePage({ user }) {
                   whileTap={{ scale: 0.96 }}
                   onClick={() => { playClick(); setShowQuests((s) => !s); setShowNpcs(false); }}
                   style={{
-                    width: '2.1rem',
-                    height: '2.1rem',
+                    width: '2rem',
+                    height: '2rem',
                     borderRadius: '8px',
                     background: showQuests
                       ? 'rgba(201,150,58,0.25)'
@@ -1841,6 +1850,7 @@ export default function GamePage({ user }) {
                     justifyContent: 'center',
                     cursor: 'pointer',
                     position: 'relative',
+                    flexShrink: 0,
                   }}
                   title={`Görevler (${activeQuests.length} aktif)`}
                 >
