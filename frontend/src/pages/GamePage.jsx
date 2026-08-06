@@ -1488,13 +1488,13 @@ export default function GamePage({ user }) {
       <div
         style={{
           flexShrink: 0,
-          padding: '0.75rem 0.85rem 0.5rem',
+          padding: '0.55rem 0.6rem 0.4rem',
           borderBottom: '1px solid var(--border)',
           background: 'rgba(13,10,5,0.97)',
         }}
         className="pt-safe"
       >
-        <div className="game-header-flex" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        <div className="game-header-flex" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
           {/* Back button */}
           <motion.button
             whileTap={{ scale: 0.96 }}
@@ -1504,8 +1504,8 @@ export default function GamePage({ user }) {
               navigate('/');
             }}
             style={{
-              width: '2.4rem',
-              height: '2.4rem',
+              width: '2rem',
+              height: '2rem',
               borderRadius: '50%',
               background: 'rgba(92,74,42,0.15)',
               border: '1px solid var(--gold)',
@@ -1519,21 +1519,21 @@ export default function GamePage({ user }) {
             }}
             title="Geri dön"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={18} />
           </motion.button>
 
           {/* Character portrait */}
           <div
             style={{
-              width: '2.6rem',
-              height: '2.6rem',
+              width: '2.1rem',
+              height: '2.1rem',
               borderRadius: '50%',
               background: 'rgba(92,74,42,0.15)',
               border: '2px solid var(--gold)',
               padding: 0,
               overflow: 'hidden',
               flexShrink: 0,
-              boxShadow: '0 0 10px rgba(201,150,58,0.25)',
+              boxShadow: '0 0 8px rgba(201,150,58,0.2)',
             }}
           >
             <img
@@ -1545,11 +1545,11 @@ export default function GamePage({ user }) {
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
               <span
                 className="font-fantasy gold-text"
                 style={{
-                  fontSize: '0.95rem',
+                  fontSize: '0.9rem',
                   letterSpacing: '0.06em',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -1578,15 +1578,60 @@ export default function GamePage({ user }) {
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
-                    padding: '0.12rem 0.35rem',
+                    padding: '0.1rem 0.3rem',
                     borderRadius: '999px',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '0.15rem',
+                    gap: '0.1rem',
                     flexShrink: 0,
                   }}
                 >
-                  <Crown size={9} /> Premium
+                  <Crown size={8} /> Premium
+                </span>
+              )}
+              <span
+                style={{
+                  color: 'var(--gold)',
+                  fontFamily: "'Crimson Text', serif",
+                  fontSize: '0.72rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.1rem',
+                  flexShrink: 0,
+                }}
+              >
+                <Coins size={13} />{character.gold}
+              </span>
+              <span
+                style={{
+                  color: 'var(--text-dim)',
+                  fontFamily: "'Crimson Text', serif",
+                  fontSize: '0.72rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.1rem',
+                  flexShrink: 0,
+                }}
+              >
+                <Star size={12} />{Math.min(100, Math.round(((character.experience ?? 0) / 300) * 100))}%
+              </span>
+              {dailyStatus && (
+                <span
+                  title={t('daily_moves_left')}
+                  style={{
+                    color: dailyStatus.premium || (dailyStatus.limit - dailyStatus.used) > 5 ? 'var(--text-dim)' : '#e53935',
+                    fontFamily: "'Crimson Text', serif",
+                    fontSize: '0.72rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.1rem',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Dices size={12} />
+                  {dailyStatus.premium || dailyStatus.limit == null
+                    ? '∞'
+                    : `${Math.max(0, dailyStatus.limit - dailyStatus.used)}/${dailyStatus.limit}`}
                 </span>
               )}
             </div>
@@ -1594,66 +1639,21 @@ export default function GamePage({ user }) {
               style={{
                 color: hpPct <= 25 ? 'var(--crimson)' : 'var(--blood)',
                 fontFamily: "'Crimson Text', serif",
-                fontSize: '0.75rem',
+                fontSize: '0.72rem',
                 animation: hpPct <= 25 ? 'blink-cursor 1.5s step-end infinite' : 'none',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.3rem',
+                gap: '0.25rem',
               }}
             >
-              <Heart size={16} /> {character.hp}/{character.max_hp}
-              <span style={{ color: 'var(--text-dim)', marginLeft: '0.4rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-                <Shield size={14} />{character.armor_class || 10}
+              <Heart size={14} /> {character.hp}/{character.max_hp}
+              <span style={{ color: 'var(--text-dim)', marginLeft: '0.25rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
+                <Shield size={12} />{character.armor_class || 10}
               </span>
             </div>
           </div>
 
-          <div className="game-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-            <span
-              style={{
-                color: 'var(--gold)',
-                fontFamily: "'Crimson Text', serif",
-                fontSize: '0.78rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.2rem',
-                height: '2rem',
-              }}
-            >
-              <Coins size={16} />{character.gold}
-            </span>
-            <span
-              style={{
-                color: 'var(--text-dim)',
-                fontFamily: "'Crimson Text', serif",
-                fontSize: '0.78rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.2rem',
-                height: '2rem',
-              }}
-            >
-              <Star size={14} />{Math.min(100, Math.round(((character.experience ?? 0) / 300) * 100))}%
-            </span>
-            {dailyStatus && (
-              <span
-                title={t('daily_moves_left')}
-                style={{
-                  color: dailyStatus.premium || (dailyStatus.limit - dailyStatus.used) > 5 ? 'var(--text-dim)' : '#e53935',
-                  fontFamily: "'Crimson Text', serif",
-                  fontSize: '0.78rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.2rem',
-                  height: '2rem',
-                }}
-              >
-                <Dices size={14} />
-                {dailyStatus.premium || dailyStatus.limit == null
-                  ? '∞'
-                  : `${Math.max(0, dailyStatus.limit - dailyStatus.used)}/${dailyStatus.limit}`}
-              </span>
-            )}
+          <div className="game-header-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem', flexShrink: 0 }}>
             {/* Wheel of Fate button */}
             {(() => {
               const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
@@ -1667,21 +1667,22 @@ export default function GamePage({ user }) {
                   onClick={() => { playClick(); setShowWheel(true); }}
                   title={`Kader Çarkı — ${remaining} hakkın kaldı`}
                   style={{
-                    width: '2rem',
-                    height: '2rem',
-                    borderRadius: '8px',
+                    width: '1.55rem',
+                    height: '1.55rem',
+                    borderRadius: '6px',
                     background: 'rgba(92,74,42,0.2)',
                     border: '1px solid var(--border)',
-                    fontSize: '0.9rem',
+                    fontSize: '0.85rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
                     color: remaining > 0 ? 'var(--gold)' : 'var(--text-dim)',
                     flexShrink: 0,
+                    padding: 0,
                   }}
                 >
-                  <WheelIcon size={16} />
+                  <WheelIcon size={14} />
                 </motion.button>
               );
             })()}
@@ -1690,20 +1691,21 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); toggleSound(); }}
               style={{
-                width: '2rem',
-                height: '2rem',
-                borderRadius: '8px',
+                width: '1.55rem',
+                height: '1.55rem',
+                borderRadius: '6px',
                 background: 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
-                fontSize: '0.9rem',
+                fontSize: '0.85rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
                 flexShrink: 0,
+                padding: 0,
               }}
             >
-              {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              {soundOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
@@ -1715,14 +1717,14 @@ export default function GamePage({ user }) {
               }}
               title={character.hp <= 0 ? 'Baygınken envantere erişilemez' : currentEnemy ? 'Savaşta envantere erişilemez' : 'Çanta'}
               style={{
-                width: '2rem',
-                height: '2rem',
-                borderRadius: '8px',
+                width: '1.55rem',
+                height: '1.55rem',
+                borderRadius: '6px',
                 background: showBag
                   ? 'rgba(201,150,58,0.25)'
                   : 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
-                fontSize: '0.9rem',
+                fontSize: '0.85rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1730,20 +1732,21 @@ export default function GamePage({ user }) {
                 opacity: character.hp <= 0 || currentEnemy ? 0.45 : 1,
                 position: 'relative',
                 flexShrink: 0,
+                padding: 0,
               }}
             >
-              <Backpack size={16} color="var(--text)" />
+              <Backpack size={14} color="var(--text)" />
               {inventory.length > 0 && (
                 <span style={{
                   position: 'absolute',
-                  top: '-3px',
-                  right: '-3px',
-                  width: '14px',
-                  height: '14px',
+                  top: '-2px',
+                  right: '-2px',
+                  width: '12px',
+                  height: '12px',
                   borderRadius: '50%',
                   background: 'var(--gold)',
                   color: '#0d0a05',
-                  fontSize: '0.55rem',
+                  fontSize: '0.5rem',
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
@@ -1758,72 +1761,75 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); navigate(`/shop/${characterId}?scenario=${session?.scenario || scenario || ''}`); }}
               style={{
-                width: '2rem',
-                height: '2rem',
-                borderRadius: '8px',
+                width: '1.55rem',
+                height: '1.55rem',
+                borderRadius: '6px',
                 background: 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
-                fontSize: '0.9rem',
+                fontSize: '0.85rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
                 flexShrink: 0,
+                padding: 0,
               }}
               title="Tüccar Dükkânı"
             >
-              <Store size={16} color="var(--text)" />
+              <Store size={14} color="var(--text)" />
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); setShowStats((s) => !s); }}
               style={{
-                width: '2rem',
-                height: '2rem',
-                borderRadius: '8px',
+                width: '1.55rem',
+                height: '1.55rem',
+                borderRadius: '6px',
                 background: showStats
                   ? 'rgba(201,150,58,0.25)'
                   : 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
-                fontSize: '0.9rem',
+                fontSize: '0.85rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
                 flexShrink: 0,
+                padding: 0,
               }}
             >
-              <BarChart3 size={16} />
+              <BarChart3 size={14} />
             </motion.button>
             {/* NPC button */}
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); setShowNpcs((s) => !s); setShowQuests(false); }}
               style={{
-                width: '2rem',
-                height: '2rem',
-                borderRadius: '8px',
+                width: '1.55rem',
+                height: '1.55rem',
+                borderRadius: '6px',
                 background: showNpcs
                   ? 'rgba(201,150,58,0.25)'
                   : 'rgba(92,74,42,0.2)',
                 border: `1px solid ${npcs.length > 0 ? 'var(--gold)' : 'var(--border)'}`,
-                fontSize: '0.9rem',
+                fontSize: '0.85rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
                 position: 'relative',
                 flexShrink: 0,
+                padding: 0,
               }}
               title={`Tanınan NPC'ler (${npcs.length})`}
             >
-              <Users size={16} />
+              <Users size={14} />
               {npcs.length > 0 && (
                 <span style={{
-                  position: 'absolute', top: '-4px', right: '-4px',
+                  position: 'absolute', top: '-2px', right: '-2px',
                   background: 'var(--gold)', color: '#1a1510',
-                  borderRadius: '50%', width: '14px', height: '14px',
-                  fontSize: '0.55rem', fontWeight: 700,
+                  borderRadius: '50%', width: '12px', height: '12px',
+                  fontSize: '0.5rem', fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontFamily: "'Cinzel', serif",
                 }}>{npcs.length > 9 ? '9+' : npcs.length}</span>
@@ -1837,30 +1843,31 @@ export default function GamePage({ user }) {
                   whileTap={{ scale: 0.96 }}
                   onClick={() => { playClick(); setShowQuests((s) => !s); setShowNpcs(false); }}
                   style={{
-                    width: '2rem',
-                    height: '2rem',
-                    borderRadius: '8px',
+                    width: '1.55rem',
+                    height: '1.55rem',
+                    borderRadius: '6px',
                     background: showQuests
                       ? 'rgba(201,150,58,0.25)'
                       : 'rgba(92,74,42,0.2)',
                     border: `1px solid ${activeQuests.length > 0 ? 'var(--gold)' : 'var(--border)'}`,
-                    fontSize: '0.9rem',
+                    fontSize: '0.85rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
                     position: 'relative',
                     flexShrink: 0,
+                    padding: 0,
                   }}
                   title={`Görevler (${activeQuests.length} aktif)`}
                 >
-                  <ScrollText size={16} />
+                  <ScrollText size={14} />
                   {activeQuests.length > 0 && (
                     <span style={{
-                      position: 'absolute', top: '-4px', right: '-4px',
+                      position: 'absolute', top: '-2px', right: '-2px',
                       background: '#c9963a', color: '#1a1510',
-                      borderRadius: '50%', width: '14px', height: '14px',
-                      fontSize: '0.55rem', fontWeight: 700,
+                      borderRadius: '50%', width: '12px', height: '12px',
+                      fontSize: '0.5rem', fontWeight: 700,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontFamily: "'Cinzel', serif",
                     }}>{activeQuests.length > 9 ? '9+' : activeQuests.length}</span>
