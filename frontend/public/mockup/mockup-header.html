@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Header Mockup v3</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0a05;
+    color: #e8dcc8;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem 0.5rem;
+  }
+  h2 { color: #c9963a; font-size: 0.95rem; text-align: center; }
+  .phone {
+    width: 320px;
+    border: 2px solid #3a2e1e;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #0d0a05;
+  }
+  .header {
+    background: rgba(13,10,5,0.97);
+    border-bottom: 1px solid #3a2e1e;
+    padding: 0.55rem 0.6rem 0.4rem;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .back {
+    width: 2rem; height: 2rem; border-radius: 50%;
+    background: rgba(92,74,42,0.15); border: 1px solid #c9963a;
+    display: flex; align-items: center; justify-content: center;
+    color: #c9963a; flex-shrink: 0; font-size: 0.85rem;
+  }
+  .portrait {
+    width: 2rem; height: 2rem; border-radius: 50%;
+    border: 2px solid #c9963a; overflow: hidden; flex-shrink: 0;
+    background: #5c4a2a;
+  }
+  .info { flex: 1; min-width: 0; }
+  .name-row {
+    display: flex; align-items: center; gap: 0.35rem;
+    font-size: 0.85rem; color: #c9963a;
+  }
+  .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sv { font-size: 0.65rem; color: #8a7f6b; flex-shrink: 0; }
+  .hp-row {
+    font-size: 0.68rem; color: #c9462a; display: flex; align-items: center; gap: 0.2rem;
+  }
+  .badges {
+    display: flex; align-items: center; gap: 0.35rem;
+    flex-shrink: 0;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.1rem;
+    font-size: 0.68rem; color: #c9963a;
+  }
+  .badge.dim { color: #8a7f6b; }
+  .actions {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.25rem; margin-top: 0.3rem;
+  }
+  .icon-group {
+    display: flex; align-items: center; gap: 0.25rem;
+  }
+  .icon-btn {
+    width: 1.5rem; height: 1.5rem; border-radius: 6px;
+    background: rgba(92,74,42,0.2); border: 1px solid #3a2e1e;
+    display: flex; align-items: center; justify-content: center;
+    color: #e8dcc8; flex-shrink: 0; font-size: 0.85rem;
+  }
+  .icon-btn.gold { color: #c9963a; border-color: #c9963a; }
+  .hp-bar { margin-top: 0.3rem; height: 5px; background: rgba(0,0,0,0.3); border-radius: 99px; }
+  .hp-fill { width: 70%; height: 100%; background: #c9462a; border-radius: 99px; }
+  .bad .icon-group .icon-btn:nth-child(2) { transform: translateY(5px); }
+  .bad .icon-group .icon-btn:nth-child(4) { transform: translateY(7px); }
+  .bad .icon-group .icon-btn:nth-child(6) { transform: translateY(4px); }
+  .bad .badges .badge:nth-child(1) { transform: translateY(3px); }
+</style>
+</head>
+<body>
+  <h2>MEVCUT (ikonlar farklı hizada / görev aşağıda)</h2>
+  <div class="phone">
+    <div class="header">
+      <div class="row">
+        <div class="back">←</div>
+        <div class="portrait"></div>
+        <div class="info">
+          <div class="name-row">
+            <span class="name">Thorin · Sv.4</span>
+          </div>
+          <div class="hp-row">♥ 18/24 🛡️14</div>
+        </div>
+      </div>
+      <div class="actions bad">
+        <div class="badges">
+          <span class="badge">🪙45</span>
+          <span class="badge dim">⭐62%</span>
+          <span class="badge dim">🎲12/40</span>
+        </div>
+        <div class="icon-group">
+          <div class="icon-btn gold">◎</div>
+          <div class="icon-btn">🔊</div>
+          <div class="icon-btn">🎒</div>
+          <div class="icon-btn">🏪</div>
+          <div class="icon-btn">📊</div>
+          <div class="icon-btn">👥</div>
+          <div class="icon-btn">📜</div>
+        </div>
+      </div>
+      <div class="hp-bar"><div class="hp-fill"></div></div>
+    </div>
+  </div>
+
+  <h2>DÜZELTİLMİŞ (badge'ler üstte, 7 ikon tek satırda)</h2>
+  <div class="phone">
+    <div class="header">
+      <div class="row">
+        <div class="back">←</div>
+        <div class="portrait"></div>
+        <div class="info">
+          <div class="name-row">
+            <span class="name">Thorin · Sv.4</span>
+            <span class="badge">🪙45</span>
+            <span class="badge dim">⭐62%</span>
+            <span class="badge dim">🎲12/40</span>
+          </div>
+          <div class="hp-row">♥ 18/24 🛡️14</div>
+        </div>
+      </div>
+      <div class="actions">
+        <div class="icon-group">
+          <div class="icon-btn gold">◎</div>
+          <div class="icon-btn">🔊</div>
+          <div class="icon-btn">🎒</div>
+          <div class="icon-btn">🏪</div>
+          <div class="icon-btn">📊</div>
+          <div class="icon-btn">👥</div>
+          <div class="icon-btn">📜</div>
+        </div>
+      </div>
+      <div class="hp-bar"><div class="hp-fill"></div></div>
+    </div>
+  </div>
+</body>
+</html>

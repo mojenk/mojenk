@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createSession } from '../utils/api';
 import { useLang, t } from '../utils/i18n';
 import { playClick, playMagic } from '../utils/sounds';
@@ -117,15 +117,16 @@ export default function ScenarioPage({ user }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleStart = async () => {
-    if (!selected) return;
+  const handleStart = async (scenarioId) => {
+    const id = scenarioId || selected;
+    if (!id) return;
     setLoading(true);
     try {
-      const scenario = SCENARIOS.find((s) => s.id === selected);
-      const data = await createSession(characterId, selected, scenario.name);
+      const scenario = SCENARIOS.find((s) => s.id === id);
+      const data = await createSession(characterId, id, scenario.name);
       if (data.sessionId) {
         navigate(
-          `/game/${data.sessionId}?characterId=${characterId}&scenario=${selected}`
+          `/game/${data.sessionId}?characterId=${characterId}&scenario=${id}`
         );
       }
     } catch (err) {
@@ -164,7 +165,7 @@ export default function ScenarioPage({ user }) {
             className="font-fantasy gold-text"
             style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.08em' }}
           >
-            Senaryo Seç
+            {t('scenario_select_title') || 'Macera Seç'}
           </h1>
           <p
             style={{
@@ -174,7 +175,7 @@ export default function ScenarioPage({ user }) {
               margin: 0,
             }}
           >
-            Maceranı belirle
+            {t('scenario_select_subtitle') || 'Kaderinin hangi yolda şekillenecek?'}
           </p>
         </div>
       </div>
@@ -187,154 +188,225 @@ export default function ScenarioPage({ user }) {
           padding: '1rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.75rem',
+          gap: '1rem',
         }}
       >
         {SCENARIOS.map((s, i) => {
           const Icon = s.icon;
+          const isSelected = selected === s.id;
           return (
-            <motion.button
+            <motion.div
               key={s.id}
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.07 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => { playClick(); setSelected(s.id); }}
-              className={`select-card${selected === s.id ? ' active' : ''}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.85rem',
-                width: '100%',
-                textAlign: 'left',
-                padding: '0.75rem',
-                overflow: 'hidden',
-                minHeight: '5.5rem',
-              }}
+              transition={{ delay: i * 0.05 }}
             >
-              <div
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => { playClick(); setSelected(s.id); }}
+                className={`select-card scenario-card${isSelected ? ' active' : ''}`}
                 style={{
-                  width: '4rem',
-                  height: '4rem',
-                  borderRadius: '10px',
-                  flexShrink: 0,
-                  position: 'relative',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: 0,
                   overflow: 'hidden',
-                  border: '1px solid rgba(139,106,20,0.35)',
-                  boxShadow: selected === s.id ? '0 0 12px rgba(201,150,58,0.35)' : 'none',
+                  display: 'block',
+                  minHeight: 'auto',
+                  position: 'relative',
                 }}
               >
-                <img
-                  src={s.image}
-                  alt={s.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                />
-                {selected === s.id && (
+                {/* Image area */}
+                <div
+                  style={{
+                    width: '100%',
+                    height: '10rem',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderBottom: '1px solid rgba(74,59,34,0.5)',
+                  }}
+                >
+                  <img
+                    src={s.image}
+                    alt={s.name}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                      filter: isSelected ? 'brightness(0.65)' : 'brightness(0.8)',
+                      transition: 'filter 0.2s ease',
+                    }}
+                  />
+                  {/* Gradient overlay */}
                   <div
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      background: 'rgba(10,8,6,0.55)',
+                      background: 'linear-gradient(to bottom, rgba(10,8,6,0.2) 0%, rgba(10,8,6,0.55) 70%, rgba(10,8,6,0.95) 100%)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+
+                  {/* Selected check */}
+                  {isSelected && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="scenario-check"
+                      style={{
+                        position: 'absolute',
+                        top: '0.6rem',
+                        left: '0.6rem',
+                        width: '1.8rem',
+                        height: '1.8rem',
+                        borderRadius: '50%',
+                        background: 'var(--gold2)',
+                        color: '#0a0806',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 0 12px rgba(212,160,58,0.5)',
+                      }}
+                    >
+                      <Check size={18} strokeWidth={3} />
+                    </motion.div>
+                  )}
+
+                  {/* Tag */}
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '0.6rem',
+                      right: '0.6rem',
+                      fontSize: '0.6rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      padding: '0.25rem 0.55rem',
+                      borderRadius: '999px',
+                      color: '#fff',
+                      background: s.tagColor,
+                      boxShadow: '0 0 8px ' + s.tagColor + '66',
+                      fontFamily: "system-ui, sans-serif",
+                      lineHeight: 1,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {s.tag}
+                  </span>
+
+                  {/* Icon + name on image */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '0.6rem',
+                      left: '0.85rem',
+                      right: '0.85rem',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--gold2)',
+                      gap: '0.45rem',
                     }}
                   >
-                    <Check size={22} />
+                    <Icon
+                      size={18}
+                      color="var(--gold2)"
+                      style={{ flexShrink: 0, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.8))' }}
+                    />
+                    <span
+                      className="font-fantasy"
+                      style={{
+                        color: '#fff',
+                        fontSize: '1.05rem',
+                        fontWeight: 700,
+                        lineHeight: 1.2,
+                        textShadow: '0 1px 6px rgba(0,0,0,0.9)',
+                        overflowWrap: 'break-word',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {s.name}
+                    </span>
                   </div>
-                )}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
+                </div>
+
+                {/* Text area */}
                 <div
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.4rem',
-                    marginBottom: '0.25rem',
+                    padding: '0.75rem 0.85rem 0.9rem',
+                    background: isSelected
+                      ? 'linear-gradient(135deg, rgba(44,32,16,0.95), rgba(22,16,8,0.98))'
+                      : 'linear-gradient(135deg, rgba(24,18,12,0.95), rgba(12,9,6,0.98))',
                   }}
                 >
-                <Icon
-                    size={15}
-                    color={selected === s.id ? 'var(--gold2)' : 'var(--text-dim)'}
-                    style={{ flexShrink: 0 }}
-                  />
-                  <span
-                    className="font-fantasy"
+                  <p
                     style={{
-                      color: selected === s.id ? 'var(--gold2)' : '#fff',
-                      fontSize: '0.95rem',
-                      fontWeight: 700,
-                      lineHeight: 1.2,
-                      textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                      color: 'var(--text-dim)',
+                      fontFamily: "'Crimson Text', serif",
+                      fontSize: '0.85rem',
+                      lineHeight: 1.4,
+                      margin: 0,
                       overflowWrap: 'break-word',
                       wordBreak: 'break-word',
-                      minWidth: 0,
                     }}
                   >
-                    {s.name}
-                  </span>
+                    {s.desc}
+                  </p>
                 </div>
-                <div
-                  style={{
-                    color: 'var(--text-dim)',
-                    fontFamily: "'Crimson Text', serif",
-                    fontSize: '0.8rem',
-                    lineHeight: 1.35,
-                    marginBottom: '0.4rem',
-                    overflowWrap: 'break-word',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {s.desc}
-                </div>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    fontSize: '0.55rem',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    padding: '0.15rem 0.45rem',
-                    borderRadius: '999px',
-                    color: '#fff',
-                    background: s.tagColor,
-                    boxShadow: '0 0 6px ' + s.tagColor + '66',
-                    fontFamily: "system-ui, sans-serif",
-                    lineHeight: 1.4,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {s.tag}
-                </span>
-              </div>
-              <Sword
-                size={16}
-                style={{
-                  color: selected === s.id ? 'var(--gold2)' : 'var(--text-dim)',
-                  opacity: selected === s.id ? 1 : 0.4,
-                  flexShrink: 0,
-                }}
-              />
-            </motion.button>
+              </motion.button>
+
+              {/* Inline start button when selected */}
+              <AnimatePresence>
+                {isSelected && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                    animate={{ opacity: 1, height: 'auto', marginTop: '0.65rem' }}
+                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      disabled={loading}
+                      onClick={() => { playMagic(); handleStart(s.id); }}
+                      className="btn-gold"
+                      style={{
+                        width: '100%',
+                        fontSize: '0.95rem',
+                        padding: '0.75rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem',
+                        opacity: loading ? 0.6 : 1,
+                      }}
+                    >
+                      {loading ? (
+                        <><Hourglass size={16} /> {t('scenario_starting')}</>
+                      ) : (
+                        <><Dices size={16} /> {t('scenario_start') || 'Macerayı Başlat'}</>
+                      )}
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           );
         })}
+
+        {/* Bottom spacing for scroll */}
+        <div style={{ height: '0.5rem', flexShrink: 0 }} />
       </div>
 
-      {/* Bottom button */}
+      {/* Fixed bottom area only for error */}
       <div
         style={{
-          padding: '1rem',
+          padding: '0 1rem 1rem',
           flexShrink: 0,
-          borderTop: '1px solid var(--border)',
-          background: 'rgba(26,21,16,0.9)',
         }}
         className="pb-safe"
       >
         {error && (
           <div style={{
             padding: '0.5rem 0.75rem',
-            marginBottom: '0.5rem',
             borderRadius: '8px',
             background: 'rgba(122,21,21,0.15)',
             border: '1px solid rgba(122,21,21,0.4)',
@@ -351,29 +423,6 @@ export default function ScenarioPage({ user }) {
             <AlertTriangle size={15} /> {error}
           </div>
         )}
-        <motion.button
-          whileTap={{ scale: 0.96 }}
-          disabled={!selected || loading}
-          onClick={() => { playMagic(); handleStart(); }}
-          className="btn-gold"
-          style={{
-            width: '100%',
-            fontSize: '1rem',
-            padding: '0.85rem',
-            opacity: !selected || loading ? 0.45 : 1,
-            cursor: !selected || loading ? 'not-allowed' : 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.35rem',
-          }}
-        >
-          {loading ? (
-            <><Hourglass size={16} /> {t('scenario_starting')}</>
-          ) : (
-            <><Dices size={16} /> {t('scenario_start')}</>
-          )}
-        </motion.button>
       </div>
     </div>
   );

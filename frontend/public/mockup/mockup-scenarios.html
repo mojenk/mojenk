@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Senaryo Seçim Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1208;
+    color: #e8dcc8;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem 0.5rem;
+    min-height: 100vh;
+  }
+  h2 { color: #c9963a; font-size: 0.95rem; text-align: center; }
+  .phone {
+    width: 320px;
+    border: 2px solid #3a2e1e;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #0d0a05;
+    height: 560px;
+    position: relative;
+  }
+  .screen {
+    padding: 1rem;
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .title {
+    color: #c9963a;
+    font-size: 1.1rem;
+    text-align: center;
+    margin-bottom: 0.4rem;
+    font-weight: 700;
+  }
+  .subtitle {
+    color: #8a7f6b;
+    font-size: 0.75rem;
+    text-align: center;
+    margin-bottom: 0.9rem;
+  }
+  /* MEVCUT */
+  .scenario-old {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(92,74,42,0.12);
+    border: 1px solid #3a2e1e;
+    border-radius: 8px;
+    padding: 0.5rem;
+    margin-bottom: 0.45rem;
+  }
+  .img-old {
+    width: 48px; height: 48px; border-radius: 6px;
+    border: 1px solid #c9963a; flex-shrink: 0;
+    background: linear-gradient(135deg, #2a1f12, #4a3518);
+  }
+  .scenario-old .text { flex: 1; min-width: 0; }
+  .scenario-old h4 { font-size: 0.78rem; color: #c9963a; }
+  .scenario-old p { font-size: 0.62rem; color: #8a7f6b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .scenario-old .check {
+    width: 18px; height: 18px; border-radius: 50%; border: 1px solid #c9963a;
+    display: flex; align-items: center; justify-content: center; color: #c9963a; font-size: 0.7rem;
+  }
+  /* DÜZELTİLMİŞ */
+  .scenario-new {
+    display: flex;
+    flex-direction: column;
+    background: rgba(92,74,42,0.12);
+    border: 1px solid #3a2e1e;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 0.6rem;
+    position: relative;
+  }
+  .scenario-new.selected { border-color: #c9963a; box-shadow: 0 0 10px rgba(201,150,58,0.25); }
+  .img-new {
+    width: 100%; height: 90px;
+    background: linear-gradient(135deg, #2a1f12, #5c4a2a);
+  }
+  .img-new.forest { background: linear-gradient(135deg, #0f2a15, #1a4a25); }
+  .img-new.tavern { background: linear-gradient(135deg, #2a1510, #4a2518); }
+  .scenario-new .body {
+    padding: 0.55rem 0.65rem 0.65rem;
+  }
+  .scenario-new h4 { font-size: 0.85rem; color: #c9963a; margin-bottom: 0.2rem; }
+  .scenario-new p { font-size: 0.68rem; color: #8a7f6b; line-height: 1.35; }
+  .scenario-new .tag {
+    position: absolute; top: 6px; right: 6px;
+    background: rgba(13,10,5,0.85); color: #c9963a;
+    font-size: 0.55rem; padding: 0.15rem 0.4rem; border-radius: 4px;
+    border: 1px solid #c9963a;
+  }
+  .scenario-new .check2 {
+    position: absolute; top: 6px; left: 6px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(13,10,5,0.85); border: 1px solid #c9963a;
+    display: flex; align-items: center; justify-content: center; color: #c9963a; font-size: 0.75rem;
+  }
+  .start-btn {
+    margin-top: auto;
+    padding: 0.75rem;
+    border-radius: 10px;
+    background: rgba(201,150,58,0.2);
+    border: 1px solid #c9963a;
+    color: #c9963a;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+  <h2>MEVCUT (küçük şerit, yazılar kayık)</h2>
+  <div class="phone">
+    <div class="screen">
+      <div class="title">Macera Seç</div>
+      <div class="subtitle">Kaderinin hangi yolda şekillenecek?</div>
+      <div class="scenario-old">
+        <div class="img-old"></div>
+        <div class="text">
+          <h4>Karanlık Zindan</h4>
+          <p>Tehlikeli zindanlar, tuzaklar ve lanetli hazineler...</p>
+        </div>
+        <div class="check">✓</div>
+      </div>
+      <div class="scenario-old">
+        <div class="img-old"></div>
+        <div class="text">
+          <h4>Gizemli Orman</h4>
+          <p>Antik büyüler, kayıp köyler ve mistik yaratıklar...</p>
+        </div>
+      </div>
+      <div class="scenario-old">
+        <div class="img-old"></div>
+        <div class="text">
+          <h4>Taverna Sırları</h4>
+          <p>Entrikalar, sırlar ve tehlikeli görevler...</p>
+        </div>
+      </div>
+      <div class="scenario-old">
+        <div class="img-old"></div>
+        <div class="text">
+          <h4>Ejderha Arayışı</h4>
+          <p>Efsanevi canavara karşı ölüm kalım mücadelesi...</p>
+        </div>
+      </div>
+      <div class="start-btn">Macerayı Başlat</div>
+    </div>
+  </div>
+
+  <h2>DÜZELTİLMİŞ (büyük fotoğraf kartları, başlık altta)</h2>
+  <div class="phone">
+    <div class="screen">
+      <div class="title">Macera Seç</div>
+      <div class="subtitle">Kaderinin hangi yolda şekillenecek?</div>
+      <div class="scenario-new selected">
+        <div class="img-new"></div>
+        <div class="check2">✓</div>
+        <div class="tag">Fantastik</div>
+        <div class="body">
+          <h4>Karanlık Zindan</h4>
+          <p>Tehlikeli zindanlar, tuzaklar ve lanetli hazineler arasında hayatta kal.</p>
+        </div>
+      </div>
+      <div class="scenario-new">
+        <div class="img-new forest"></div>
+        <div class="tag">Mistik</div>
+        <div class="body">
+          <h4>Gizemli Orman</h4>
+          <p>Antik büyüler, kayıp köyler ve mistik yaratıklarla dolu orman.</p>
+        </div>
+      </div>
+      <div class="scenario-new">
+        <div class="img-new tavern"></div>
+        <div class="tag">Entrika</div>
+        <div class="body">
+          <h4>Taverna Sırları</h4>
+          <p>Tavernanın gölgesinde sırlar, hainler ve beklenmedik görevler.</p>
+        </div>
+      </div>
+      <div class="start-btn">Macerayı Başlat</div>
+    </div>
+  </div>
+</body>
+</html>
