@@ -270,8 +270,52 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="stone-bg" style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif" }}>Yükleniyor...</span>
+      <div className="stone-bg" style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', padding: '1.5rem', textAlign: 'center' }}>
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          style={{
+            width: '5.5rem',
+            height: '5.5rem',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 30% 30%, rgba(212,160,58,0.35), rgba(122,92,16,0.15) 60%, transparent 70%)',
+            border: '2px solid rgba(201,150,58,0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 28px rgba(201,150,58,0.25), inset 0 0 20px rgba(201,150,58,0.08)',
+          }}
+        >
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="var(--gold2)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 2v20M2 12h20" />
+            <path d="M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07" />
+          </svg>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+        >
+          <h1 className="font-fantasy gold-shimmer" style={{ fontSize: '1.5rem', letterSpacing: '0.18em', margin: '0 0 0.35rem' }}>
+            KADERİN SESİ
+          </h1>
+          <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
+            Macera yükleniyor…
+          </p>
+        </motion.div>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+          style={{
+            width: '1.6rem',
+            height: '1.6rem',
+            borderRadius: '50%',
+            border: '2px solid rgba(92,74,42,0.4)',
+            borderTopColor: 'var(--gold2)',
+          }}
+        />
       </div>
     );
   }

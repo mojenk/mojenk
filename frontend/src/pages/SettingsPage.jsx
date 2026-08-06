@@ -587,7 +587,7 @@ export default function SettingsPage({ user, onUserUpdate }) {
               color: 'var(--text-dim)', fontSize: '0.9rem', margin: 0,
             }}
           >
-            {lang === 'en' ? 'The Voice of Destiny' : "Kader'in Sesi"} — v2
+            {lang === 'en' ? 'The Voice of Destiny' : 'Kaderin Sesi'} — v2
           </p>
           <p
             style={{

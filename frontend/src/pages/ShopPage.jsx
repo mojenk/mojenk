@@ -250,7 +250,7 @@ export default function ShopPage({ user }) {
 
           {/* Item list */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '0.85rem', paddingBottom: '2rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
               {(categorized[activeCategory] || []).map((item) => {
                 const canAfford = (character?.gold ?? 0) >= item.price;
                 const ItemTypeIcon = getItemIcon(item.type);
@@ -261,71 +261,79 @@ export default function ShopPage({ user }) {
                     animate={{ opacity: 1, y: 0 }}
                     className="stone-card"
                     style={{
-                      padding: '0.85rem 1rem',
-                      display: 'flex', alignItems: 'center', gap: '0.75rem',
+                      padding: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
                       opacity: canAfford ? 1 : 0.55,
+                      overflow: 'hidden',
                     }}
                   >
                     <div
                       style={{
-                        width: '2.8rem', height: '2.8rem', borderRadius: '10px', flexShrink: 0,
-                        background: 'rgba(201,150,58,0.08)', border: '1px solid var(--border)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '100%',
+                        height: '5.5rem',
+                        background: 'rgba(201,150,58,0.08)',
+                        borderBottom: '1px solid var(--border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         overflow: 'hidden',
+                        position: 'relative',
                       }}
                     >
                       {item.image ? (
                         <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        <ItemTypeIcon size={20} color="var(--gold)" />
+                        <ItemTypeIcon size={28} color="var(--gold)" />
                       )}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ padding: '0.65rem 0.7rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
                       <p
                         className="font-fantasy"
-                        style={{ color: 'var(--parch)', fontSize: '0.88rem', margin: 0, letterSpacing: '0.04em' }}
+                        style={{ color: 'var(--parch)', fontSize: '0.8rem', margin: 0, letterSpacing: '0.04em', lineHeight: 1.2 }}
                       >
                         {item.name}
                       </p>
                       <p
                         style={{
                           color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif",
-                          fontSize: '0.78rem', margin: '0.1rem 0 0',
+                          fontSize: '0.72rem', margin: '0.25rem 0 0', lineHeight: 1.35,
+                          flex: 1,
                         }}
                       >
                         {item.description}
                       </p>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem', flexShrink: 0 }}>
-                      <span
-                        style={{
-                          color: canAfford ? 'var(--gold)' : 'var(--blood)',
-                          fontFamily: "'Cinzel', serif", fontSize: '0.85rem', fontWeight: 600,
-                          display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
-                        }}
-                      >
-                        <Coins size={14} />{item.price}
-                      </span>
-                      <motion.button
-                        whileTap={canAfford ? { scale: 0.94 } : {}}
-                        onClick={() => canAfford && handleBuy(item)}
-                        disabled={!canAfford || busy === item.id}
-                        className="btn-gold"
-                        style={{
-                          fontSize: '0.72rem', padding: '0.3rem 0.75rem',
-                          opacity: busy === item.id ? 0.6 : 1,
-                          minHeight: '34px',
-                        }}
-                      >
-                        {busy === item.id ? '...' : 'Al'}
-                      </motion.button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.6rem' }}>
+                        <span
+                          style={{
+                            color: canAfford ? 'var(--gold)' : 'var(--blood)',
+                            fontFamily: "'Cinzel', serif", fontSize: '0.82rem', fontWeight: 600,
+                            display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
+                          }}
+                        >
+                          <Coins size={13} />{item.price}
+                        </span>
+                        <motion.button
+                          whileTap={canAfford ? { scale: 0.94 } : {}}
+                          onClick={() => canAfford && handleBuy(item)}
+                          disabled={!canAfford || busy === item.id}
+                          className="btn-gold"
+                          style={{
+                            fontSize: '0.7rem', padding: '0.3rem 0.7rem',
+                            opacity: busy === item.id ? 0.6 : 1,
+                            minHeight: '30px',
+                          }}
+                        >
+                          {busy === item.id ? '...' : 'Al'}
+                        </motion.button>
+                      </div>
                     </div>
                   </motion.div>
                 );
               })}
               {(categorized[activeCategory] || []).length === 0 && (
-                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif" }}>
-                  Bu kategoride satılacak eşya yok
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif" }}>
+                  Bu kategoride eşya yok
                 </div>
               )}
             </div>
