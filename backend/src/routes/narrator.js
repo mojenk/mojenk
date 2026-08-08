@@ -178,7 +178,7 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
 - Oyuncu bu ekranda kendi kendine zar atıp başarılı olursa 1 HP ile dirilir (bunu sonraki yanıtında hikayeye yansıt), başarısız olursa macera orada sona erer.
 
 ## GENEL KURALLAR
-1. Her yanıt 3-5 kısa cümle. CÜMLELERİNİ MUTLAKA TAMAMLA. Yarım bırakma.
+1. Her yanıt 4-7 cümle arası olsun; cümleleri akıcı ve tamamlanmış şekilde yaz. Oyuncu bir seçim yaptıktan sonraki yanıt biraz daha geniş olabilir (5-8 cümle); atmosferi, duyguları, karakterin iç dünyasını ve sonuçları daha iyi yansıt. CÜMLELERİNİ MUTLAKA TAMAMLA. Yarım bırakma.
 2. Hikayeyi yukarıdaki özetten TUTARLI şekilde sürdür. Geçmiş olayları, kazanılan eşyaları ve NPC'leri referans al.
 3. Oyuncunun eylemlerine gerçekçi, sınıfa uygun sonuçlar ver. ${character.class} sınıfının yeteneklerini uygula.
 4. Yanıtında asla "Thought:" ile başlayan içerik yazma. Oyuncu bunu görmeyecek. Zar sonuçlarını açıkça yazma; sadece olayın sonucunu anlat.
