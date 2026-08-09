@@ -1,6 +1,6 @@
 const express = require('express');
 const { verifyFirebaseToken } = require('../middleware/auth');
-const { firestore, docData, serverTimestamp } = require('../firestore');
+const { firestore, docData, serverTimestamp, deleteCharacterTree, admin } = require('../firestore');
 const { grantXpAndLevelUp } = require('../utils/leveling');
 const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 
@@ -251,6 +251,49 @@ router.get('/users', async (req, res) => {
       };
     });
     return res.json({ users });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Belirli bir süre önce girmiş misafir (guest/anonymous) kullanıcıları toplu sil
+router.post('/users/cleanup-guests', async (req, res) => {
+  try {
+    const hours = Number(req.body?.hours) > 0 ? Number(req.body.hours) : 24;
+    const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+    const snapshot = await firestore.collection('users').where('isGuest', '==', true).get();
+    const targets = snapshot.docs.filter((doc) => {
+      const data = docData(doc);
+      const createdAt = data.created_at instanceof Date ? data.created_at : null;
+      return createdAt && createdAt >= cutoff;
+    });
+
+    let deletedUsers = 0;
+    let deletedCharacters = 0;
+    const errors = [];
+
+    for (const userDoc of targets) {
+      const uid = userDoc.id;
+      try {
+        const charsSnap = await firestore.collection('characters').where('ownerUid', '==', uid).get();
+        for (const charDoc of charsSnap.docs) {
+          await deleteCharacterTree(charDoc.id);
+          deletedCharacters += 1;
+        }
+        await firestore.collection('users').doc(uid).delete();
+        try {
+          await admin.auth().deleteUser(uid);
+        } catch (authErr) {
+          if (authErr.code !== 'auth/user-not-found') throw authErr;
+        }
+        deletedUsers += 1;
+      } catch (err) {
+        errors.push({ uid, error: err.message });
+      }
+    }
+
+    return res.json({ ok: true, scanned: snapshot.size, deletedUsers, deletedCharacters, errors });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

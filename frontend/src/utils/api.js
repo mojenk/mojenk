@@ -462,6 +462,14 @@ export async function adminSendTestPush(uid, title, body) {
   });
 }
 
+export async function adminCleanupGuests(hours = 24) {
+  return safeFetch(`${API}/admin/users/cleanup-guests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hours }),
+  });
+}
+
 export async function adminGetSettings() {
   return safeFetch(`${API}/admin/settings`);
 }

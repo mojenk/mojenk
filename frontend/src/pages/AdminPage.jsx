@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   adminListCharacters, adminCheatCharacter, adminUpdateCharacter, adminDeleteCharacter,
-  adminListUsers, adminToggleUserPremium, adminUpdateUserSuspension, adminSendTestPush,
+  adminListUsers, adminToggleUserPremium, adminUpdateUserSuspension, adminSendTestPush, adminCleanupGuests,
   adminListAnnouncements, adminCreateAnnouncement, adminToggleAnnouncement, adminDeleteAnnouncement,
   adminListWorldEvents, adminCreateWorldEvent, adminToggleWorldEvent, adminDeleteWorldEvent,
   adminGetStats, adminGetSettings, adminUpdateSettings,
@@ -312,6 +312,16 @@ export default function AdminPage({ user }) {
     }
   }, [showMessage]);
 
+  const handleCleanupGuests = useCallback(async (hours) => {
+    try {
+      const result = await adminCleanupGuests(hours);
+      showMessage(`${result.deletedUsers || 0} misafir hesabı silindi (${result.deletedCharacters || 0} karakter dahil)`);
+      loadUsers();
+    } catch (err) {
+      showMessage(err.message, true);
+    }
+  }, [loadUsers, showMessage]);
+
   const header = (
     <header
       style={{
@@ -448,6 +458,7 @@ export default function AdminPage({ user }) {
             onTogglePremium={handleTogglePremium}
             onToggleSuspension={handleToggleSuspension}
             onSendTestPush={handleSendTestPush}
+            onCleanupGuests={handleCleanupGuests}
           />
         );
       case 'balance':
@@ -899,13 +910,14 @@ function CharacterDetailPanel({ character: rawCharacter, onClose, onUpdate, onCh
   );
 }
 
-function UsersTab({ users, onTogglePremium, onToggleSuspension, onSendTestPush }) {
+function UsersTab({ users, onTogglePremium, onToggleSuspension, onSendTestPush, onCleanupGuests }) {
   const [selected, setSelected] = useState(null);
   const [expiresAt, setExpiresAt] = useState('');
   const [pushTitle, setPushTitle] = useState('Test Bildirimi');
   const [pushBody, setPushBody] = useState("Kader'in Sesi push servisi çalışıyor.");
   const [pushResult, setPushResult] = useState(null);
   const [loadingAction, setLoadingAction] = useState(null);
+  const [cleaningGuests, setCleaningGuests] = useState(false);
 
   useEffect(() => {
     if (selected?.premium_until) {
@@ -949,7 +961,27 @@ function UsersTab({ users, onTogglePremium, onToggleSuspension, onSendTestPush }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      <SectionTitle icon={Users}>Kullanıcılar</SectionTitle>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <SectionTitle icon={Users}>Kullanıcılar</SectionTitle>
+        <motion.button
+          whileTap={{ scale: 0.96 }}
+          disabled={cleaningGuests}
+          onClick={async () => {
+            if (!window.confirm('Son 24 saat içinde giriş yapmış tüm misafir (guest) hesapları ve karakterleri kalıcı olarak silinsin mi?')) return;
+            setCleaningGuests(true);
+            await onCleanupGuests?.(24);
+            setCleaningGuests(false);
+          }}
+          style={{
+            padding: '0.5rem 0.8rem', borderRadius: 10,
+            border: '1px solid var(--border)', background: 'rgba(0,0,0,0.25)',
+            color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.8rem',
+            cursor: 'pointer', opacity: cleaningGuests ? 0.6 : 1,
+          }}
+        >
+          {cleaningGuests ? 'Temizleniyor…' : 'Son 24 Saatteki Misafirleri Sil'}
+        </motion.button>
+      </div>
       {users.map((u) => (
         <motion.div
           key={u.id}
