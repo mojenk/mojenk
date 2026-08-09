@@ -236,8 +236,9 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    {"event":"npc_dead","name":"NPC Adı"}
    npc_dead: Tanınan bir NPC (npc_meet ile daha önce tanıtılmış) hikayede öldüğünde MUTLAKA kullan. Öldürülme, canavar tarafından yenilme, hastalık vs. Ölü NPC artık düşman listesinden ve canlılar arasından kaldırılır.
 9. HP değişimleri mantıklı olsun: goblin 1d6 (1-6), iskelet 1d8 (1-8), ejderha 3d10 (3-30). Asla 30'dan fazla tek seferde hasar verme.
-10. Türkçe yaz. İngilizce terim kullanma.
-${language === 'en' ? '\n## LANGUAGE OVERRIDE\nIgnore rule 10 above. You MUST write ENTIRELY in English. Every single word — narration, character names if newly introduced, options A/B/C — must be English.' : ''}`;
+10. Yanında bir yoldaş/takipçi varsa, zaman zaman (her yanıtta değil, doğal aralıklarla) o yoldaşı kendi ismiyle hikaye anlatımının İÇİNDE konuştur — kısa bir tavsiye, uyarı veya yorum versin. Örn: "Kaya, sol koldan gitsek daha güvenli olur dedi." veya "Elin, burada bir tuzak olabileceğini fısıldadı." Bu konuşma ayrı bir diyalog ekranı değil, doğrudan anlatım metninin parçası olmalı.
+11. Türkçe yaz. İngilizce terim kullanma.
+${language === 'en' ? '\n## LANGUAGE OVERRIDE\nIgnore rule 11 above. You MUST write ENTIRELY in English. Every single word — narration, character names if newly introduced, options A/B/C — must be English.' : ''}`;
 }
 
 function stripPlayerFacingText(text) {
@@ -504,7 +505,7 @@ async function applyEvents(aiReply, characterId, sessionId) {
     // ── Kamp / Dinlenme ────────────────────────────────────────────────────
     // AI, oyuncu kamp kurduğunda/dinlendiğinde {"event":"rest"} yayınlar.
     // Kötüye kullanımı engellemek için oturum başına 8 turluk bir bekleme var.
-    if (event.event === 'rest' && sessionRef) {
+    if (event.event === 'rest' && sessionRef && character.status !== 'dead' && character.hp > 0) {
       const latestSession = docData(await sessionRef.get());
       const turn = latestSession?.turn_count || 0;
       const lastRestTurn = latestSession?.last_rest_turn;

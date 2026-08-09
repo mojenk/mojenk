@@ -165,7 +165,7 @@ export default function ScenarioPage({ user }) {
             className="font-fantasy gold-text"
             style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.08em' }}
           >
-            {t('scenario_select_title') || 'Macera Seç'}
+            {t('scenario_page_title') || 'Macera Seç'}
           </h1>
           <p
             style={{
@@ -175,7 +175,7 @@ export default function ScenarioPage({ user }) {
               margin: 0,
             }}
           >
-            {t('scenario_select_subtitle') || 'Kaderinin hangi yolda şekillenecek?'}
+            {t('scenario_page_sub') || 'Kaderinin hangi yolda şekillenecek?'}
           </p>
         </div>
       </div>

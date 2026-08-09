@@ -1359,9 +1359,9 @@ export default function GamePage({ user }) {
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 110,
-              width: 'min(92vw, 340px)',
-              padding: '0.7rem 0.9rem',
-              borderRadius: 12,
+              width: 'min(80vw, 260px)',
+              padding: '0.5rem 0.7rem',
+              borderRadius: 10,
               textAlign: 'center',
               background: restBanner.cooldownLeft
                 ? 'rgba(60,30,20,0.94)'
@@ -1372,22 +1372,22 @@ export default function GamePage({ user }) {
             }}
           >
             {restBanner.cooldownLeft ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', color: 'var(--text-dim)', fontSize: '0.82rem' }}>
-                <Flame size={15} color="#c07b4a" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+                <Flame size={12} color="#c07b4a" />
                 {t('rest_cooldown', restBanner.cooldownLeft)}
               </div>
             ) : (
               <>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', marginBottom: '0.25rem' }}>
-                  <Flame size={18} color="#ff9e40" />
-                  <span className="font-fantasy" style={{ color: 'var(--gold)', fontSize: '1rem' }}>{t('rest_title')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', marginBottom: '0.15rem' }}>
+                  <Flame size={14} color="#ff9e40" />
+                  <span className="font-fantasy" style={{ color: 'var(--gold)', fontSize: '0.82rem' }}>{t('rest_title')}</span>
                 </div>
-                <div style={{ fontSize: '0.82rem', color: '#7fd47f' }}>{t('rest_healed', restBanner.healed)}</div>
+                <div style={{ fontSize: '0.7rem', color: '#7fd47f' }}>{t('rest_healed', restBanner.healed)}</div>
                 {restBanner.followers > 0 && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{t('rest_followers', restBanner.followers)}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{t('rest_followers', restBanner.followers)}</div>
                 )}
                 {restBanner.nightEvent && (
-                  <div style={{ fontSize: '0.75rem', color: '#c9a86a', marginTop: '0.3rem', fontStyle: 'italic' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#c9a86a', marginTop: '0.2rem', fontStyle: 'italic' }}>
                     {t(`night_${restBanner.nightEvent}`)}
                   </div>
                 )}
@@ -3725,16 +3725,7 @@ export default function GamePage({ user }) {
       {selectedNpc && (
         <NpcDialogModal
           npc={selectedNpc}
-          characterId={characterId}
-          sessionId={sessionId}
-          onClose={() => {
-            setSelectedNpc(null);
-            // Refresh NPC list when modal closes so notes/topics show up
-            getNpcs(characterId).then(d => setNpcs(d.npcs || [])).catch(() => {});
-          }}
-          onNpcUpdate={(updated) => {
-            setNpcs(prev => prev.map(n => n.id === updated.id ? updated : n));
-          }}
+          onClose={() => setSelectedNpc(null)}
           onDismiss={handleDismiss}
         />
       )}
