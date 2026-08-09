@@ -1,0 +1,40 @@
+name: Cleanup Guest Users
+
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: 'Delete guest accounts created within the last N hours'
+        required: false
+        default: '24'
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+
+      - name: Run guest cleanup
+        working-directory: backend
+        env:
+          CLEANUP_HOURS: ${{ github.event.inputs.hours }}
+        run: node scripts/cleanup-guests.js
