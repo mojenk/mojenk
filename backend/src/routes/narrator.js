@@ -55,7 +55,7 @@ const NIGHT_EVENTS = [
   'uzaktan_uluma',
 ];
 
-async function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = [], narratorTone = null, scenarioId = null) {
+async function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = [], narratorTone = null, scenarioId = null, currentEnemies = []) {
   const mod = v => Math.floor((v - 10) / 2);
   const fmt = v => (v >= 0 ? '+' : '') + v;
 
@@ -142,6 +142,11 @@ ${activeWorldEvents.map(e => `- **${e.title}** (${e.type}): ${e.description}`).j
     ? `## ANLATICI TONU — ${narratorTone.toUpperCase()}\n${toneInstructions[narratorTone]}\n`
     : '';
 
+  const enemyList = Array.isArray(currentEnemies) ? currentEnemies.filter((e) => e && e.hp > 0) : [];
+  const enemyBlock = enemyList.length > 0
+    ? `\n## AKTİF DÜŞMAN DURUMU — GERÇEK OYUN VERİSİ, GÜVEN\n${enemyList.map((e) => `- **${e.name}**: ${e.hp}/${e.max_hp} HP, AC ${e.ac}`).join('\n')}\n**ÖNEMLİ:** Yukarıdaki HP değerleri gerçek oyun durumudur. Oyuncunun mesajında zaten bir saldırı SONUCU (İsabet!/Iskaladı/KRİTİK İSABET! gibi ifadeler veya [Zar: ...] etiketi) varsa, bu hasar SUNUCU TARAFINDAN ZATEN UYGULANMIŞTIR — sen o hasar için TEKRAR {"event":"enemy_damage",...} GÖNDERME, sadece sahneyi anlat. Sadece düşmanın SANA (AI'a) YENİ bir hasar vermesi gerekiyorsa (düşmanın karşı saldırısı) hp_change kullan. Yukarıdaki listede HP'si 0 olan/hiç görünmeyen bir düşman varsa ve hâlâ "canlıymış" gibi anlatıyorsan bu hatadır — düşman HP'si 0'a indiyse hemen {"event":"enemy_dead","name":"..."} gönder.\n`
+    : '';
+
   return `Sen "Kader'in Sesi" adlı efsanevi bir D&D Dungeon Master'sın. ${language === 'en' ? 'You speak ONLY in English. ALL narration, NPC dialogue, and choices (A/B/C) must be in English. Never write in Turkish.' : 'SADECE Türkçe konuşuyorsun. Tüm yanıtlar Türkçe olmalı.'}
 ${toneBlock}
 
@@ -154,6 +159,7 @@ Silahlar: ${weaponList}
 Zırhlar: ${armorList}
 ${potionList ? `İksirler: ${potionList}` : ''}
 Durum: ${character.status === 'unconscious' ? 'BAYGIN' : character.status === 'dead' ? 'ÖLÜ' : 'Canlı'}${statusText}
+${enemyBlock}
 
 ## IRK ÖZELLİKLERİ — HİKAYEDE BUNLARI ASLA UNUTMA
 ${character.name} bir ${character.race}. ${raceDesc}
@@ -193,6 +199,7 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    **KRİTİK KURAL:** Oyuncuya hasar veren HER düşman önce {"event":"enemy_spawn",...} ile tanıtılmış olmalı (aynı yanıtta veya önceki bir yanıtta). Hikayede adı geçmeyen, tanıtılmamış "görünmez" bir düşmandan hp_change asla gönderme — önce düşmanı isimlendirip sahneye çıkar, hasarı ondan sonra ver.
    **KRİTİK KURAL:** Oyuncu hasar aldığında hikayede MUTLAKA şunları açıkça anlat: hangi düşmanın vurduğu, neyle vurduğu (silah/tırnak/büyü vb.), vücudun neresine isabet ettiği ve yaralanmanın etkisi. Örn: "Goblinin hançeri zırhının aralığından girip kaburgana saplandı; kan ağzından fışkırırken 5 can puanı kaybettin." Asla sadece "5 hasar aldın" gibi kuru mekanik cümleler yazma.
    **KRİTİK KURAL:** Zaten aktif bir düşmanla savaşırken yeni bir düşman daha eklemeden (enemy_spawn) ÖNCE hikayede bunun nereden geldiğini, neden ortaya çıktığını mutlaka 1 cümleyle anlat (örn: "Goblinin çığlığına başka bir goblin daha koştu geldi"). Anlatılmayan/sebepsiz düşman ekleme.
+   **KRİTİK KURAL — SAVAŞ ARAYÜZÜ TAKILMASIN:** Aktif bir düşman varken hikayede o düşman artık tehdit oluşturmuyorsa (diz çöktü, teslim oldu, silahını attı, kaçtı, af diledi, barış yapıldı, dost edinildi, öldü) AYNI yanıtın SONUNA MUTLAKA {"event":"enemy_dead","name":"..."} ekle. Bunu unutursan oyuncunun ekranında düşman can barı ve savaş kısıtlamaları (envanter kilidi vb.) hiç kapanmadan asılı kalır — bu ciddi bir hatadır. Düşman hâlâ sahnede duruyor ama artık düşman DEĞİLSE (örn. esir alındı, tutsak edildi, arkadaş oldu) yine de enemy_dead gönder; "düşman" statüsü bitmiştir.
 8. Oyun olaylarını yanıtın SONUNA ayrı satırda JSON yaz:
    {"event":"hp_change","value":-5}
    {"event":"gold_change","value":10}
@@ -771,6 +778,30 @@ async function applyEvents(aiReply, characterId, sessionId) {
   const achievementEvents = await grantAchievements(characterId, latestCharacter?.ownerUid, statDeltas, statMaxes);
   achievementEvents.forEach((entry) => events.push(entry));
 
+  // ── Güvenlik ağı: AI, çatışmanın bittiğini anlatıp (teslim/kaçış/barış/diz çökme)
+  // enemy_dead olayını göndermeyi unutursa, savaş arayüzü ekranda asılı kalır.
+  // Metni tara, bu ifadelerden biri geçiyorsa ve bu turda enemy_dead gelmemişse
+  // aktif düşmanı otomatik temizle.
+  if (sessionRef && !events.some((e) => e.event === 'enemy_dead')) {
+    const plainText = (aiReply || '').replace(/\{[^{}]*"event"[^{}]*\}/g, ' ').toLocaleLowerCase('tr');
+    const resolutionPhrases = [
+      'diz çök', 'teslim ol', 'pes et', 'pes ett', 'silahını at', 'silahını bırak',
+      'silahını indir', 'elini kaldır', 'af diledi', 'yalvard', 'merhamet dile',
+      'kaçtı', 'kaçmaya başladı', 'kaçarak uzaklaş', 'sırtını dönüp kaç', 'geri çekildi',
+      'barış yaptı', 'ateşkes', 'saldırmaktan vazgeç',
+      'surrender', 'kneel', 'flee', 'fled', 'ran away', 'dropped his weapon', 'dropped their weapon',
+      'begged for mercy', 'retreat',
+    ];
+    const matched = resolutionPhrases.some((phrase) => plainText.includes(phrase));
+    if (matched) {
+      const session = docData(await sessionRef.get());
+      const enemies = Array.isArray(session?.current_enemy) ? session.current_enemy : [];
+      if (enemies.length > 0) {
+        await sessionRef.update({ current_enemy: null, updated_at: serverTimestamp() });
+      }
+    }
+  }
+
   return events;
 }
 
@@ -870,7 +901,8 @@ router.post('/chat', async (req, res) => {
       knownNpcs,
       activeQuests,
       character.narrator_tone,
-      session.scenario
+      session.scenario,
+      Array.isArray(session.current_enemy) ? session.current_enemy : (session.current_enemy ? [session.current_enemy] : [])
     );
     let aiReply;
     try {
