@@ -1,0 +1,34 @@
+name: One-off Fix App Settings
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Set maxBonusAdsPerDay = 0 (unlimited rewarded ads)
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          cd backend
+          npm ci --omit=dev
+          node -e "
+          const admin = require('firebase-admin');
+          const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+          admin.initializeApp({ credential: admin.credential.cert(sa) });
+          const db = admin.firestore();
+          (async () => {
+            await db.collection('appSettings').doc('global').set(
+              { maxBonusAdsPerDay: 0, updated_at: admin.firestore.FieldValue.serverTimestamp() },
+              { merge: true }
+            );
+            const doc = await db.collection('appSettings').doc('global').get();
+            console.log('appSettings/global now:', JSON.stringify(doc.data()));
+            process.exit(0);
+          })().catch((e) => { console.error(e); process.exit(1); });
+          "

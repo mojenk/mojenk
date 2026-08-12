@@ -3,9 +3,10 @@ const { isPremium } = require('./premium');
 
 // Balance: generous enough for a full free session per day, but caps worst-case
 // Gemini cost exposure per user. Extra turns are unlocked via rewarded ads.
+// maxBonusAdsPerDay <= 0  → sınırsız (kullanıcı istediği kadar reklam izleyip oynayabilir)
 const DEFAULT_FREE_DAILY_TURNS = 40;
 const DEFAULT_BONUS_PER_AD = 15;
-const DEFAULT_MAX_BONUS_ADS_PER_DAY = 3;
+const DEFAULT_MAX_BONUS_ADS_PER_DAY = 0; // 0 = sınırsız
 
 const settingsCache = { value: null, at: 0 };
 const SETTINGS_CACHE_MS = 30_000;
@@ -42,6 +43,9 @@ function getTodayIstanbul() {
 // consumes one. Premium users bypass the limit entirely.
 async function checkAndConsumeDailyTurn(uid) {
   if (await isPremium(uid)) {
+    firestore.collection('users').doc(uid)
+      .set({ last_active_at: new Date() }, { merge: true })
+      .catch(() => {});
     return { allowed: true, used: 0, limit: Infinity, bonusAdsUsed: 0, maxBonusAds: (await getAppSettings()).maxBonusAdsPerDay, premium: true };
   }
   const settings = await getAppSettings();
@@ -62,6 +66,7 @@ async function checkAndConsumeDailyTurn(uid) {
         dailyTurnsUsed: used,
         dailyBonusTurns: bonusTurns,
         dailyBonusAdsUsed: bonusAdsUsed,
+        last_active_at: new Date(),
       }, { merge: true });
       return { allowed: false, used, limit, bonusAdsUsed, maxBonusAds: settings.maxBonusAdsPerDay };
     }
@@ -71,6 +76,7 @@ async function checkAndConsumeDailyTurn(uid) {
       dailyTurnsUsed: used + 1,
       dailyBonusTurns: bonusTurns,
       dailyBonusAdsUsed: bonusAdsUsed,
+      last_active_at: new Date(),
     }, { merge: true });
     return { allowed: true, used: used + 1, limit, bonusAdsUsed, maxBonusAds: settings.maxBonusAdsPerDay };
   });
@@ -144,7 +150,7 @@ async function claimDailyBonus(uid, ticketId) {
     const bonusTurns = isNewDay ? 0 : (data.dailyBonusTurns || 0);
     const bonusAdsUsed = isNewDay ? 0 : (data.dailyBonusAdsUsed || 0);
 
-    if (bonusAdsUsed >= settings.maxBonusAdsPerDay) {
+    if (settings.maxBonusAdsPerDay > 0 && bonusAdsUsed >= settings.maxBonusAdsPerDay) {
       const error = new Error('Bugün için ekstra hak sınırına ulaştın, yarın tekrar dene');
       error.code = 'MAX_BONUS_REACHED';
       throw error;

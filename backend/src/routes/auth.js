@@ -51,7 +51,7 @@ router.post('/heartbeat', verifyFirebaseToken, async (req, res) => {
 });
 
 router.post('/fcm-token', verifyFirebaseToken, async (req, res) => {
-  const { token, platform } = req.body;
+  const { token, platform, language } = req.body;
   if (!token || typeof token !== 'string') {
     return res.status(400).json({ error: 'FCM token gerekli' });
   }
@@ -63,6 +63,7 @@ router.post('/fcm-token', verifyFirebaseToken, async (req, res) => {
         platform: platform || 'unknown',
         created_at: serverTimestamp(),
       }),
+      language: language === 'en' ? 'en' : 'tr',
       last_active_at: serverTimestamp(),
     }, { merge: true });
     return res.json({ ok: true });

@@ -60,10 +60,12 @@ export async function sendHeartbeat() {
 }
 
 export async function registerFcmToken(token, platform = 'web') {
+  let language = 'tr';
+  try { language = localStorage.getItem('dnd_lang') || 'tr'; } catch { /* noop */ }
   return safeFetch(`${API}/auth/fcm-token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, platform }),
+    body: JSON.stringify({ token, platform, language }),
   });
 }
 

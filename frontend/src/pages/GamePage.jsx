@@ -241,6 +241,7 @@ export default function GamePage({ user }) {
   const [adError, setAdError] = useState('');
   const [dailyBonusLoading, setDailyBonusLoading] = useState(false);
   const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const [showRatePrompt, setShowRatePrompt] = useState(false);
   const [sceneAmbience, setSceneAmbience] = useState(null);
   const [session, setSession] = useState(null);
   const [showRecap, setShowRecap] = useState(true);
@@ -577,6 +578,17 @@ export default function GamePage({ user }) {
         playNarrator();
       }
       if (data.character) setCharacter(data.character);
+      // Toplam hamle sayacı — belirli eşikte bir kez "değerlendir" istemi gösterilir
+      if (data.reply) {
+        try {
+          const total = (parseInt(localStorage.getItem('ks_total_moves') || '0', 10) || 0) + 1;
+          localStorage.setItem('ks_total_moves', String(total));
+          if (total >= 10 && !localStorage.getItem('ks_rate_prompted')) {
+            localStorage.setItem('ks_rate_prompted', '1');
+            setTimeout(() => setShowRatePrompt(true), 1500);
+          }
+        } catch { /* localStorage yoksa sessiz geç */ }
+      }
       // Başarılı yanıtta SADECE sayaç güncellenir — limit modalı açılmaz
       if (data.dailyLimit != null) {
         setDailyStatus({
@@ -1107,7 +1119,7 @@ export default function GamePage({ user }) {
                 <p style={{ color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", lineHeight: 1.5 }}>
                   {t('ad_mobile_only')}
                 </p>
-              ) : dailyLimitInfo.bonusAdsUsed < dailyLimitInfo.maxBonusAds ? (
+              ) : (dailyLimitInfo.maxBonusAds <= 0 || dailyLimitInfo.bonusAdsUsed < dailyLimitInfo.maxBonusAds) ? (
                 <>
                   <p style={{ color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", lineHeight: 1.5 }}>
                     Bugünkü ücretsiz hamlelerin bitti. Kısa bir reklam izleyerek {15} ekstra hamle kazanabilirsin.
@@ -1166,6 +1178,58 @@ export default function GamePage({ user }) {
                   onClick={() => setDailyLimitInfo(null)}
                 >
                   Kapat
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showRatePrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 125,
+              background: 'rgba(0,0,0,0.82)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '1.25rem',
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 18 }}
+              animate={{ scale: 1, y: 0 }}
+              className="stone-card"
+              style={{ width: '100%', maxWidth: '360px', padding: '1.25rem', textAlign: 'center' }}
+            >
+              <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>⭐</div>
+              <h3 className="font-fantasy" style={{ color: 'var(--gold)', margin: '0 0 0.5rem' }}>
+                {t('rate_prompt_title')}
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontFamily: "'Crimson Text', serif", lineHeight: 1.5 }}>
+                {t('rate_prompt_desc')}
+              </p>
+              <div style={{ marginTop: '1rem' }}>
+                <button
+                  className="btn-gold"
+                  style={{ width: '100%' }}
+                  onClick={() => {
+                    playClick();
+                    setShowRatePrompt(false);
+                    window.open('https://play.google.com/store/apps/details?id=com.kaderinsesi.app', '_blank');
+                  }}
+                >
+                  {t('rate_prompt_yes')}
+                </button>
+              </div>
+              <div style={{ marginTop: '0.75rem' }}>
+                <button
+                  style={{ width: '100%', background: 'transparent', border: '1px solid var(--text-muted)', color: 'var(--text-muted)', borderRadius: '8px', padding: '0.6rem', fontFamily: "'Crimson Text', serif" }}
+                  onClick={() => { playClick(); setShowRatePrompt(false); }}
+                >
+                  {t('rate_prompt_later')}
                 </button>
               </div>
             </motion.div>

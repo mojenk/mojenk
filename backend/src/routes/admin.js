@@ -433,7 +433,7 @@ router.delete('/world-events/:id', async (req, res) => {
 const DEFAULT_APP_SETTINGS = {
   freeDailyTurns: 40,
   bonusPerAd: 15,
-  maxBonusAdsPerDay: 3,
+  maxBonusAdsPerDay: 0, // 0 = sınırsız reklamlı ek hamle
   premiumDailyWheelSpins: 3,
   adRewardGold: 10,
   adRewardXp: 0,
