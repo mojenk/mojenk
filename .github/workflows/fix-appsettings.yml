@@ -13,7 +13,7 @@ jobs:
           node-version: '20'
       - name: Set maxBonusAdsPerDay = 0 (unlimited rewarded ads)
         env:
-          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           cd backend
           npm ci --omit=dev
