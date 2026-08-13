@@ -446,6 +446,10 @@ router.post('/:id/npcs/:npcId/hire', async (req, res) => {
     if (!npc) return res.status(404).json({ error: 'NPC bulunamadı' });
     if (npc.is_follower) return res.status(400).json({ error: 'Bu NPC zaten takipçin' });
     if (!npc.hire_cost) return res.status(400).json({ error: 'Bu NPC işe alınamaz' });
+    // Parti sınırı: aynı anda en fazla 3 aktif yoldaş
+    const partySnapshot = await firestore.collection('characters').doc(id).collection('npcs').where('is_follower', '==', 1).get();
+    const activeParty = partySnapshot.docs.filter((doc) => doc.data().follower_status !== 'left').length;
+    if (activeParty >= 3) return res.status(400).json({ error: 'Partin dolu (en fazla 3 yoldaş). Önce bir yoldaşınla yollarını ayır.' });
     if (character.gold < npc.hire_cost) return res.status(400).json({ error: 'Yeterli altının yok' });
 
     const maxHp = followerMaxHp(character.level);

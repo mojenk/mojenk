@@ -41,6 +41,7 @@ async function getModel(modelName = 'gemini-2.5-flash', systemInstruction = null
 
 const SUMMARY_INTERVAL = 10;
 const RECENT_KEEP = 8;
+const MAX_ACTIVE_FOLLOWERS = 3;
 const AI_TIMEOUT_MS = 30000;
 const MAX_RETRIES = 1;
 
@@ -84,9 +85,10 @@ async function buildSystem(character, storySummary, sessionTitle, inventory, lan
     ? `\n## TANINAN NPC'LER — BUNLARI ASLA UNUTMA\nAşağıdaki NPC'lerle daha önce karşılaşıldı. Tekrar karşılaşırsan isimlerini ve ilişkilerini koru, kişiliklerini tutarlı oynat. npc_update/npc_topic/npc_recruit gibi event'lerde bu listedeki isimleri AYNEN kullan. Listede lakapla kayıtlı birinin (örn. "Yara Yüzlü Adam") gerçek adı öğrenilirse npc_rename event'i gönder:\n${knownNpcs.filter(n => !n.is_follower).map(n => `- **${n.name}** (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}${n.hire_cost ? ` [${n.hire_cost} altına hizmet sunuyor]` : ''}`).join('\n')}\n`
     : '';
 
-  const followers = knownNpcs.filter(n => n.is_follower);
+  const followers = knownNpcs.filter(n => n.is_follower && n.follower_status !== 'left');
+  const partyFull = followers.length >= MAX_ACTIVE_FOLLOWERS;
   const followerBlock = followers.length > 0
-    ? `\n## TAKİPÇİLER — ${character.name} İLE BİRLİKTE SEYAHAT EDİYORLAR\nBu karakterler artık ${character.name}'ın yol arkadaşı. Hikayede onları unutma, sahnelerde varlıklarını yansıt, diyaloglarına yer ver, tehlikede yardım etmelerine izin ver. Her takipçinin rol/seviye/can/moral/sadakat durumunu davranışlarına YANSIT: morali düşük (<30) yoldaş söylenir ve isteksizdir, sadakati düşük (<30) olan ayrılmayı ima eder, yaralı yoldaş temkinli dövüşür, 'downed' durumdaki yoldaş dinlenene kadar savaşamaz ve konuşamaz. SAVAŞTA yoldaşlar gerçekten rol oynar: her çatışma turunda uygun olan EN FAZLA 1 aktif yoldaş için follower_attack eventi gönder (healer rolündekiler saldırmaz; onların desteğini sadece hikayede anlat):\n${followers.map(n => `- **${n.name}** [${ROLE_LABELS_TR[n.follower_role] || 'Yoldaş'}, Sv.${n.follower_level || 1}, HP ${n.follower_hp ?? '?'}/${n.follower_max_hp ?? '?'}, moral ${n.follower_morale ?? 60}/100, sadakat ${n.follower_loyalty ?? 60}/100, durum: ${n.follower_status || 'active'}] (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}`).join('\n')}\n`
+    ? `\n## TAKİPÇİLER — ${character.name} İLE BİRLİKTE SEYAHAT EDİYORLAR (${followers.length}/${MAX_ACTIVE_FOLLOWERS})\nBu karakterler artık ${character.name}'ın yol arkadaşı. Hikayede onları unutma, sahnelerde varlıklarını yansıt, diyaloglarına yer ver, tehlikede yardım etmelerine izin ver. Her takipçinin rol/seviye/can/moral/sadakat durumunu davranışlarına YANSIT: morali düşük (<30) yoldaş söylenir ve isteksizdir, sadakati düşük (<30) olan ayrılmayı ima eder, yaralı yoldaş temkinli dövüşür, 'downed' durumdaki yoldaş dinlenene kadar savaşamaz ve konuşamaz. SAVAŞTA yoldaşlar gerçekten rol oynar: her çatışma turunda uygun olan EN FAZLA 1 aktif yoldaş için follower_attack eventi gönder (healer rolündekiler saldırmaz; onların desteğini sadece hikayede anlat).${partyFull ? ` PARTİ DOLU (${MAX_ACTIVE_FOLLOWERS}/${MAX_ACTIVE_FOLLOWERS}): Yeni yoldaş alınamaz — npc_recruit eventi gönderme; oyuncu yeni birini davet ederse NPC parti dolu olduğu için kibarca reddetsin veya oyuncuya bir yoldaşıyla yollarını ayırması gerektiğini hatırlatsın.` : ''}\n${followers.map(n => `- **${n.name}** [${ROLE_LABELS_TR[n.follower_role] || 'Yoldaş'}, Sv.${n.follower_level || 1}, HP ${n.follower_hp ?? '?'}/${n.follower_max_hp ?? '?'}, moral ${n.follower_morale ?? 60}/100, sadakat ${n.follower_loyalty ?? 60}/100, durum: ${n.follower_status || 'active'}] (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}`).join('\n')}\n`
     : '';
 
   const questBlock = (activeQuests && activeQuests.length > 0)
@@ -252,7 +254,7 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    {"event":"npc_hireable","name":"NPC Adı","hire_cost":30}
    {"event":"npc_recruit","name":"NPC Adı"}
    npc_hireable: Bir NPC (paralı asker, rehber, sellsword vb.) oyuncuya altın karşılığında hizmet/eşlik teklif ettiğinde kullan. hire_cost 10-100 altın arası mantıklı olsun.
-   npc_recruit: Oyuncu bir NPC'yi konuşma/ilişki/kahramanlık yoluyla GERÇEKTEN ikna edip yol arkadaşı yaptığında kullan (nadir, önemli bir an olmalı — relationship uzun süredir friendly olmalı veya oyuncu NPC için büyük bir iyilik yapmış olmalı). Ücretsiz katılır.
+   npc_recruit: Oyuncu bir NPC'yi konuşma/ilişki/kahramanlık yoluyla GERÇEKTEN ikna edip yol arkadaşı yaptığında kullan (nadir, önemli bir an olmalı — relationship uzun süredir friendly olmalı veya oyuncu NPC için büyük bir iyilik yapmış olmalı). Ücretsiz katılır. SINIR: Parti en fazla 3 yoldaş alır — parti doluyken bu eventi gönderme, bunun yerine hikayede NPC'nin "grubun zaten kalabalık" diyerek nazikçe geri çevirmesini anlat.
    {"event":"npc_dead","name":"NPC Adı"}
    npc_dead: Tanınan bir NPC (npc_meet ile daha önce tanıtılmış) hikayede öldüğünde MUTLAKA kullan. Öldürülme, canavar tarafından yenilme, hastalık vs. Ölü NPC artık düşman listesinden ve canlılar arasından kaldırılır.
 9. HP değişimleri mantıklı olsun: goblin 1d6 (1-6), iskelet 1d8 (1-8), ejderha 3d10 (3-30). Asla 30'dan fazla tek seferde hasar verme.
@@ -865,7 +867,21 @@ async function applyEvents(aiReply, characterId, sessionId) {
         }
         if (event.event === 'npc_recruit') {
           const maxHp = followerMaxHp(character.level);
-          if (!existing.data.is_follower) bump('followers_gained');
+          if (!existing.data.is_follower) {
+            // Parti sınırı: aynı anda en fazla 3 aktif yoldaş (klasik D&D parti dengesi)
+            const partySnapshot = await characterRef.collection('npcs').where('is_follower', '==', 1).get();
+            const activeParty = partySnapshot.docs.filter((doc) => {
+              const follower = doc.data();
+              return follower.follower_status !== 'left';
+            }).length;
+            if (activeParty >= MAX_ACTIVE_FOLLOWERS) {
+              event.blocked = true;
+              event.party_full = true;
+            } else {
+              bump('followers_gained');
+            }
+          }
+          if (!event.blocked) {
           Object.assign(updates, {
             is_follower: 1,
             relationship: 'friendly',
@@ -887,6 +903,7 @@ async function applyEvents(aiReply, characterId, sessionId) {
             if (remaining.length !== enemies.length) {
               await sessionRef.update({ current_enemy: remaining.length ? remaining : null, updated_at: serverTimestamp() });
             }
+          }
           }
         }
         if (event.event === 'npc_topic' && Array.isArray(event.topics)) {
