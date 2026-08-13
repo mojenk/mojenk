@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCharacters, getSessions, deleteCharacter, deleteSession } from '../utils/api';
 import { playClick, playDamage, playError } from '../utils/sounds';
 import Particles from '../components/Particles';
 import AnnouncementsBar from '../components/AnnouncementsBar';
-import { Sparkles, Swords, Castle, Skull, Heart, Coins, ScrollText, Trash2, X, Dices } from 'lucide-react';
+import { Sparkles, Swords, Castle, Skull, Heart, Coins, ScrollText, Trash2, X, Dices, Crown, ChevronRight, Play } from 'lucide-react';
 import { useLang, t, getLang } from '../utils/i18n';
 
 const RACE_PORTRAITS = {
@@ -112,20 +112,36 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
     return dt.toLocaleDateString(getLang() === 'tr' ? 'tr-TR' : 'en-GB', { day: 'numeric', month: 'short' });
   };
 
+  // En son oynanan macera (devam et kartı için)
+  const latestAdventure = useMemo(() => {
+    let best = null;
+    for (const c of characters) {
+      if (c.status === 'dead') continue;
+      for (const s of sessionMap[c.id] || []) {
+        const ts = new Date(s.updated_at || s.created_at || 0).getTime();
+        if (!best || ts > best.ts) best = { ts, session: s, character: c };
+      }
+    }
+    return best;
+  }, [characters, sessionMap]);
+
   return (
     <div
-      className="stone-bg"
-      style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}
+      style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative', background: '#0f0b06' }}
     >
+      {/* Tavern background */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: "url('/scenarios/tavern.png') center 20%/cover no-repeat", filter: 'blur(5px) brightness(0.85)', transform: 'scale(1.06)', pointerEvents: 'none' }} />
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: 'linear-gradient(180deg, rgba(15,11,6,0.82) 0%, rgba(15,11,6,0.68) 30%, rgba(15,11,6,0.88) 70%, rgba(15,11,6,0.96) 100%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <Particles type="ember" count={10} />
 
       {/* Header */}
       <div
         style={{
-          padding: '1.25rem 1rem 1rem',
-          borderBottom: '1px solid var(--border)',
-          background: 'rgba(26,21,16,0.85)',
-          backdropFilter: 'blur(6px)',
+          padding: '1.1rem 1rem 0.9rem',
+          borderBottom: '1px solid rgba(74,59,34,0.7)',
+          background: 'rgba(13,10,5,0.75)',
+          backdropFilter: 'blur(8px)',
           flexShrink: 0,
         }}
         className="pt-safe"
@@ -208,6 +224,135 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', paddingBottom: '2rem' }}>
+        {/* Premium strip (premium olmayan kullanıcıya) */}
+        {!user?.is_premium && (
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => { playClick(); navigate('/settings'); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              padding: '0.6rem 0.85rem',
+              marginBottom: '0.85rem',
+              borderRadius: '10px',
+              background: 'linear-gradient(90deg, rgba(212,160,58,0.16) 0%, rgba(212,160,58,0.05) 100%)',
+              border: '1px solid rgba(212,160,58,0.4)',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
+            <span
+              style={{
+                width: '1.7rem',
+                height: '1.7rem',
+                borderRadius: '7px',
+                flexShrink: 0,
+                background: 'linear-gradient(135deg, var(--gold2), #8a6420)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#1a1206',
+              }}
+            >
+              <Crown size={15} />
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span
+                className="font-fantasy"
+                style={{ display: 'block', fontSize: '0.8rem', letterSpacing: '0.07em', color: 'var(--gold2)' }}
+              >
+                {t('premium_strip_title')}
+              </span>
+              <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", marginTop: '0.05rem' }}>
+                {t('premium_strip_sub')}
+              </span>
+            </span>
+            <ChevronRight size={16} style={{ color: 'var(--gold2)', flexShrink: 0 }} />
+          </motion.button>
+        )}
+
+        {/* Maceraya devam et kartı */}
+        {!loading && latestAdventure && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => { playClick(); navigate(`/game/${latestAdventure.session.id}?characterId=${latestAdventure.character.id}`); }}
+            style={{
+              marginBottom: '1rem',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              border: '1px solid var(--border)',
+              position: 'relative',
+              cursor: 'pointer',
+              boxShadow: '0 4px 18px rgba(0,0,0,0.5)',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: `url('/scenarios/${latestAdventure.session.scenario || 'tavern'}.png') center 30%/cover no-repeat`,
+              }}
+            />
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(13,10,5,0.92) 20%, rgba(13,10,5,0.45) 100%)' }} />
+            <div style={{ position: 'relative', padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div
+                style={{
+                  width: '2.9rem',
+                  height: '2.9rem',
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  border: '2px solid var(--gold)',
+                  overflow: 'hidden',
+                  boxShadow: '0 0 12px rgba(201,150,58,0.3)',
+                  background: '#000',
+                }}
+              >
+                <img
+                  src={RACE_PORTRAITS[latestAdventure.character.race] || '/races/insan.png'}
+                  alt={latestAdventure.character.race}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="font-fantasy" style={{ fontSize: '0.58rem', letterSpacing: '0.18em', color: 'var(--gold)', marginBottom: '0.15rem' }}>
+                  {t('resume_adventure_label')}
+                </div>
+                <div
+                  className="font-fantasy"
+                  style={{ fontSize: '0.95rem', color: '#d8c9a3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                >
+                  {latestAdventure.session.title || latestAdventure.session.scenario || 'Macera'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", marginTop: '0.1rem' }}>
+                  {latestAdventure.character.name} · Sv.{latestAdventure.character.level} · {t('last_move_label')}: {formatDate(latestAdventure.session.updated_at || latestAdventure.session.created_at)}
+                </div>
+              </div>
+              <span
+                className="font-fantasy"
+                style={{
+                  flexShrink: 0,
+                  background: 'linear-gradient(135deg, var(--gold2), #a07818)',
+                  borderRadius: '8px',
+                  color: '#1a1206',
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                  letterSpacing: '0.08em',
+                  padding: '0.5rem 0.85rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                }}
+              >
+                <Play size={12} /> {t('resume_btn')}
+              </span>
+            </div>
+          </motion.div>
+        )}
+
         {/* Section header */}
         <div
           style={{
@@ -355,6 +500,9 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
                   className="stone-card"
                   style={{
                     padding: '1rem',
+                    background: 'rgba(13,10,5,0.8)',
+                    backdropFilter: 'blur(4px)',
+                    borderRadius: '12px',
                     opacity: isDead ? 0.5 : 1,
                     filter: isDead ? 'grayscale(0.7)' : 'none',
                   }}
@@ -648,6 +796,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }
