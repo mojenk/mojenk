@@ -21,6 +21,15 @@ function followerMaxHp(level = 1) {
   return 16 + Math.max(1, Number(level)) * 4;
 }
 
+// Role göre temel saldırı gücü — follower_attack eventinde AI değer göndermezse kullanılır
+const ROLE_ATTACK_BASE = { warrior: 4, rogue: 4, archer: 4, guardian: 3, healer: 2 };
+
+function followerAttackDamage(follower = {}) {
+  const level = Math.max(1, Number(follower.follower_level) || 1);
+  const base = ROLE_ATTACK_BASE[follower.follower_role] || 3;
+  return base + Math.floor(level * 1.5) + Math.floor(Math.random() * 3);
+}
+
 function calcFollowerMoodChange(event) {
   const changes = {
     victory: { morale: 8, loyalty: 5 },
@@ -54,7 +63,7 @@ async function applyFollowerMoodEvent(characterId, followerName, event) {
     notes: left ? `${follower.notes || ''}\nDüşük moral ve sadakat nedeniyle gruptan ayrıldı.`.trim() : follower.notes || '',
     updated_at: serverTimestamp(),
   });
-  return { ...follower, follower_morale: morale, follower_loyalty: loyalty, left };
+  return { event: 'follower_mood', name: follower.name, morale, loyalty, left };
 }
 
 async function applyAllFollowersMoodEvent(characterId, event) {
@@ -65,15 +74,20 @@ async function applyAllFollowersMoodEvent(characterId, event) {
   for (const doc of snapshot.docs) {
     const follower = docData(doc);
     if (!follower.follower_status || follower.follower_status === 'active') {
-      results.push(await applyFollowerMoodEvent(characterId, follower.name, event));
+      const result = await applyFollowerMoodEvent(characterId, follower.name, event);
+      if (result) {
+        results.push(result);
+        if (result.left) results.push({ event: 'follower_left', name: result.name });
+      }
     }
   }
-  return results.filter(Boolean);
+  return results;
 }
 
 module.exports = {
   determineFollowerRole,
   followerMaxHp,
+  followerAttackDamage,
   ROLE_LABELS_TR,
   calcFollowerMoodChange,
   applyFollowerMoodEvent,

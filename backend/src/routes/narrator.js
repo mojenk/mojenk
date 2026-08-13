@@ -3,7 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { grantXpAndLevelUp } = require('../utils/leveling');
-const { determineFollowerRole, followerMaxHp, applyAllFollowersMoodEvent } = require('../utils/follower');
+const { determineFollowerRole, followerMaxHp, followerAttackDamage, applyAllFollowersMoodEvent, ROLE_LABELS_TR } = require('../utils/follower');
 const { getSetting } = require('../settings');
 const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 const { verifyFirebaseToken } = require('../middleware/auth');
@@ -86,7 +86,7 @@ async function buildSystem(character, storySummary, sessionTitle, inventory, lan
 
   const followers = knownNpcs.filter(n => n.is_follower);
   const followerBlock = followers.length > 0
-    ? `\n## TAKİPÇİLER — ${character.name} İLE BİRLİKTE SEYAHAT EDİYORLAR\nBu karakterler artık ${character.name}'ın yol arkadaşı/takipçisi. Hikayede onları unutma, sahnelerde varlıklarını yansıt, diyaloglarına yer ver, tehlikede yardım etmelerine izin ver:\n${followers.map(n => `- **${n.name}** (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}`).join('\n')}\n`
+    ? `\n## TAKİPÇİLER — ${character.name} İLE BİRLİKTE SEYAHAT EDİYORLAR\nBu karakterler artık ${character.name}'ın yol arkadaşı. Hikayede onları unutma, sahnelerde varlıklarını yansıt, diyaloglarına yer ver, tehlikede yardım etmelerine izin ver. Her takipçinin rol/seviye/can/moral/sadakat durumunu davranışlarına YANSIT: morali düşük (<30) yoldaş söylenir ve isteksizdir, sadakati düşük (<30) olan ayrılmayı ima eder, yaralı yoldaş temkinli dövüşür, 'downed' durumdaki yoldaş dinlenene kadar savaşamaz ve konuşamaz. SAVAŞTA yoldaşlar gerçekten rol oynar: her çatışma turunda uygun olan EN FAZLA 1 aktif yoldaş için follower_attack eventi gönder (healer rolündekiler saldırmaz; onların desteğini sadece hikayede anlat):\n${followers.map(n => `- **${n.name}** [${ROLE_LABELS_TR[n.follower_role] || 'Yoldaş'}, Sv.${n.follower_level || 1}, HP ${n.follower_hp ?? '?'}/${n.follower_max_hp ?? '?'}, moral ${n.follower_morale ?? 60}/100, sadakat ${n.follower_loyalty ?? 60}/100, durum: ${n.follower_status || 'active'}] (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}`).join('\n')}\n`
     : '';
 
   const questBlock = (activeQuests && activeQuests.length > 0)
@@ -229,6 +229,8 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    treasure_search: Oyuncu bir sandık, torba, gizli bölme, ceset, raf vb. somut bir şeyi ARAYIP AÇTIĞINDA kullan. Eşyanın ne olduğunu SEN UYDURMA — bu event'i göndermen yeterli, hangi eşyanın çıktığını backend belirleyip bir sonraki yanıtına ekleyecek; sen sadece "torbayı karıştırdın, içinde bir şey buldun" gibi genel bir arama anlatımı yaz, spesifik eşya ismi/açıklaması yazma.
    rest: Oyuncu kamp kurduğunda, ateş yakıp dinlendiğinde, uyuduğunda veya handa/tavernada gecelediğinde kullan. Backend karakterin ve yoldaşlarının canını yeniler; sen kamp sahnesini atmosferik anlat (ateş, gece sesleri, yoldaşlarla sohbet) ve SAVAŞ SIRASINDA veya düşman aktifken ASLA rest gönderme. Aynı yanıtta {"event":"scene_change","scene":"camp"} da göndermen tavsiye edilir. Backend bazen bir gece olayı (nöbet bozulması, gizemli yolcu, kabus, uzaktan uluma) tetikler — bir sonraki yanıtında bunu hikayeye doğal şekilde işle.
    follower_damage: Savaşta yanındaki bir yoldaş/takipçi düşmandan hasar aldığında MUTLAKA kullan (name=yoldaşın adı, value=negatif hasar miktarı, örn -4). Aynı zamanda hikayede yoldaşa ne olduğunu mutlaka 1 cümleyle anlat (örn: "Kaya, goblinin baltasıyla omzundan yaralandı"). Yoldaş HP'si düşman hasarı aldığında ASLA sabit kalmasın.
+   {"event":"follower_attack","name":"Yoldaş Adı","target":"Düşman Adı","value":6}
+   follower_attack: Savaş sırasında AKTİF durumdaki bir yoldaş düşmana saldırdığında kullan (name=yoldaşın adı, target=düşmanın adı, value=1-15 arası pozitif hasar; değeri yoldaşın seviyesine ve rolüne uygun seç — Savaşçı/Okçu/Hilebaz yüksek, Koruyucu orta, Şifacı kullanmaz). Her savaş turunda en fazla 1 yoldaş saldırısı gönder ve yoldaşın eylemini hikayede 1 cümleyle betimle (örn: "Murat, goblinin kalkanının altından bıçağını sapladı"). 'downed' durumdaki yoldaş saldıramaz; savaş yoksa bu eventi gönderme.
    item_used: Hikâyede karakter bir iksir veya tüketilebilir eşya kullandığında (örn: "Mana İksiri içtin") MUTLAKA kullan. Envanterden o eşyayı düşürür. İsim, envanterdeki eşya adıyla büyük/küçük harf duyarsız eşleşmeli.
    scene_change: Oyuncu farklı bir bölgeye/ortama geçtiğinde MUTLAKA kullan. Atmosfer sesi otomatik değişir. Kullanılabilir sahneler: forest, dungeon, tavern, city, cave, swamp, ocean, mountain, temple, camp, ruins, storm, desert. Oyuncu bir ormandan mağaraya girerse scene=cave, bir tavernaya girerse scene=tavern, denize açılırsa scene=ocean, fırtına koparsa scene=storm, çölde yürüyorsa scene=desert, bir tapınağa girerse scene=temple, gece kamp kurarsa scene=camp, harabelere girerse scene=ruins, bataklıktan geçerse scene=swamp, dağlara çıkarsa scene=mountain yaz. Bölge gerçekten değiştiğinde event gönder, her yanıtta değil.
    {"event":"npc_meet","name":"NPC Adı","description":"Kısa fiziksel/kişilik tanımı","relationship":"friendly","race":"Elf"}
@@ -515,6 +517,11 @@ async function applyEvents(aiReply, characterId, sessionId) {
       event.value = Math.max(-30, Math.min(30, Math.round(event.value)));
       const hp = Math.max(0, Math.min(character.max_hp, character.hp + event.value));
       await characterRef.update({ hp, status: hp <= 0 ? 'dead' : 'alive', updated_at: serverTimestamp() });
+      // Oyuncu düşerse yoldaşların morali/sadakati sarsılır
+      if (hp <= 0) {
+        const moodEvents = await applyAllFollowersMoodEvent(characterId, 'defeat').catch(() => []);
+        moodEvents.forEach((entry) => events.push(entry));
+      }
     }
 
     if (event.event === 'follower_damage' && event.name && typeof event.value === 'number') {
@@ -528,6 +535,35 @@ async function applyEvents(aiReply, characterId, sessionId) {
           follower_status: newHp <= 0 ? 'downed' : (existing.data.follower_status || 'active'),
           updated_at: serverTimestamp(),
         });
+      }
+    }
+
+    // Yoldaş saldırısı — savaşta aktif yoldaş düşmana hasar verir
+    if (event.event === 'follower_attack' && event.name && sessionRef) {
+      const follower = await findNpcByName(characterId, event.name.substring(0, 100));
+      if (follower && follower.data.is_follower && (follower.data.follower_status || 'active') === 'active') {
+        const session = docData(await sessionRef.get());
+        const enemies = Array.isArray(session?.current_enemy) ? session.current_enemy.map((enemy) => ({ ...enemy })) : [];
+        const alive = enemies.filter((enemy) => enemy.hp > 0);
+        if (alive.length) {
+          const target = (event.target && alive.find((enemy) => enemy.name === event.target)) || alive[0];
+          const dmg = Math.max(1, Math.min(15, Math.round(
+            typeof event.value === 'number' ? Math.abs(event.value) : followerAttackDamage(follower.data)
+          )));
+          target.hp = Math.max(0, target.hp - dmg);
+          event.value = dmg;
+          event.target = target.name;
+          const remaining = enemies.filter((enemy) => enemy.hp > 0);
+          await sessionRef.update({ current_enemy: remaining.length ? remaining : null, updated_at: serverTimestamp() });
+          if (target.hp <= 0) {
+            // Öldürme, enemy_dead handler'ına devredilir (başarım + moral zaferi orada işlenir)
+            events.push({ event: 'enemy_dead', name: target.name, _auto_generated: true });
+          }
+        } else {
+          event.blocked = true;
+        }
+      } else {
+        event.blocked = true;
       }
     }
 
@@ -580,13 +616,19 @@ async function applyEvents(aiReply, characterId, sessionId) {
         event.blocked = true;
         event.cooldownLeft = cooldownLeft;
       } else {
+        // Yoldaşlar dinlenmede iyileşir; aktif şifacı yoldaş varsa oyuncu daha çok iyileşir
+        const followerSnapshot = await characterRef.collection('npcs').where('is_follower', '==', 1).get();
+        const hasActiveHealer = followerSnapshot.docs.some((doc) => {
+          const follower = doc.data();
+          return follower.follower_role === 'healer' && (!follower.follower_status || follower.follower_status === 'active');
+        });
         const maxHp = character.max_hp || 1;
-        const healed = Math.max(1, Math.round(maxHp * 0.35));
+        const healPct = hasActiveHealer ? 0.45 : 0.35;
+        const healed = Math.max(1, Math.round(maxHp * healPct));
         const newHp = Math.min(maxHp, (character.hp || 0) + healed);
         await characterRef.update({ hp: newHp, status: newHp > 0 ? 'alive' : character.status, updated_at: serverTimestamp() });
 
         // Yoldaşlar da dinlenir
-        const followerSnapshot = await characterRef.collection('npcs').where('is_follower', '==', 1).get();
         if (!followerSnapshot.empty) {
           const restBatch = firestore.batch();
           followerSnapshot.docs.forEach((doc) => {
@@ -614,6 +656,7 @@ async function applyEvents(aiReply, characterId, sessionId) {
         event.hp = newHp;
         event.maxHp = maxHp;
         event.followersHealed = followerSnapshot.size;
+        event.healerBonus = hasActiveHealer;
         event.nightEvent = nightEvent;
       }
     }
@@ -862,6 +905,9 @@ async function applyEvents(aiReply, characterId, sessionId) {
         } else {
           const status = event.event === 'quest_complete' ? 'completed' : 'failed';
           await ref.update({ status, completed_at: serverTimestamp(), updated_at: serverTimestamp() });
+          // Görev sonucu yoldaşların moralini etkiler
+          const moodEvents = await applyAllFollowersMoodEvent(characterId, status === 'completed' ? 'quest_complete' : 'quest_failed').catch(() => []);
+          moodEvents.forEach((entry) => events.push(entry));
           if (status === 'completed') {
             bump('quests_completed');
             if (quest.reward_gold > 0) {
