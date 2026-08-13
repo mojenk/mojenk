@@ -8,7 +8,7 @@ const { getSetting } = require('../settings');
 const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
-const { checkAndConsumeDailyTurn, claimDailyBonus, getDailyStatus, startAdSession } = require('../utils/dailyLimit');
+const { checkAndConsumeDailyTurn, claimDailyBonus, getDailyStatus, startAdSession, refundDailyTurn } = require('../utils/dailyLimit');
 const { CATALOG, pickWeightedItem, RARITY } = require('../data/items');
 const { bumpStats } = require('../utils/achievements');
 
@@ -336,7 +336,8 @@ async function callGemini(systemPrompt, rawHistory, userMessage) {
   throw new Error('Anlatıcı yanıt vermedi, tekrar dene');
 }
 
-async function refreshSummary(sessionId, characterName, existing) {
+async function refreshSummary(sessionId, characterName, existing, language = 'tr') {
+  const isEn = language === 'en';
   try {
     const snapshot = await firestore.collection('sessions').doc(sessionId).collection('messages').orderBy('created_at', 'asc').get();
     const rows = snapshot.docs.map(docData);
@@ -350,11 +351,17 @@ async function refreshSummary(sessionId, characterName, existing) {
     const truncatedText = text.substring(0, 4000);
     const truncatedExisting = (existing || '').substring(0, 1500);
 
-    const prompt = truncatedExisting
-      ? `Mevcut özet:\n${truncatedExisting}\n\nYeni olaylar:\n${truncatedText}\n\nTümünü 200 kelimeyi geçmeyen tutarlı Türkçe özete dönüştür. Önemli olaylar, eşyalar, konumu belirt.`
-      : `Aşağıdaki D&D oyun kayıtlarını 200 kelimeyi geçmeyen Türkçe özete dönüştür:\n${truncatedText}`;
+    const prompt = isEn
+      ? (truncatedExisting
+        ? `Existing summary:\n${truncatedExisting}\n\nNew events:\n${truncatedText}\n\nMerge everything into one coherent English summary of at most 200 words. Include key events, items, and the current location.`
+        : `Summarize the following D&D game log into a coherent English summary of at most 200 words:\n${truncatedText}`)
+      : (truncatedExisting
+        ? `Mevcut özet:\n${truncatedExisting}\n\nYeni olaylar:\n${truncatedText}\n\nTümünü 200 kelimeyi geçmeyen tutarlı Türkçe özete dönüştür. Önemli olaylar, eşyalar, konumu belirt.`
+        : `Aşağıdaki D&D oyun kayıtlarını 200 kelimeyi geçmeyen Türkçe özete dönüştür:\n${truncatedText}`);
 
-    const m = await getModel('gemini-2.5-flash', 'Sen bir D&D hikaye özetleyicisisin. Kısa, bilgi yoğun özetler yazarsın.', { maxOutputTokens: 400 });
+    const m = await getModel('gemini-2.5-flash', isEn
+      ? 'You are a D&D story summarizer. You write short, information-dense summaries in English.'
+      : 'Sen bir D&D hikaye özetleyicisisin. Kısa, bilgi yoğun özetler yazarsın.', { maxOutputTokens: 400 });
     const r = await m.generateContent(prompt);
     const summary = r.response.text().substring(0, 2000);
     await firestore.collection('sessions').doc(sessionId).update({ story_summary: summary, updated_at: serverTimestamp() });
@@ -365,13 +372,17 @@ async function refreshSummary(sessionId, characterName, existing) {
 
 function summarizeScene(text) {
   const lower = (text || '').toLowerCase();
-  if (lower.includes('zindan') || lower.includes('zind')) return 'dungeon';
-  if (lower.includes('orman')) return 'forest';
-  if (lower.includes('taverna') || lower.includes('han')) return 'tavern';
-  if (lower.includes('şehir') || lower.includes('sokak')) return 'city';
-  if (lower.includes('ejderha') || lower.includes('dağ')) return 'mountain';
-  if (lower.includes('deniz') || lower.includes('gemi') || lower.includes('korsan')) return 'sea';
-  if (lower.includes('çöl') || lower.includes('kervan')) return 'caravan';
+  if (lower.includes('zindan') || lower.includes('zind') || lower.includes('dungeon') || lower.includes('crypt')) return 'dungeon';
+  if (lower.includes('orman') || lower.includes('forest') || lower.includes('woods')) return 'forest';
+  if (lower.includes('taverna') || lower.includes('han') || lower.includes('tavern') || lower.includes('saloon') || lower.includes('inn')) return 'tavern';
+  if (lower.includes('şehir') || lower.includes('sokak') || lower.includes('city') || lower.includes('street')) return 'city';
+  if (lower.includes('ejderha') || lower.includes('dragon')) return 'dragon';
+  if (lower.includes('dağ') || lower.includes('mountain') || lower.includes('snow')) return 'mountain';
+  if (lower.includes('deniz') || lower.includes('gemi') || lower.includes('korsan') || lower.includes('sea') || lower.includes('ship') || lower.includes('pirate')) return 'sea';
+  if (lower.includes('çöl') || lower.includes('kervan') || lower.includes('desert') || lower.includes('caravan')) return 'caravan';
+  if (lower.includes('hayalet') || lower.includes('lanet') || lower.includes('ghost') || lower.includes('haunted')) return 'horror';
+  if (lower.includes('uzay') || lower.includes('yıldız') || lower.includes('space') || lower.includes('starship') || lower.includes('planet')) return 'scifi';
+  if (lower.includes('kovboy') || lower.includes('şerif') || lower.includes('sheriff') || lower.includes('cowboy') || lower.includes('saloon')) return 'western';
   return null;
 }
 
@@ -486,6 +497,7 @@ async function applyEvents(aiReply, characterId, sessionId) {
   const statDeltas = {};
   const statMaxes = {};
   const bump = (key, value = 1) => { statDeltas[key] = (statDeltas[key] || 0) + value; };
+  let followerAttackUsed = false;
 
   function findCatalogMatchByName(name) {
     const lower = String(name).toLocaleLowerCase('tr');
@@ -510,6 +522,12 @@ async function applyEvents(aiReply, characterId, sessionId) {
   }
 
   for (const event of events) {
+    // Backend tarafından üretilen olaylar (örn. treasure_search'ten gelen item_gained,
+    // follower_attack'ten gelen enemy_dead) sadece frontend'e bilgi içindir —
+    // etkileri üretildikleri yerde zaten uygulandı. Tekrar işlenirse eşya iki kez
+    // envantere girer / öldürme sayacı ve moral iki kez işlenir.
+    if (event._auto_generated) continue;
+
     const character = docData(await characterRef.get());
     if (!character) continue;
 
@@ -538,8 +556,10 @@ async function applyEvents(aiReply, characterId, sessionId) {
       }
     }
 
-    // Yoldaş saldırısı — savaşta aktif yoldaş düşmana hasar verir
+    // Yoldaş saldırısı — savaşta aktif yoldaş düşmana hasar verir (tur başına en fazla 1)
     if (event.event === 'follower_attack' && event.name && sessionRef) {
+      if (followerAttackUsed) { event.blocked = true; continue; }
+      followerAttackUsed = true;
       const follower = await findNpcByName(characterId, event.name.substring(0, 100));
       if (follower && follower.data.is_follower && (follower.data.follower_status || 'active') === 'active') {
         const session = docData(await sessionRef.get());
@@ -556,7 +576,11 @@ async function applyEvents(aiReply, characterId, sessionId) {
           const remaining = enemies.filter((enemy) => enemy.hp > 0);
           await sessionRef.update({ current_enemy: remaining.length ? remaining : null, updated_at: serverTimestamp() });
           if (target.hp <= 0) {
-            // Öldürme, enemy_dead handler'ına devredilir (başarım + moral zaferi orada işlenir)
+            // Öldürme sayacı ve zafer morali burada işlenir; enemy_dead olayı
+            // sadece frontend'in savaş arayüzünü kapatması için bayraklı gönderilir.
+            bump('enemies_killed');
+            const moraleEvents = await applyAllFollowersMoodEvent(characterId, 'victory').catch(() => []);
+            moraleEvents.forEach((entry) => events.push(entry));
             events.push({ event: 'enemy_dead', name: target.name, _auto_generated: true });
           }
         } else {
@@ -664,6 +688,11 @@ async function applyEvents(aiReply, characterId, sessionId) {
     if (event.event === 'enemy_spawn' && event.name && sessionRef) {
       const session = docData(await sessionRef.get());
       const enemies = Array.isArray(session?.current_enemy) ? [...session.current_enemy] : [];
+      // Aynı anda en fazla 4 canlı düşman — AI'ın kontrolsüz spawn'lamasını engeller
+      if (enemies.filter((enemy) => enemy.hp > 0).length >= 4) {
+        event.blocked = true;
+        continue;
+      }
       const maxHp = Math.min(100, Math.max(1, parseInt(event.max_hp, 10) || 15));
       enemies.push({
         name: event.name.substring(0, 50),
@@ -815,7 +844,11 @@ async function applyEvents(aiReply, characterId, sessionId) {
       if (existing) {
         const updates = { last_seen_session: sessionId || existing.data.last_seen_session || null, updated_at: serverTimestamp() };
         if (event.event === 'npc_update') {
-          updates.notes = (event.notes || '').substring(0, 500);
+          // Notlar BİRİKTİRİLİR — üzerine yazmak daha önce öğrenilen bilgileri siler
+          if (event.notes) {
+            const merged = `${existing.data.notes || ''}\n${String(event.notes).substring(0, 200)}`.trim();
+            updates.notes = merged.substring(0, 500);
+          }
           if (event.relationship) updates.relationship = event.relationship;
           // Dost edinilen NPC aynı zamanda aktif düşman ise savaş UI'sini kapat
           if (event.relationship === 'friendly' && sessionRef) {
@@ -1062,6 +1095,8 @@ router.post('/chat', async (req, res) => {
       await userMessageRef.delete().catch((deleteError) => {
         console.error('Failed user message cleanup error:', deleteError.message);
       });
+      // AI yanıt veremedi — tüketilen günlük hamleyi geri ver
+      await refundDailyTurn(req.firebaseUser.uid).catch(() => {});
       throw error;
     }
 
@@ -1104,7 +1139,7 @@ router.post('/chat', async (req, res) => {
 
     const messageCount = await sessionRef.collection('messages').count().get();
     if (messageCount.data().count % SUMMARY_INTERVAL === 0) {
-      refreshSummary(sessionId, character.name, session.story_summary || '').catch(() => {});
+      refreshSummary(sessionId, character.name, session.story_summary || '', language).catch(() => {});
     }
 
     await updateSessionProgress(sessionId, character, aiReply, activeQuests);
@@ -1269,7 +1304,14 @@ router.post('/start', async (req, res) => {
       : `Bu sahneyle başla ve sürükleyici 4-5 cümlelik bir açılış yap. Havayı kur, oyuncuyu içine çek, sonunda **A)**, **B)**, **C)** formatında 2-4 net seçenek sun. Karakter dışına çıkma veya yorum yapma.\n\nSahne: ${opening}`;
 
     const systemPrompt = await buildSystem(character, '', title, inventory, language || 'tr', existingNpcs, [], character.narrator_tone, scenario);
-    const intro = await callGemini(systemPrompt, [], prompt);
+    let intro;
+    try {
+      intro = await callGemini(systemPrompt, [], prompt);
+    } catch (error) {
+      // AI yanıt veremedi — tüketilen günlük hamleyi geri ver
+      await refundDailyTurn(req.firebaseUser.uid).catch(() => {});
+      throw error;
+    }
 
     const messageRef = sessionRef.collection('messages').doc();
     const batch = firestore.batch();
@@ -1454,26 +1496,22 @@ ${recentHistory ? `\nÖNCEKİ KONUŞMA ÖZETİ:\n${recentHistory}\n` : ''}`;
 
     let aiReply = await callGemini(npcPrompt, [], userPrompt);
     if (!aiReply) {
-      aiReply = `${npc.name} kısa bir sessizlikten sonra sana bakıp omuz silkti.\n\n**A)** Konuşmaya devam et.\n**B)** Konuyu değiştir.\n**C)** Uzaklaş.`;
+      // Fallback: seçenekli metin YAZMA — npc_talk yanıtlarında A/B/C olmamalı (kural 3)
+      aiReply = isEnglish
+        ? `${npc.name} regards you in silence for a moment, then gives a small shrug. "Hm. Ask what you will — I may or may not answer."`
+        : `${npc.name} bir süre sessizce sana bakıyor, sonra hafifçe omuz silkliyor. "Hm. Sor sorunu — belki cevaplarım, belki cevaplamam."`;
     }
 
     // Process events from reply
     const events = await applyEvents(aiReply, characterId, sessionId);
 
-    // Extract topics and notes for DB update
-    const topicEvent = events.find(e => e.event === 'npc_topic' && e.name === npc.name);
-    const updateEvent = events.find(e => e.event === 'npc_update' && e.name === npc.name);
+    // Notlar applyEvents içindeki npc_update handler'ı tarafından zaten birleştirilip
+    // yazıldı — burada tekrar birleştirmek aynı notu mükerrer kaydeder. Sadece konuları al.
+    const topicEvent = events.find(e => e.event === 'npc_topic');
 
     // Merge topics
     const newTopics = Array.isArray(topicEvent?.topics) ? topicEvent.topics : [];
     const mergedTopics = [...new Set([...topics, ...newTopics])].slice(0, 8);
-
-    // Merge notes
-    let updatedNotes = npc.notes || '';
-    if (updateEvent?.notes) {
-      updatedNotes = (updatedNotes ? updatedNotes + ' | ' : '') + updateEvent.notes;
-      updatedNotes = updatedNotes.substring(0, 900);
-    }
 
     // Update dialog history
     dialogHistory.push({ role: 'user', content: question });
@@ -1483,7 +1521,6 @@ ${recentHistory ? `\nÖNCEKİ KONUŞMA ÖZETİ:\n${recentHistory}\n` : ''}`;
 
     await npcRef.update({
       topics: mergedTopics,
-      notes: updatedNotes,
       dialog_history: trimmedHistory,
       last_seen_session: sessionId || npc.last_seen_session || null,
       updated_at: serverTimestamp(),

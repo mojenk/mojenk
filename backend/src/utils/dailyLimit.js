@@ -206,12 +206,32 @@ async function claimWheelTurns(uid, amount) {
   });
 }
 
+// AI çağrısı başarısız olursa tüketilen hamleyi geri verir (oyuncu hata yüzünden hak kaybetmesin).
+async function refundDailyTurn(uid) {
+  try {
+    if (await isPremium(uid)) return; // premium'da hak tüketilmiyor
+    const userRef = firestore.collection('users').doc(uid);
+    const today = getTodayIstanbul();
+    await firestore.runTransaction(async (transaction) => {
+      const doc = await transaction.get(userRef);
+      const data = doc.exists ? doc.data() : {};
+      if (data.dailyTurnDate !== today) return;
+      const used = data.dailyTurnsUsed || 0;
+      if (used <= 0) return;
+      transaction.set(userRef, { dailyTurnsUsed: used - 1 }, { merge: true });
+    });
+  } catch (e) {
+    console.error('refundDailyTurn error:', e.message);
+  }
+}
+
 module.exports = {
   checkAndConsumeDailyTurn,
   getDailyStatus,
   startAdSession,
   claimDailyBonus,
   claimWheelTurns,
+  refundDailyTurn,
   getAppSettings,
   FREE_DAILY_TURNS: DEFAULT_FREE_DAILY_TURNS,
   BONUS_PER_AD: DEFAULT_BONUS_PER_AD,
