@@ -60,6 +60,20 @@ function getFollowerRoleMeta(role) {
   return { ...meta, label: t(meta.labelKey) };
 }
 
+const HEADER_CHIP_BASE = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.22rem',
+  fontSize: '0.72rem',
+  fontFamily: "'Crimson Text', serif",
+  background: 'rgba(0,0,0,0.25)',
+  border: '1px solid rgba(74,59,34,0.6)',
+  borderRadius: '999px',
+  padding: '0.12rem 0.5rem',
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+};
+
 const STAT_COLS_DEF = [
   ['stat_abbr_strength', 'strength', StatIcon.strength],
   ['stat_abbr_dexterity', 'dexterity', StatIcon.dexterity],
@@ -1576,8 +1590,8 @@ export default function GamePage({ user }) {
               navigate('/');
             }}
             style={{
-              width: '2rem',
-              height: '2rem',
+              width: '1.9rem',
+              height: '1.9rem',
               borderRadius: '50%',
               background: 'rgba(92,74,42,0.15)',
               border: '1px solid var(--gold)',
@@ -1597,8 +1611,8 @@ export default function GamePage({ user }) {
           {/* Character portrait */}
           <div
             style={{
-              width: '2.1rem',
-              height: '2.1rem',
+              width: '2.5rem',
+              height: '2.5rem',
               borderRadius: '50%',
               background: 'rgba(92,74,42,0.15)',
               border: '2px solid var(--gold)',
@@ -1617,11 +1631,12 @@ export default function GamePage({ user }) {
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+            {/* Name row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
               <span
                 className="font-fantasy gold-text"
                 style={{
-                  fontSize: '0.9rem',
+                  fontSize: '1rem',
                   letterSpacing: '0.06em',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -1634,7 +1649,7 @@ export default function GamePage({ user }) {
                 style={{
                   color: 'var(--text-dim)',
                   fontFamily: "'Cinzel', serif",
-                  fontSize: '0.65rem',
+                  fontSize: '0.62rem',
                   flexShrink: 0,
                 }}
               >
@@ -1644,48 +1659,55 @@ export default function GamePage({ user }) {
                 <span
                   title="Premium"
                   style={{
-                    color: '#fff',
-                    background: 'var(--gold)',
-                    fontSize: '0.55rem',
+                    color: '#1a1206',
+                    background: 'linear-gradient(135deg, var(--gold2), var(--gold))',
+                    fontSize: '0.52rem',
                     fontWeight: 700,
                     textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    padding: '0.1rem 0.3rem',
+                    letterSpacing: '0.06em',
+                    padding: '0.14rem 0.42rem',
                     borderRadius: '999px',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '0.1rem',
+                    gap: '0.15rem',
                     flexShrink: 0,
+                    fontFamily: "'Cinzel', serif",
+                    boxShadow: '0 0 8px rgba(212,160,58,0.35)',
                   }}
                 >
                   <Crown size={8} /> Premium
                 </span>
               )}
+            </div>
+            {/* Stat chips row */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                marginTop: '0.3rem',
+                flexWrap: 'nowrap',
+                overflow: 'hidden',
+              }}
+            >
               <span
                 style={{
-                  color: 'var(--gold)',
-                  fontFamily: "'Crimson Text', serif",
-                  fontSize: '0.72rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.1rem',
-                  flexShrink: 0,
+                  ...HEADER_CHIP_BASE,
+                  color: hpPct <= 25 ? 'var(--crimson)' : '#c04545',
+                  borderColor: 'rgba(122,22,22,0.5)',
+                  animation: hpPct <= 25 ? 'blink-cursor 1.5s step-end infinite' : 'none',
                 }}
               >
-                <Coins size={13} />{character.gold}
+                <Heart size={11} /> {character.hp}/{character.max_hp}
               </span>
-              <span
-                style={{
-                  color: 'var(--text-dim)',
-                  fontFamily: "'Crimson Text', serif",
-                  fontSize: '0.72rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.1rem',
-                  flexShrink: 0,
-                }}
-              >
-                <Star size={12} />{Math.min(100, Math.round(((character.experience ?? 0) / 300) * 100))}%
+              <span style={{ ...HEADER_CHIP_BASE, color: 'var(--text-dim)' }}>
+                <Shield size={10} />{character.armor_class || 10}
+              </span>
+              <span style={{ ...HEADER_CHIP_BASE, color: 'var(--gold2)' }}>
+                <Coins size={11} />{character.gold}
+              </span>
+              <span style={{ ...HEADER_CHIP_BASE, color: 'var(--text-dim)' }}>
+                <Star size={10} />{Math.min(100, Math.round(((character.experience ?? 0) / 300) * 100))}%
               </span>
               {(() => {
                 const isPremium = dailyStatus?.premium;
@@ -1696,41 +1718,18 @@ export default function GamePage({ user }) {
                 return (
                   <span
                     title={t('daily_moves_left')}
-                    style={{
-                      color: low ? '#e53935' : 'var(--text-dim)',
-                      fontFamily: "'Crimson Text', serif",
-                      fontSize: '0.72rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.1rem',
-                      flexShrink: 0,
-                    }}
+                    style={{ ...HEADER_CHIP_BASE, color: low ? '#e53935' : 'var(--text)' }}
                   >
-                    <Dices size={12} />
+                    <Dices size={10} />
                     {isPremium ? '∞' : left != null ? `${left}/${limit}` : '…'}
                   </span>
                 );
               })()}
             </div>
-            <div
-              style={{
-                color: hpPct <= 25 ? 'var(--crimson)' : 'var(--blood)',
-                fontFamily: "'Crimson Text', serif",
-                fontSize: '0.72rem',
-                animation: hpPct <= 25 ? 'blink-cursor 1.5s step-end infinite' : 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-              }}
-            >
-              <Heart size={14} /> {character.hp}/{character.max_hp}
-              <span style={{ color: 'var(--text-dim)', marginLeft: '0.25rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
-                <Shield size={12} />{character.armor_class || 10}
-              </span>
-            </div>
           </div>
+        </div>
 
-          <div className="game-header-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem', flexShrink: 0 }}>
+        <div className="game-header-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.3rem', marginTop: '0.55rem' }}>
             {/* Wheel of Fate button */}
             {(() => {
               const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
@@ -1744,9 +1743,9 @@ export default function GamePage({ user }) {
                   onClick={() => { playClick(); setShowWheel(true); }}
                   title={`Kader Çarkı — ${remaining} hakkın kaldı`}
                   style={{
-                    width: '1.55rem',
-                    height: '1.55rem',
-                    borderRadius: '6px',
+                    width: '2.35rem',
+                    height: '2.35rem',
+                    borderRadius: '9px',
                     background: 'rgba(92,74,42,0.2)',
                     border: '1px solid var(--border)',
                     fontSize: '0.85rem',
@@ -1759,7 +1758,7 @@ export default function GamePage({ user }) {
                     padding: 0,
                   }}
                 >
-                  <WheelIcon size={14} />
+                  <WheelIcon size={17} />
                 </motion.button>
               );
             })()}
@@ -1768,9 +1767,9 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); toggleSound(); }}
               style={{
-                width: '1.55rem',
-                height: '1.55rem',
-                borderRadius: '6px',
+                width: '2.35rem',
+                height: '2.35rem',
+                borderRadius: '9px',
                 background: 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
                 fontSize: '0.85rem',
@@ -1782,7 +1781,7 @@ export default function GamePage({ user }) {
                 padding: 0,
               }}
             >
-              {soundOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
+              {soundOn ? <Volume2 size={17} /> : <VolumeX size={17} />}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
@@ -1794,9 +1793,9 @@ export default function GamePage({ user }) {
               }}
               title={character.hp <= 0 ? 'Baygınken envantere erişilemez' : currentEnemy ? 'Savaşta envantere erişilemez' : 'Çanta'}
               style={{
-                width: '1.55rem',
-                height: '1.55rem',
-                borderRadius: '6px',
+                width: '2.35rem',
+                height: '2.35rem',
+                borderRadius: '9px',
                 background: showBag
                   ? 'rgba(201,150,58,0.25)'
                   : 'rgba(92,74,42,0.2)',
@@ -1812,7 +1811,7 @@ export default function GamePage({ user }) {
                 padding: 0,
               }}
             >
-              <Backpack size={14} color="var(--text)" />
+              <Backpack size={17} color="var(--text)" />
               {inventory.length > 0 && (
                 <span style={{
                   position: 'absolute',
@@ -1838,9 +1837,9 @@ export default function GamePage({ user }) {
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); navigate(`/shop/${characterId}?scenario=${session?.scenario || scenario || ''}`); }}
               style={{
-                width: '1.55rem',
-                height: '1.55rem',
-                borderRadius: '6px',
+                width: '2.35rem',
+                height: '2.35rem',
+                borderRadius: '9px',
                 background: 'rgba(92,74,42,0.2)',
                 border: '1px solid var(--border)',
                 fontSize: '0.85rem',
@@ -1853,15 +1852,15 @@ export default function GamePage({ user }) {
               }}
               title="Tüccar Dükkânı"
             >
-              <Store size={14} color="var(--text)" />
+              <Store size={17} color="var(--text)" />
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); setShowStats((s) => !s); }}
               style={{
-                width: '1.55rem',
-                height: '1.55rem',
-                borderRadius: '6px',
+                width: '2.35rem',
+                height: '2.35rem',
+                borderRadius: '9px',
                 background: showStats
                   ? 'rgba(201,150,58,0.25)'
                   : 'rgba(92,74,42,0.2)',
@@ -1875,16 +1874,16 @@ export default function GamePage({ user }) {
                 padding: 0,
               }}
             >
-              <BarChart3 size={14} />
+              <BarChart3 size={17} />
             </motion.button>
             {/* NPC button */}
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={() => { playClick(); setShowNpcs((s) => !s); setShowQuests(false); }}
               style={{
-                width: '1.55rem',
-                height: '1.55rem',
-                borderRadius: '6px',
+                width: '2.35rem',
+                height: '2.35rem',
+                borderRadius: '9px',
                 background: showNpcs
                   ? 'rgba(201,150,58,0.25)'
                   : 'rgba(92,74,42,0.2)',
@@ -1900,7 +1899,7 @@ export default function GamePage({ user }) {
               }}
               title={`Tanınan NPC'ler (${npcs.length})`}
             >
-              <Users size={14} />
+              <Users size={17} />
               {npcs.length > 0 && (
                 <span style={{
                   position: 'absolute', top: '-2px', right: '-2px',
@@ -1920,9 +1919,9 @@ export default function GamePage({ user }) {
                   whileTap={{ scale: 0.96 }}
                   onClick={() => { playClick(); setShowQuests((s) => !s); setShowNpcs(false); }}
                   style={{
-                    width: '1.55rem',
-                    height: '1.55rem',
-                    borderRadius: '6px',
+                    width: '2.35rem',
+                    height: '2.35rem',
+                    borderRadius: '9px',
                     background: showQuests
                       ? 'rgba(201,150,58,0.25)'
                       : 'rgba(92,74,42,0.2)',
@@ -1938,7 +1937,7 @@ export default function GamePage({ user }) {
                   }}
                   title={`Görevler (${activeQuests.length} aktif)`}
                 >
-                  <ScrollText size={14} />
+                  <ScrollText size={17} />
                   {activeQuests.length > 0 && (
                     <span style={{
                       position: 'absolute', top: '-2px', right: '-2px',
@@ -1952,7 +1951,6 @@ export default function GamePage({ user }) {
                 </motion.button>
               );
             })()}
-          </div>
         </div>
 
         {/* Full-width HP bar */}
