@@ -81,7 +81,7 @@ async function buildSystem(character, storySummary, sessionTitle, inventory, lan
   const raceDesc = raceTraits[character.race] || '';
 
   const npcBlock = knownNpcs.length > 0
-    ? `\n## TANINAN NPC'LER — BUNLARI ASLA UNUTMA\nAşağıdaki NPC'lerle daha önce karşılaşıldı. Tekrar karşılaşırsan isimlerini ve ilişkilerini koru, kişiliklerini tutarlı oynat:\n${knownNpcs.filter(n => !n.is_follower).map(n => `- **${n.name}** (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}${n.hire_cost ? ` [${n.hire_cost} altına hizmet sunuyor]` : ''}`).join('\n')}\n`
+    ? `\n## TANINAN NPC'LER — BUNLARI ASLA UNUTMA\nAşağıdaki NPC'lerle daha önce karşılaşıldı. Tekrar karşılaşırsan isimlerini ve ilişkilerini koru, kişiliklerini tutarlı oynat. npc_update/npc_topic/npc_recruit gibi event'lerde bu listedeki isimleri AYNEN kullan. Listede lakapla kayıtlı birinin (örn. "Yara Yüzlü Adam") gerçek adı öğrenilirse npc_rename event'i gönder:\n${knownNpcs.filter(n => !n.is_follower).map(n => `- **${n.name}** (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}${n.hire_cost ? ` [${n.hire_cost} altına hizmet sunuyor]` : ''}`).join('\n')}\n`
     : '';
 
   const followers = knownNpcs.filter(n => n.is_follower);
@@ -234,7 +234,9 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    {"event":"npc_meet","name":"NPC Adı","description":"Kısa fiziksel/kişilik tanımı","relationship":"friendly","race":"Elf"}
    {"event":"npc_update","name":"NPC Adı","notes":"Yeni öğrenilen bilgi veya ilişki değişikliği","relationship":"hostile"}
    {"event":"npc_topic","name":"NPC Adı","topics":["Konu 1","Konu 2","Konu 3"]}
-   npc_meet: Yeni bir önemli NPC ile ilk karşılaşmada kullan. relationship: friendly/neutral/hostile/unknown. race: NPC'nin ırkını şu listeden seç — İnsan, Elf, Cüce, Yarı-Ork, Hobit, İblissoyu, Gnom, Ejderha Doğumlu, Melek Soylu (belirtmezsen İnsan varsayılır; hikayeye uygun çeşitlilik kat). Aynı yanıtın SONUNDA mutlaka npc_topic event'i de ekle ki oyuncu konuşma başlatabilsin.
+   npc_meet: Yeni bir önemli NPC ile ilk karşılaşmada kullan. relationship: friendly/neutral/hostile/unknown. race: NPC'nin ırkını şu listeden seç — İnsan, Elf, Cüce, Yarı-Ork, Hobit, İblissoyu, Gnom, Ejderha Doğumlu, Melek Soylu (belirtmezsen İnsan varsayılır; hikayeye uygun çeşitlilik kat). Aynı yanıtın SONUNDA mutlaka npc_topic event'i de ekle ki oyuncu konuşma başlatabilsin. KRİTİK İSİM KURALI: Aynı kişi için ASLA ikinci bir npc_meet gönderme. NPC'nin gerçek adı henüz bilinmiyorsa görünür lakabıyla tanıt (örn. "Yara Yüzlü Adam"); oyuncu sonradan gerçek adını öğrenirse (örn. "Murat") YENİ npc_meet YERİNE mutlaka npc_rename gönder — aksi halde oyuncunun NPC listesinde aynı kişi iki kez görünür.
+   {"event":"npc_rename","old_name":"Yara Yüzlü Adam","name":"Murat"}
+   npc_rename: Daha önce tanıtılmış bir NPC'nin GERÇEK ADI öğrenildiğinde MUTLAKA kullan (lakapla kayıtlı NPC'yi gerçek adıyla günceller; old_name=önceki lakap, name=gerçek ad). Gerçek ad öğrenildikten sonra hikaye anlatımında, seçeneklerde ve tüm npc event'lerinde hep gerçek adı kullan.
    npc_update: Mevcut bir NPC hakkında ilişki değişince veya önemli bilgi öğrenilince kullan.
    npc_topic: Bir NPC ile konuşulabilecek konular eklendiğinde veya güncellendiğinde kullan. Her seferinde 2-4 kısa konu başlığı yaz. Sonraki konuşmalarda bu konular UI'da buton olarak gösterilecek.
    {"event":"quest_start","title":"Görev başlığı","description":"Görevin kısa açıklaması (1-2 cümle)","reward_xp":50,"reward_gold":10}
@@ -410,10 +412,57 @@ async function resolveActiveQuest(characterId, title) {
   return null;
 }
 
+// "adam", "kadın", "figür" gibi jenerik sıfatlar isim eşleşmesinde ayırt edici sayılmaz
+const NPC_GENERIC_TOKENS = new Set([
+  'adam', 'kadın', 'kadin', 'figür', 'figur', 'yabancı', 'yabanci', 'kişi', 'kisi',
+  'ihtiyar', 'yaşlı', 'yasli', 'genç', 'genc', 'çocuk', 'cocuk', 'kız', 'kiz', 'oğlan', 'oglan',
+  'man', 'woman', 'figure', 'stranger', 'person', 'old', 'young', 'boy', 'girl', 'child',
+]);
+
+function npcTokens(name) {
+  return String(name || '')
+    .trim()
+    .toLocaleLowerCase('tr')
+    .split(/[^a-zçğıöşüâêîôû0-9]+/i)
+    .filter((w) => w.length >= 3);
+}
+
 async function findNpcByName(characterId, name) {
-  const snapshot = await firestore.collection('characters').doc(characterId).collection('npcs')
-    .where('name', '==', name).limit(1).get();
-  return snapshot.empty ? null : { ref: snapshot.docs[0].ref, data: docData(snapshot.docs[0]) };
+  const colRef = firestore.collection('characters').doc(characterId).collection('npcs');
+  const cleanName = String(name || '').trim().substring(0, 100);
+  if (!cleanName) return null;
+
+  // Hızlı yol: birebir eşleşme
+  const exact = await colRef.where('name', '==', cleanName).limit(1).get();
+  if (!exact.empty) return { ref: exact.docs[0].ref, data: docData(exact.docs[0]) };
+
+  // Yumuşak eşleşme: büyük/küçük harf duyarsız + kelime kapsama
+  const snapshot = await colRef.orderBy('updated_at', 'desc').limit(25).get();
+  const norm = (s) => String(s || '').trim().toLocaleLowerCase('tr');
+  const targetNorm = norm(cleanName);
+  const targetTokens = npcTokens(cleanName);
+  if (!targetTokens.length) return null;
+
+  for (const doc of snapshot.docs) {
+    const data = docData(doc);
+    if (norm(data.name) === targetNorm) return { ref: doc.ref, data };
+  }
+
+  for (const doc of snapshot.docs) {
+    const data = docData(doc);
+    const exTokens = npcTokens(data.name);
+    if (!exTokens.length) continue;
+    // Jenerik kelimeleri çıkar; kalan ayırt edici kelimeler üzerinden kapsama kontrolü
+    const exDistinctive = exTokens.filter((t) => !NPC_GENERIC_TOKENS.has(t));
+    const tgDistinctive = targetTokens.filter((t) => !NPC_GENERIC_TOKENS.has(t));
+    const a = exDistinctive.length ? exDistinctive : exTokens;
+    const b = tgDistinctive.length ? tgDistinctive : targetTokens;
+    const shorter = a.length <= b.length ? a : b;
+    const longer = a.length <= b.length ? b : a;
+    const covered = shorter.every((w) => longer.some((lw) => lw.startsWith(w) || w.startsWith(lw)));
+    if (covered) return { ref: doc.ref, data };
+  }
+  return null;
 }
 
 async function applyEvents(aiReply, characterId, sessionId) {
@@ -669,6 +718,53 @@ async function applyEvents(aiReply, characterId, sessionId) {
         created_at: existing?.data.created_at || serverTimestamp(),
         updated_at: serverTimestamp(),
       }, { merge: true });
+    }
+
+    if (event.event === 'npc_rename' && event.name) {
+      const newName = String(event.name).trim().substring(0, 100);
+      const oldName = String(event.old_name || '').trim().substring(0, 100);
+      const old = oldName ? await findNpcByName(characterId, oldName) : null;
+      const existingNew = await findNpcByName(characterId, newName);
+      if (old && (!existingNew || existingNew.ref.id === old.ref.id)) {
+        // Tek kayıt var: doğrudan yeniden adlandır
+        const note = `[Gerçek adı öğrenildi: ${newName} (önceki kayıt: ${old.data.name})]`;
+        await old.ref.update({
+          name: newName,
+          notes: `${old.data.notes || ''}\n${note}`.trim().substring(0, 500),
+          updated_at: serverTimestamp(),
+        });
+      } else if (old && existingNew) {
+        // İki ayrı kayıt oluşmuş: eskisini yenisine birleştir, eskisini sil
+        await existingNew.ref.update({
+          description: existingNew.data.description || old.data.description || '',
+          notes: `${existingNew.data.notes || ''}\n${old.data.notes || ''}`.trim().substring(0, 500),
+          relationship: existingNew.data.relationship && existingNew.data.relationship !== 'unknown' ? existingNew.data.relationship : old.data.relationship,
+          is_follower: existingNew.data.is_follower || old.data.is_follower || 0,
+          follower_role: existingNew.data.follower_role || old.data.follower_role || null,
+          follower_hp: existingNew.data.follower_hp ?? old.data.follower_hp ?? null,
+          follower_max_hp: existingNew.data.follower_max_hp ?? old.data.follower_max_hp ?? null,
+          follower_level: existingNew.data.follower_level || old.data.follower_level || 1,
+          follower_xp: existingNew.data.follower_xp || old.data.follower_xp || 0,
+          follower_morale: existingNew.data.follower_morale ?? old.data.follower_morale ?? 60,
+          follower_loyalty: existingNew.data.follower_loyalty ?? old.data.follower_loyalty ?? 60,
+          follower_status: existingNew.data.follower_status || old.data.follower_status || null,
+          hire_cost: existingNew.data.hire_cost ?? old.data.hire_cost ?? null,
+          topics: [...new Set([...(existingNew.data.topics || []), ...(old.data.topics || [])])].slice(0, 8),
+          updated_at: serverTimestamp(),
+        });
+        await old.ref.delete();
+      } else if (!old && existingNew) {
+        // Eski isim bulunamadı ama yeni isimli kayıt zaten var: sadece not düş
+        if (oldName) {
+          const note = `[Önceki lakabı: ${oldName}]`;
+          if (!String(existingNew.data.notes || '').includes(oldName)) {
+            await existingNew.ref.update({
+              notes: `${existingNew.data.notes || ''}\n${note}`.trim().substring(0, 500),
+              updated_at: serverTimestamp(),
+            });
+          }
+        }
+      }
     }
 
     if (['npc_update', 'npc_hireable', 'npc_recruit', 'npc_topic', 'npc_dead'].includes(event.event) && event.name) {
