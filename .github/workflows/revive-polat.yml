@@ -1,0 +1,94 @@
+name: One-off Revive Polat + Dice Luck
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Set dice_luck for Polatfirat69 and revive fallen Polat
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          cd backend
+          npm ci --omit=dev
+          node -e "
+          const admin = require('firebase-admin');
+          const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+          admin.initializeApp({ credential: admin.credential.cert(sa) });
+          const db = admin.firestore();
+          const auth = admin.auth();
+          (async () => {
+            // 1) Kullanıcıyı bul
+            const user = await auth.getUserByEmail('polatfirat69@gmail.com');
+            const uid = user.uid;
+            console.log('User found:', uid, user.email);
+
+            // 2) Zar şansı +%30
+            await db.collection('users').doc(uid).set(
+              { dice_luck: 0.3, updated_at: admin.firestore.FieldValue.serverTimestamp() },
+              { merge: true }
+            );
+            console.log('dice_luck=0.3 set for', uid);
+
+            // 3) Onur listesindeki en üstteki Polat (İblissoyu Savaşçı) kaydını bul
+            const fallenSnap = await db.collection('fallenHeroes')
+              .where('ownerUid', '==', uid)
+              .where('name', '==', 'Polat')
+              .get();
+            if (fallenSnap.empty) {
+              console.log('No fallen Polat found — skip revive');
+            } else {
+              const candidates = fallenSnap.docs
+                .map((d) => ({ ref: d.ref, ...d.data() }))
+                .sort((a, b) => ((b.died_at && b.died_at.toMillis) ? b.died_at.toMillis() : 0) - ((a.died_at && a.died_at.toMillis) ? a.died_at.toMillis() : 0));
+              const fallen = candidates.find((c) => c.race === 'İblissoyu') || candidates[0];
+              console.log('Reviving fallen hero:', fallen.name, fallen.race, fallen.class, 'died_at=', fallen.died_at);
+
+              // Aynı id ile canlı karakter zaten varsa dokunma
+              const charRef = db.collection('characters').doc(fallen.characterId);
+              const existingChar = await charRef.get();
+              if (existingChar.exists) {
+                console.log('Character already exists, only removing fallen record');
+              } else {
+                const con = 13;
+                const dex = 12;
+                const hp = 10 + Math.floor((con - 10) / 2);
+                await charRef.set({
+                  id: fallen.characterId,
+                  ownerUid: uid,
+                  user_id: uid,
+                  name: fallen.name,
+                  race: fallen.race || 'İblissoyu',
+                  class: fallen.class || 'Savaşçı',
+                  background: 'Kader onu bir kez aldı; ama hikayesi henüz bitmedi. Onur Listesinden dönen kahraman.',
+                  strength: 14, dexterity: dex, constitution: con, intelligence: 10, wisdom: 10, charisma: 12,
+                  hp,
+                  max_hp: hp,
+                  armor_class: 10 + Math.floor((dex - 10) / 2),
+                  status: 'alive',
+                  gold: fallen.gold || 0,
+                  level: fallen.level || 1,
+                  experience: 0,
+                  pending_stat_point: 0,
+                  pending_perk_points: 0,
+                  death_saves_success: 0,
+                  death_saves_fail: 0,
+                  portrait: fallen.portrait || null,
+                  revived_at: admin.firestore.FieldValue.serverTimestamp(),
+                  created_at: admin.firestore.FieldValue.serverTimestamp(),
+                  updated_at: admin.firestore.FieldValue.serverTimestamp(),
+                });
+                console.log('Character revived:', fallen.characterId);
+              }
+              await fallen.ref.delete();
+              console.log('Fallen record removed');
+            }
+            process.exit(0);
+          })().catch((e) => { console.error(e); process.exit(1); });
+          "

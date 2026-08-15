@@ -3,7 +3,7 @@ const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 const { grantXpAndLevelUp } = require('../utils/leveling');
 const { applyLoot } = require('../utils/loot');
-const { claimWheelTurns } = require('../utils/dailyLimit');
+const { claimWheelTurns, getDiceLuck, rollLuckyDice } = require('../utils/dailyLimit');
 const { isPremium } = require('../utils/premium');
 
 const router = express.Router();
@@ -149,7 +149,8 @@ router.post('/combat/attack', async (req, res) => {
       ? dexterityModifier
       : isFinesse ? Math.max(strengthModifier, dexterityModifier) : strengthModifier;
     const proficiencyBonus = Math.ceil(character.level / 4) + 1;
-    const attackRoll = Math.floor(Math.random() * 20) + 1;
+    const diceLuck = await getDiceLuck(req.firebaseUser.uid);
+    const attackRoll = rollLuckyDice(20, diceLuck);
     const attackTotal = attackRoll + attackModifier + proficiencyBonus;
     const isCritical = attackRoll === 20
       || Boolean(perkBonuses.critChance && Math.random() * 100 < perkBonuses.critChance && attackRoll >= 15);
@@ -170,7 +171,7 @@ router.post('/combat/attack', async (req, res) => {
     if (isHit) {
       const rollCount = isCritical ? damageCount * 2 : damageCount;
       for (let index = 0; index < rollCount; index += 1) {
-        const roll = Math.floor(Math.random() * damageSides) + 1;
+        const roll = rollLuckyDice(damageSides, diceLuck);
         damageRolls.push(roll);
         damageTotal += roll;
       }

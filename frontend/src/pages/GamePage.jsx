@@ -552,7 +552,11 @@ export default function GamePage({ user }) {
     let finalDice = diceResult;
     if (!finalDice && character) {
       const { stat, mod } = chooseModifierForText(text);
-      const raw = Math.floor(Math.random() * 20) + 1;
+      const diceLuck = dailyStatus?.dice_luck || 0;
+      let raw = Math.floor(Math.random() * 20) + 1;
+      if (diceLuck > 0 && Math.random() < diceLuck) {
+        raw = Math.max(raw, Math.floor(Math.random() * 20) + 1);
+      }
       const total = raw + mod;
       finalDice = {
         dice: 'd20',

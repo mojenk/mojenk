@@ -206,6 +206,27 @@ async function claimWheelTurns(uid, amount) {
   });
 }
 
+// Kullanıcıya özel zar şansı (users/{uid}.dice_luck, 0-0.9 arası).
+// luck > 0 ise zar atılırken luck olasılığıyla ikinci bir zar atılıp yüksek olan alınır.
+async function getDiceLuck(uid) {
+  try {
+    const doc = await firestore.collection('users').doc(uid).get();
+    const value = Number(doc.data()?.dice_luck) || 0;
+    return Math.max(0, Math.min(0.9, value));
+  } catch {
+    return 0;
+  }
+}
+
+function rollLuckyDice(sides, luck = 0) {
+  let roll = Math.floor(Math.random() * sides) + 1;
+  if (luck > 0 && Math.random() < luck) {
+    const again = Math.floor(Math.random() * sides) + 1;
+    if (again > roll) roll = again;
+  }
+  return roll;
+}
+
 // AI çağrısı başarısız olursa tüketilen hamleyi geri verir (oyuncu hata yüzünden hak kaybetmesin).
 async function refundDailyTurn(uid) {
   try {
@@ -232,6 +253,8 @@ module.exports = {
   claimDailyBonus,
   claimWheelTurns,
   refundDailyTurn,
+  getDiceLuck,
+  rollLuckyDice,
   getAppSettings,
   FREE_DAILY_TURNS: DEFAULT_FREE_DAILY_TURNS,
   BONUS_PER_AD: DEFAULT_BONUS_PER_AD,

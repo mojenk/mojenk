@@ -8,7 +8,7 @@ const { getSetting } = require('../settings');
 const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
-const { checkAndConsumeDailyTurn, claimDailyBonus, getDailyStatus, startAdSession, refundDailyTurn } = require('../utils/dailyLimit');
+const { checkAndConsumeDailyTurn, claimDailyBonus, getDailyStatus, startAdSession, refundDailyTurn, getDiceLuck, rollLuckyDice } = require('../utils/dailyLimit');
 const { CATALOG, pickWeightedItem, RARITY } = require('../data/items');
 const { bumpStats } = require('../utils/achievements');
 
@@ -1187,7 +1187,8 @@ router.post('/chat', async (req, res) => {
 router.get('/daily-status', async (req, res) => {
   try {
     const status = await getDailyStatus(req.firebaseUser.uid);
-    res.json({ ...status, limit: status.limit === Infinity ? null : status.limit });
+    const diceLuck = await getDiceLuck(req.firebaseUser.uid);
+    res.json({ ...status, limit: status.limit === Infinity ? null : status.limit, dice_luck: diceLuck });
   } catch (err) {
     console.error('Daily status error:', err.message);
     res.status(500).json({ error: 'Durum okunamadı' });
@@ -1402,7 +1403,8 @@ router.post('/final-death-save', async (req, res) => {
     if (!character || character.ownerUid !== req.firebaseUser.uid) return res.status(404).json({ error: 'Karakter bulunamadı' });
     if (character.status !== 'dead') return res.status(400).json({ error: 'Karakter ölü değil' });
 
-    const roll = Math.floor(Math.random() * 20) + 1;
+    const luck = await getDiceLuck(req.firebaseUser.uid);
+    const roll = rollLuckyDice(20, luck);
     const success = roll >= 10;
 
     if (success) {
