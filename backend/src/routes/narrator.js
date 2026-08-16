@@ -211,6 +211,7 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    **KRİTİK KURAL:** Oyuncu hasar aldığında hikayede MUTLAKA şunları açıkça anlat: hangi düşmanın vurduğu, neyle vurduğu (silah/tırnak/büyü vb.), vücudun neresine isabet ettiği ve yaralanmanın etkisi. Örn: "Goblinin hançeri zırhının aralığından girip kaburgana saplandı; kan ağzından fışkırırken 5 can puanı kaybettin." Asla sadece "5 hasar aldın" gibi kuru mekanik cümleler yazma.
    **KRİTİK KURAL:** Zaten aktif bir düşmanla savaşırken yeni bir düşman daha eklemeden (enemy_spawn) ÖNCE hikayede bunun nereden geldiğini, neden ortaya çıktığını mutlaka 1 cümleyle anlat (örn: "Goblinin çığlığına başka bir goblin daha koştu geldi"). Anlatılmayan/sebepsiz düşman ekleme.
    **KRİTİK KURAL — SAVAŞ ARAYÜZÜ TAKILMASIN:** Aktif bir düşman varken hikayede o düşman artık tehdit oluşturmuyorsa (diz çöktü, teslim oldu, silahını attı, kaçtı, af diledi, barış yapıldı, dost edinildi, öldü) AYNI yanıtın SONUNA MUTLAKA {"event":"enemy_dead","name":"..."} ekle. Bunu unutursan oyuncunun ekranında düşman can barı ve savaş kısıtlamaları (envanter kilidi vb.) hiç kapanmadan asılı kalır — bu ciddi bir hatadır. Düşman hâlâ sahnede duruyor ama artık düşman DEĞİLSE (örn. esir alındı, tutsak edildi, arkadaş oldu) yine de enemy_dead gönder; "düşman" statüsü bitmiştir.
+   **KRİTİK KURAL — ŞİDDETSİZ ÇÖZÜM:** Oyuncu savaşı dövüşmeden bitirdiyse (rüşvet verdi, ikna etti, rüşvet/para karşılığı anlaştı, teslimiyet aldı) AYNI yanıtın SONUNA {"event":"combat_end"} gönder — bu, SAHNEDEKİ TÜM düşmanları savaştan çıkarır. Çözülen her düşman için ayrıca dost oldularsa {"event":"npc_update","name":"...","relationship":"friendly"} göndermeyi unutma.
 8. Oyun olaylarını yanıtın SONUNA ayrı satırda JSON yaz:
    {"event":"hp_change","value":-5}
    {"event":"gold_change","value":10}
@@ -222,10 +223,12 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    {"event":"enemy_damage","value":-5}
    {"event":"enemy_dead"}
    {"event":"enemy_dead","name":"Goblin"}
+   {"event":"combat_end"}
    {"event":"follower_damage","name":"Yoldaş Adı","value":-4}
    {"event":"item_used","name":"Mana İksiri"}
    {"event":"scene_change","scene":"cave"}
    enemy_dead: Düşman öldüğünde, kaçtığında, teslim olduğunda, barış yapıldığında veya dost edinildiğinde MUTLAKA kullan. Birden fazla düşman aktifse İSMİ MUTLAKA belirt (yoksa hangi düşmanın öldüğü belirsiz olur ve diğerleri de yanlışlıkla kaybolabilir). Sadece TEK bir düşman aktifken isim opsiyoneldir.
+   combat_end: Savaş dövüş olmadan bittiğinde (rüşvet, ikna, teslimiyet, anlaşma, kaçış) SAHNEDEKİ TÜM düşmanları tek seferde kaldırır. Birden fazla düşmanın hepsiyle aynı anda barış yapıldığında tek tek enemy_dead yazmak yerine bunu kullan.
    gold_change: SADECE hikaye metninde altının açıkça bulunduğu/kazanıldığı/verildiği anlatıldığında kullan — anlatılmayan gold_change YASAK, oyuncu neden altın kazandığını mutlaka okumalı. Miktarlar KÜÇÜK tutulmalı: küçük bulgular (cepte birkaç sikke, küçük bahşiş) 2-15 altın, önemli bir ödül/görev tamamlama gibi büyük anlar 20-50 altın. Çok istisnai efsanevi bir hazine dışında asla 50'nin üzerine çıkma, asla -50/+50 aralığının dışına taşma.
    item_gained: Hikayede oyuncu bir eşya bulduğunda kullan. Eşya ismi SENARYOYA UYGUN olsun (vahşi batıda altıpatlar/tüfek, bilim-kurguda enerji silahı, ortaçağda kılıç/kalkan gibi). Eşyanın nadirlik/rarity değeri sen seçemezsin; backend senaryoya göre uygun nadirlikte eşya verir. Sadece genel bir eşya adı/türü belirt.
    treasure_search: Oyuncu bir sandık, torba, gizli bölme, ceset, raf vb. somut bir şeyi ARAYIP AÇTIĞINDA kullan. Eşyanın ne olduğunu SEN UYDURMA — bu event'i göndermen yeterli, hangi eşyanın çıktığını backend belirleyip bir sonraki yanıtına ekleyecek; sen sadece "torbayı karıştırdın, içinde bir şey buldun" gibi genel bir arama anlatımı yaz, spesifik eşya ismi/açıklaması yazma.
@@ -431,6 +434,7 @@ async function resolveActiveQuest(characterId, title) {
 const NPC_GENERIC_TOKENS = new Set([
   'adam', 'kadın', 'kadin', 'figür', 'figur', 'yabancı', 'yabanci', 'kişi', 'kisi',
   'ihtiyar', 'yaşlı', 'yasli', 'genç', 'genc', 'çocuk', 'cocuk', 'kız', 'kiz', 'oğlan', 'oglan',
+  'hedef', 'target',
   'man', 'woman', 'figure', 'stranger', 'person', 'old', 'young', 'boy', 'girl', 'child',
 ]);
 
@@ -440,6 +444,30 @@ function npcTokens(name) {
     .toLocaleLowerCase('tr')
     .split(/[^a-zçğıöşüâêîôû0-9]+/i)
     .filter((w) => w.length >= 3);
+}
+
+// Savaş ortasında düşmanla dostlaşınca: aktif düşmanın kelimeleri NPC'nin
+// isim/açıklamasında geçiyorsa o düşmanı savaştan çıkarır.
+// Örn. düşman "Huysuz Cüce" ↔ NPC "Demir Sakal" (desc: "Huysuz... cüce savaşçı")
+async function pacifyMatchingEnemies(sessionRef, npcName, npcDescription) {
+  if (!sessionRef) return [];
+  const session = docData(await sessionRef.get());
+  const enemies = Array.isArray(session?.current_enemy) ? session.current_enemy : [];
+  if (!enemies.length) return [];
+  const haystack = `${npcName || ''} ${npcDescription || ''}`.toLocaleLowerCase('tr');
+  const matched = enemies.filter((enemy) => {
+    const all = npcTokens(enemy.name);
+    const distinctive = all.filter((t) => !NPC_GENERIC_TOKENS.has(t));
+    const check = distinctive.length ? distinctive : all;
+    return check.length > 0 && check.every((t) => haystack.includes(t));
+  });
+  if (!matched.length) return [];
+  const remaining = enemies.filter((enemy) => !matched.includes(enemy));
+  await sessionRef.update({
+    current_enemy: remaining.length ? remaining : null,
+    updated_at: serverTimestamp(),
+  });
+  return matched.map((enemy) => enemy.name);
 }
 
 async function findNpcByName(characterId, name) {
@@ -720,7 +748,20 @@ async function applyEvents(aiReply, characterId, sessionId) {
       const enemies = Array.isArray(session?.current_enemy) ? session.current_enemy : [];
       let remainingEnemies;
       if (event.name) {
-        remainingEnemies = enemies.filter((enemy) => enemy.name !== event.name);
+        // Birebir + yumuşak isim eşleşmesi (AI "Paralı Asker" gönderir, kayıt "Paralı Asker Hedef" olabilir)
+        const normTarget = String(event.name).toLocaleLowerCase('tr');
+        const targetTokens = npcTokens(event.name).filter((t) => !NPC_GENERIC_TOKENS.has(t));
+        const targetAll = targetTokens.length ? targetTokens : npcTokens(event.name);
+        remainingEnemies = enemies.filter((enemy) => {
+          if (String(enemy.name).toLocaleLowerCase('tr') === normTarget) return false;
+          const exTokens = npcTokens(enemy.name).filter((t) => !NPC_GENERIC_TOKENS.has(t));
+          const exAll = exTokens.length ? exTokens : npcTokens(enemy.name);
+          if (!targetAll.length || !exAll.length) return true;
+          const shorter = targetAll.length <= exAll.length ? targetAll : exAll;
+          const longer = targetAll.length <= exAll.length ? exAll : targetAll;
+          const covered = shorter.every((w) => longer.some((lw) => lw.startsWith(w) || w.startsWith(lw)));
+          return !covered;
+        });
       } else if (enemies.length <= 1) {
         remainingEnemies = [];
       } else {
@@ -792,6 +833,16 @@ async function applyEvents(aiReply, characterId, sessionId) {
         created_at: existing?.data.created_at || serverTimestamp(),
         updated_at: serverTimestamp(),
       }, { merge: true });
+      // Yeni tanışılan dost/tarafsız NPC aktif düşmanla aynı kişiyse savaştan çıkar
+      if (['friendly', 'neutral'].includes(event.relationship)) {
+        const pacified = await pacifyMatchingEnemies(sessionRef, name, event.description || existing?.data.description || '').catch(() => []);
+        if (pacified.length) event.pacified = pacified;
+      }
+    }
+
+    // Savaş şiddetsiz bitti (rüşvet, ikna, teslimiyet, anlaşma) — tüm düşmanları temizle
+    if (event.event === 'combat_end' && sessionRef) {
+      await sessionRef.update({ current_enemy: null, updated_at: serverTimestamp() });
     }
 
     if (event.event === 'npc_rename' && event.name) {
@@ -852,14 +903,15 @@ async function applyEvents(aiReply, characterId, sessionId) {
             updates.notes = merged.substring(0, 500);
           }
           if (event.relationship) updates.relationship = event.relationship;
-          // Dost edinilen NPC aynı zamanda aktif düşman ise savaş UI'sini kapat
-          if (event.relationship === 'friendly' && sessionRef) {
-            const session = docData(await sessionRef.get());
-            const enemies = Array.isArray(session?.current_enemy) ? session.current_enemy : [];
-            const remaining = enemies.filter((enemy) => String(enemy.name || '').toLocaleLowerCase('tr') !== String(event.name || '').toLocaleLowerCase('tr'));
-            if (remaining.length !== enemies.length) {
-              await sessionRef.update({ current_enemy: remaining.length ? remaining : null, updated_at: serverTimestamp() });
-            }
+          // Dost edinilen NPC aktif düşmanla aynı kişiyse (isim farklı olsa bile)
+          // kelime kapsama ile eşleştirip savaştan çıkar
+          if (['friendly', 'neutral'].includes(event.relationship) && sessionRef) {
+            const pacified = await pacifyMatchingEnemies(
+              sessionRef,
+              event.name,
+              `${existing.data.description || ''} ${existing.data.notes || ''} ${event.notes || ''}`
+            ).catch(() => []);
+            if (pacified.length) event.pacified = pacified;
           }
         }
         if (event.event === 'npc_hireable' && !existing.data.is_follower) {
