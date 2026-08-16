@@ -2283,17 +2283,17 @@ export default function GamePage({ user }) {
               )}
 
               <p className="font-fantasy" style={{ color: 'var(--gold)', fontSize: '0.75rem', letterSpacing: '0.1em', margin: '0 0 0.6rem' }}>
-                TANINAN NPC'LER
+                {t('known_npcs')}
               </p>
               {npcs.filter(n => !n.is_follower && n.npc_status !== 'dead' && n.relationship !== 'dead').length === 0 ? (
                 <p style={{ fontFamily: "'Crimson Text', serif", color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
-                  Henüz tanınan NPC yok. Hikayede karakterlerle tanıştıkça burada görünecek.
+                  {t('known_npcs_empty')}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '220px', overflowY: 'auto' }}>
                   {npcs.filter(n => !n.is_follower && n.npc_status !== 'dead' && n.relationship !== 'dead').map((npc) => {
                     const relColor = { friendly: '#4caf50', neutral: '#c9963a', hostile: '#e53935', unknown: '#888' }[npc.relationship] || '#888';
-                    const relLabel = { friendly: 'Dost', neutral: 'Tarafsız', hostile: 'Düşman', unknown: 'Tanıdık' }[npc.relationship] || 'Tanıdık';
+                    const relLabel = { friendly: t('npc_rel_friendly'), neutral: t('npc_rel_neutral'), hostile: t('npc_rel_hostile'), unknown: t('npc_rel_unknown') }[npc.relationship] || t('npc_rel_unknown');
                     const canAfford = character && npc.hire_cost && character.gold >= npc.hire_cost;
                     return (
                       <motion.div
@@ -3022,13 +3022,13 @@ export default function GamePage({ user }) {
               {t('hero_fell')}
             </h2>
             <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '1rem', textAlign: 'center', maxWidth: '320px' }}>
-              {character.name} ölümün kıyısında. Yeniden doğma zarında 10+ atarsan 1 canla dirilirsin.
+              {character.name} {t('death_save_hint')}
             </p>
 
             {reviveState === 'rolling' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
                 <DiceRoll value={reviveRoll?.roll || 1} rolling={true} size={88} label="d20" />
-                <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif", fontSize: '0.85rem' }}>Kader çarkı dönüyor...</span>
+                <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif", fontSize: '0.85rem' }}>{t('death_save_rolling')}</span>
               </div>
             )}
 
@@ -3045,7 +3045,7 @@ export default function GamePage({ user }) {
                     fontFamily: "'Cinzel', serif", fontSize: '1rem', textAlign: 'center',
                   }}
                 >
-                  {reviveRoll.success ? 'Başarılı! Kahraman diriliyor...' : 'Başarısız... Kader seni çağırıyor.'}
+                  {reviveRoll.success ? t('death_save_success') : t('death_save_fail')}
                 </span>
               </motion.div>
             )}
@@ -3066,7 +3066,7 @@ export default function GamePage({ user }) {
                       setCurrentEnemy(null);
                       setMessages((currentMessages) => [
                         ...currentMessages,
-                        { role: 'assistant', content: `${character.name} kaderin pençesinden kurtuldu! 1 canla yeniden doğdu.`, id: Date.now() },
+                        { role: 'assistant', content: `${character.name} ${t('death_save_survived')}`, id: Date.now() },
                       ]);
                       setTimeout(() => {
                         setReviveRoll(null);
@@ -3085,7 +3085,7 @@ export default function GamePage({ user }) {
                 className="btn-gold"
                 style={{ fontSize: '1rem', padding: '0.65rem 1.5rem' }}
               >
-                Yeniden Doğma Zarını At
+                {t('roll_rebirth_die')}
               </motion.button>
             )}
           </motion.div>
@@ -3112,7 +3112,7 @@ export default function GamePage({ user }) {
             }}
           >
             <span className="font-fantasy" style={{ color: 'var(--blood)', fontSize: '0.75rem', letterSpacing: '0.08em', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', justifyContent: 'center' }}>
-              <Skull size={16} /> BAYGIN — Ölüm Zarları: <CheckCircle2 size={14} /> {character.death_saves_success || 0}/3 <XCircle size={14} /> {character.death_saves_fail || 0}/3
+              <Skull size={16} /> {t('unconscious_label')} <CheckCircle2 size={14} /> {character.death_saves_success || 0}/3 <XCircle size={14} /> {character.death_saves_fail || 0}/3
             </span>
           </motion.div>
         )}
@@ -3538,7 +3538,7 @@ export default function GamePage({ user }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-          placeholder={isDead ? 'Kahraman düştü...' : 'Ne yapıyorsun? (otomatik d20)'}
+          placeholder={isDead ? t('input_placeholder_dead') : t('input_placeholder')}
           disabled={loading || isDead}
           style={{
             flex: 1,
