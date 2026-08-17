@@ -19,13 +19,14 @@ import {
 } from '../utils/sounds';
 import { startAmbience, stopAmbience, cleanupAmbience, mapScenarioToAmbience, detectAmbienceFromScene } from '../utils/ambient';
 import { useLang, t, getLang } from '../utils/i18n';
+import { shareAdventureCard } from '../utils/shareCard';
 import { StatIcon, ItemIcon } from '../utils/icons';
 import {
   Swords, Sword, Shield, Heart, Coins, Star, Volume2, VolumeX,
   BarChart3, ScrollText, Skull, X, AlertTriangle,
   CheckCircle2, XCircle, Dices, Zap, Wind, Bomb, Sparkles, RotateCcw, Target, Wand2,
   Crown, ArrowLeft, Users, Store, Backpack, Send, Trophy, Flame, Scroll,
-  Package, Gem, BookOpen, Compass,
+  Package, Gem, BookOpen, Compass, Share2,
 } from 'lucide-react';
 
 // Başarım rozeti görselleri (AchievementsPage ile aynı eşleme)
@@ -257,6 +258,21 @@ export default function GamePage({ user }) {
   const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [showRatePrompt, setShowRatePrompt] = useState(false);
   const [sceneAmbience, setSceneAmbience] = useState(null);
+  const [shareBusy, setShareBusy] = useState(false);
+
+  // Hikaye anını paylaşım kartı olarak dışa aktar
+  const handleShareMoment = async (text) => {
+    if (shareBusy || !text) return;
+    setShareBusy(true);
+    try {
+      await shareAdventureCard({
+        quote: text,
+        characterName: character?.name,
+        lang: getLang(),
+      });
+    } catch (e) { /* kullanıcı iptal ettiyse sessiz geç */ }
+    setShareBusy(false);
+  };
   const [session, setSession] = useState(null);
   const [showRecap, setShowRecap] = useState(true);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -2710,6 +2726,19 @@ export default function GamePage({ user }) {
                     >
                       KADER'İN SESİ
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => handleShareMoment(displayText)}
+                      disabled={shareBusy}
+                      title={t('share_moment')}
+                      style={{
+                        marginLeft: 'auto', background: 'none', border: 'none',
+                        padding: '0.15rem', cursor: 'pointer', opacity: 0.55,
+                        display: 'flex', alignItems: 'center',
+                      }}
+                    >
+                      <Share2 size={13} color="var(--gold)" />
+                    </button>
                   </div>
                 )}
                 {msg.role === 'user' && (
@@ -2984,11 +3013,20 @@ export default function GamePage({ user }) {
             )}
             <motion.button
               whileTap={{ scale: 0.96 }}
+              onClick={() => handleShareMoment(finalJourney.summary || finalJourney.finalMessage)}
+              disabled={shareBusy}
+              className="btn-gold"
+              style={{ fontSize: '1rem', padding: '0.65rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Share2 size={16} /> {t('share_adventure')}
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.96 }}
               onClick={() => navigate('/create-character')}
               className="btn-gold"
               style={{ fontSize: '1rem', padding: '0.65rem 1.5rem' }}
             >
-              Yeni Kahraman Yarat
+              {t('create_hero_btn')}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.96 }}
@@ -2999,7 +3037,7 @@ export default function GamePage({ user }) {
               className="btn-dark"
               style={{ fontSize: '0.9rem', padding: '0.55rem 1.2rem' }}
             >
-              Ana Menüye Dön
+              {t('back_to_menu')}
             </motion.button>
           </motion.div>
         )}

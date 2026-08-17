@@ -304,6 +304,8 @@ const TR = {
   npc_rel_unknown: 'Tanıdık',
   input_placeholder: 'Ne yapıyorsun? (otomatik d20)',
   input_placeholder_dead: 'Kahraman düştü...',
+  share_adventure: 'Macerayı Paylaş',
+  share_moment: 'Bu anı paylaş',
 
   // Tutorial
   tutorial_title: "KADER'İN SESİ'NE HOŞ GELDİN",
@@ -734,6 +736,8 @@ const EN = {
   npc_rel_unknown: 'Acquaintance',
   input_placeholder: 'What do you do? (auto d20)',
   input_placeholder_dead: 'The hero has fallen...',
+  share_adventure: 'Share the Adventure',
+  share_moment: 'Share this moment',
 
   // Tutorial
   tutorial_title: 'WELCOME TO VOICE OF FATE',
