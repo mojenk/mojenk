@@ -131,6 +131,12 @@ export default function ShopPage({ user }) {
   }, {});
 
   const sellItems = inventory.filter((i) => !i.equipped);
+  // Envanter kapasitesi (backend ile ayni kural: 24 + carry_bonus)
+  const carryBonus = inventory.reduce((sum, entry) => {
+    const def = catalog.find((c) => c.name === entry.name);
+    return sum + ((def && def.carry_bonus) || entry.carry_bonus || 0);
+  }, 0);
+  const capacity = 24 + carryBonus;
 
   if (loading) {
     return (
@@ -190,6 +196,22 @@ export default function ShopPage({ user }) {
             <Coins size={16} color="var(--gold)" />
             <span className="font-fantasy" style={{ color: 'var(--gold)', fontSize: '1rem', letterSpacing: '0.04em' }}>
               {character?.gold ?? 0}
+            </span>
+          </div>
+
+          {/* Envanter dolulugu */}
+          <div
+            title="Envanter doluluk"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.35rem',
+              background: inventory.length >= capacity ? 'rgba(178,58,58,0.15)' : 'rgba(92,74,42,0.15)',
+              border: `1px solid ${inventory.length >= capacity ? 'rgba(178,58,58,0.5)' : 'var(--border)'}`,
+              borderRadius: '8px', padding: '0.3rem 0.6rem',
+            }}
+          >
+            <ShoppingBag size={14} color={inventory.length >= capacity ? 'var(--blood)' : 'var(--text-dim)'} />
+            <span style={{ fontFamily: "'Crimson Text', serif", color: inventory.length >= capacity ? 'var(--blood)' : 'var(--text-dim)', fontSize: '0.82rem' }}>
+              {inventory.length}/{capacity}
             </span>
           </div>
         </div>

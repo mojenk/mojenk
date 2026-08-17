@@ -536,7 +536,17 @@ async function applyEvents(aiReply, characterId, sessionId) {
       || CATALOG.find((entry) => lower.includes(String(entry.name).toLocaleLowerCase('tr')));
   }
 
+  // Hikaye ganimeti icin yumusak sinir: kapasite (24 + canta bonusu) + 10 pay.
+  // Sinir asilirsa esya dusurulur — envanter sonsuza kadar sisemez.
+  const STORY_LOOT_BUFFER = 10;
   async function addItemToInventory(item) {
+    const invSnap = await characterRef.collection('inventory').get();
+    const invItems = invSnap.docs.map(docData);
+    const carryBonus = invItems.reduce((sum, entry) => {
+      const def = CATALOG.find((c) => c.name === entry.name);
+      return sum + ((def && def.carry_bonus) || entry.carry_bonus || 0);
+    }, 0);
+    if (invItems.length >= 24 + carryBonus + STORY_LOOT_BUFFER) return;
     const itemRef = characterRef.collection('inventory').doc();
     await itemRef.set({
       id: itemRef.id,

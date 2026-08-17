@@ -57,12 +57,14 @@ router.post('/fcm-token', verifyFirebaseToken, async (req, res) => {
   }
   try {
     const ref = firestore.collection('users').doc(req.firebaseUser.uid);
+    // NOT: serverTimestamp() arrayUnion icinde kullanilamaz (Firestore kisiti).
+    // Bu yuzden token listesini okuyup dedup ederek geri yaziyoruz.
+    const existing = docData(await ref.get());
+    const tokens = (existing?.fcm_tokens || [])
+      .filter((entry) => entry && entry.token && entry.token !== token);
+    tokens.push({ token, platform: platform || 'unknown', created_at: new Date().toISOString() });
     await ref.set({
-      fcm_tokens: admin.firestore.FieldValue.arrayUnion({
-        token,
-        platform: platform || 'unknown',
-        created_at: serverTimestamp(),
-      }),
+      fcm_tokens: tokens.slice(-10), // cihaz basina en fazla 10 token tut
       language: language === 'en' ? 'en' : 'tr',
       last_active_at: serverTimestamp(),
     }, { merge: true });

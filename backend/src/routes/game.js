@@ -165,17 +165,31 @@ router.post('/combat/attack', async (req, res) => {
     const damageMatch = (weapon.description || '').match(/(\d+)d(\d+)/);
     const damageCount = damageMatch ? Number(damageMatch[1]) : 1;
     const damageSides = damageMatch ? Number(damageMatch[2]) : 4;
+    // Ek zar gruplari ("1d10+1d6 ates") ve duz bonus ("1d8+2") destegi
+    const extraDice = [];
+    const diceRe = /(\d+)d(\d+)/g;
+    let m;
+    let first = true;
+    while ((m = diceRe.exec(weapon.description || ''))) {
+      if (first) { first = false; continue; } // ana zar grubu zaten damageCount/damageSides
+      extraDice.push({ count: Number(m[1]), sides: Number(m[2]) });
+    }
+    const flatMatch = (weapon.description || '').match(/\d+d\d+\s*\+\s*(\d+)(?!\s*d)/);
+    const flatBonus = flatMatch ? Number(flatMatch[1]) : 0;
     const damageRolls = [];
     let damageTotal = 0;
 
     if (isHit) {
-      const rollCount = isCritical ? damageCount * 2 : damageCount;
-      for (let index = 0; index < rollCount; index += 1) {
-        const roll = rollLuckyDice(damageSides, diceLuck);
-        damageRolls.push(roll);
-        damageTotal += roll;
+      const groups = [{ count: damageCount, sides: damageSides }, ...extraDice];
+      for (const group of groups) {
+        const rollCount = isCritical ? group.count * 2 : group.count;
+        for (let index = 0; index < rollCount; index += 1) {
+          const roll = rollLuckyDice(group.sides, diceLuck);
+          damageRolls.push(roll);
+          damageTotal += roll;
+        }
       }
-      damageTotal = Math.max(1, damageTotal + attackModifier + (perkBonuses.bonusDamage || 0));
+      damageTotal = Math.max(1, damageTotal + flatBonus + attackModifier + (perkBonuses.bonusDamage || 0));
     }
 
     if (enemy && isHit) enemy.hp = Math.max(0, enemy.hp - damageTotal);
@@ -223,6 +237,10 @@ router.post('/combat/attack', async (req, res) => {
       .filter((entry) => entry.hp > 0)
       .map((entry) => ({ name: entry.name, hp: entry.hp, max_hp: entry.max_hp, ac: entry.ac })) : null;
 
+    const damageDiceLabel = [{ count: damageCount, sides: damageSides }, ...extraDice]
+      .map((group) => `${isCritical ? group.count * 2 : group.count}d${group.sides}`)
+      .join('+') + (flatBonus ? `+${flatBonus}` : '');
+
     return res.json({
       weapon: weapon.name,
       attackRoll,
@@ -233,7 +251,7 @@ router.post('/combat/attack', async (req, res) => {
       isCritical,
       isCritFail,
       damageRolls,
-      damageDice: `${isCritical ? damageCount * 2 : damageCount}d${damageSides}`,
+      damageDice: damageDiceLabel,
       damageTotal,
       damageMod: attackModifier,
       enemy: enemyResponse,

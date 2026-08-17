@@ -106,6 +106,17 @@ async function calculateArmorClass(character, inventory) {
     .reduce((sum, item) => sum + parseAcBonus(item.description), dexMod);
 }
 
+// Zırh kuşanma slotları: gogs zırhi + migfer + kalkan ayni anda takilabilir.
+// Aksesuarlar (kolcak, pelerin, eldiven vb.) en fazla 2 adet.
+function armorSlot(item) {
+  const n = (item.name || '').toLowerCase();
+  if (/kalkan|shield/.test(n)) return 'shield';
+  if (/miğfer|migfer|şapka|sapka|helm|hat\b/.test(n)) return 'head';
+  if (/kolçak|kolcak|pelerin|eldiven|fişeklik|fiseklik|bracer|cloak|gauntlet|bandolier/.test(n)) return 'accessory';
+  return 'body';
+}
+const MAX_ACCESSORIES = 2;
+
 router.use(verifyFirebaseToken);
 
 router.get('/', async (req, res) => {
@@ -333,18 +344,38 @@ router.post('/:id/inventory/:itemId/equip', async (req, res) => {
 
     const batch = firestore.batch();
     if (!item.equipped) {
-      inventory.forEach((entry) => {
-        if (entry.id === itemId || !entry.equipped || entry.type !== item.type) return;
-        const isShield = item.name.toLowerCase().includes('kalkan');
-        const entryIsShield = entry.name.toLowerCase().includes('kalkan');
-        if (item.type === 'weapon' || isShield === entryIsShield) {
+      if (item.type === 'weapon') {
+        // Tek silah kuşanılabilir
+        inventory.forEach((entry) => {
+          if (entry.id === itemId || !entry.equipped || entry.type !== 'weapon') return;
           batch.update(firestore.collection('characters').doc(id).collection('inventory').doc(entry.id), {
             equipped: 0,
             updated_at: serverTimestamp(),
           });
           entry.equipped = 0;
+        });
+      } else {
+        // Zırh: slot bazli (body/head/shield ayri, aksesuar max 2)
+        const slot = armorSlot(item);
+        if (slot === 'accessory') {
+          const equippedAccessories = inventory.filter(
+            (entry) => entry.id !== itemId && entry.equipped && entry.type === 'armor' && armorSlot(entry) === 'accessory'
+          );
+          if (equippedAccessories.length >= MAX_ACCESSORIES) {
+            return res.status(400).json({ error: `En fazla ${MAX_ACCESSORIES} aksesuar kuşanabilirsin. Önce birini çıkar.` });
+          }
+        } else {
+          inventory.forEach((entry) => {
+            if (entry.id === itemId || !entry.equipped || entry.type !== 'armor') return;
+            if (armorSlot(entry) !== slot) return;
+            batch.update(firestore.collection('characters').doc(id).collection('inventory').doc(entry.id), {
+              equipped: 0,
+              updated_at: serverTimestamp(),
+            });
+            entry.equipped = 0;
+          });
         }
-      });
+      }
     }
     batch.update(firestore.collection('characters').doc(id).collection('inventory').doc(itemId), {
       equipped: item.equipped ? 0 : 1,
