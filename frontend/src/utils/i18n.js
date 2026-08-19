@@ -437,7 +437,7 @@ const EN = {
   back: 'Back',
   loading: 'Loading...',
   logout: 'Logout',
-  version: 'Voice of Fate — v1.0',
+  version: 'Voice of Destiny — v1.0',
   app_desc: 'AI-powered D&D adventure game',
   cancel: 'Cancel',
   delete: 'Delete',
@@ -740,7 +740,7 @@ const EN = {
   share_moment: 'Share this moment',
 
   // Tutorial
-  tutorial_title: 'WELCOME TO VOICE OF FATE',
+  tutorial_title: 'WELCOME TO VOICE OF DESTINY',
   tutorial_subtitle: 'An AI-powered D&D adventure awaits you.',
   tutorial_step1_title: 'Listen to the Narrator',
   tutorial_step1_text: 'Read the scene text; the story progresses with your decisions. Every response is shaped by your choices.',
