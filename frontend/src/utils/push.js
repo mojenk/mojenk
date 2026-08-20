@@ -10,10 +10,21 @@ let permissionRequested = false;
 
 // İlk açılışta bildirim izni iste (kullanıcı login olmadan önce de).
 export async function requestPushPermission() {
-  if (permissionRequested) return Notification?.permission || 'default';
+  // DİKKAT: native'de izin durumu her zaman FirebaseMessaging uzerinden sorulmali.
+  // WebView'deki window.Notification.permission OS izninden bagimsizdir ve
+  // hep 'default' doner — buna guvenmek token kaydini sessizce atlatiyordu.
+  if (permissionRequested) {
+    if (isNative) {
+      try {
+        const { receive } = await FirebaseMessaging.checkPermissions();
+        return receive === 'granted' ? 'granted' : 'default';
+      } catch { return 'default'; }
+    }
+    return Notification?.permission || 'default';
+  }
   permissionRequested = true;
 
-  if (!('Notification' in window)) return 'unsupported';
+  if (!('Notification' in window) && !isNative) return 'unsupported';
 
   try {
     if (isNative) {
@@ -33,18 +44,25 @@ export async function requestPushPermission() {
 // Auth hazır olduktan sonra FCM tokeni al ve sunucuya kaydet.
 export async function registerPushToken(uid) {
   if (!uid) return;
-  const permission = await requestPushPermission();
-  if (permission !== 'granted') {
-    console.warn('Push permission not granted, skipping FCM token registration');
-    return;
-  }
 
   if (isNative) {
     try {
+      let perm = await FirebaseMessaging.checkPermissions();
+      if (perm.receive !== 'granted') {
+        perm = await FirebaseMessaging.requestPermissions();
+      }
+      if (perm.receive !== 'granted') {
+        console.warn('Push permission not granted, skipping FCM token registration');
+        return;
+      }
       const { token } = await FirebaseMessaging.getToken();
       if (token) {
         await registerFcmToken(token, Capacitor.getPlatform());
       }
+      // Token yenilenirse sunucuyu da guncelle
+      FirebaseMessaging.addListener('tokenReceived', (event) => {
+        if (event?.token) registerFcmToken(event.token, Capacitor.getPlatform()).catch(() => {});
+      });
       FirebaseMessaging.addListener('notificationReceived', (event) => {
         console.log('Push received:', event);
       });
@@ -58,6 +76,11 @@ export async function registerPushToken(uid) {
   }
 
   // Web
+  const permission = await requestPushPermission();
+  if (permission !== 'granted') {
+    console.warn('Push permission not granted, skipping FCM token registration');
+    return;
+  }
   if (!app) return;
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
   if (!vapidKey || vapidKey.includes('YOUR_VAPID_KEY')) {
