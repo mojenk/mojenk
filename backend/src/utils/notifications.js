@@ -86,4 +86,4 @@ async function sendNotificationToAll({ title, body, data = {}, tag = 'kaderin-se
   }
 }
 
-module.exports = { sendPushNotification, sendNotificationToAll };
+module.exports = { sendPushNotification, sendNotificationToUser, sendNotificationToAll };
