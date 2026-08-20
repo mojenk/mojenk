@@ -1,0 +1,44 @@
+name: One-off Grant Admin to Support Account
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Add SupportKaderinSesi UID to appSettings/ADMIN_UIDS
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          cd backend
+          npm ci --omit=dev
+          node -e "
+          const admin = require('firebase-admin');
+          const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+          admin.initializeApp({ credential: admin.credential.cert(sa) });
+          const db = admin.firestore();
+          const auth = admin.auth();
+          (async () => {
+            const user = await auth.getUserByEmail('supportkaderinsesi@gmail.com');
+            const uid = user.uid;
+            console.log('User found:', uid, user.email);
+
+            const ref = db.collection('appSettings').doc('ADMIN_UIDS');
+            const snap = await ref.get();
+            const raw = snap.exists ? String(snap.data().value || '') : '';
+            const uids = raw.split(',').map((v) => v.trim()).filter(Boolean);
+            if (uids.includes(uid)) {
+              console.log('Already admin:', uid);
+            } else {
+              uids.push(uid);
+              await ref.set({ value: uids.join(','), updated_at: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+              console.log('Admin granted. New ADMIN_UIDS:', uids.join(','));
+            }
+            process.exit(0);
+          })().catch((e) => { console.error(e); process.exit(1); });
+          "
