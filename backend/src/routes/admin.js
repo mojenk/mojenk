@@ -340,6 +340,8 @@ router.post('/users/:uid/push-test', async (req, res) => {
     const uniqueTokens = [...new Set(tokens)];
     if (!uniqueTokens.length) return res.status(400).json({ error: 'Kullanıcının kayıtlı FCM tokeni yok' });
     const result = await sendNotificationToUser(req.params.uid, { title, body });
+    // Hata varsa panele tasiyalim ki 'Gonderildi: 0' diye sessiz kalmasin
+    if (result.error) return res.json({ ok: false, sent: result.sent || 0, failed: result.failed || 0, error: result.error });
     return res.json({ ok: true, sent: result.sent || 0, failed: result.failed || 0 });
   } catch (err) {
     return res.status(500).json({ error: err.message });

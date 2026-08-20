@@ -6,6 +6,7 @@ const {
   initializeApp,
 } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
+const { getMessaging } = require('firebase-admin/messaging');
 
 let initStatus = 'not_configured';
 let initError = null;
@@ -54,6 +55,7 @@ const app = getApp();
 module.exports = {
   app,
   auth: () => getAuth(app),
+  messaging: () => getMessaging(app),
   __initStatus: initStatus,
   __initError: initError,
 };
