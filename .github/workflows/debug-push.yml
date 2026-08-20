@@ -1,0 +1,68 @@
+name: One-off Push Debug (Support Account)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Diagnose FCM send for support account
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          cd backend
+          npm ci --omit=dev
+          node -e "
+          const admin = require('firebase-admin');
+          const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+          console.log('Service account project:', sa.project_id, '| client:', sa.client_email);
+          admin.initializeApp({ credential: admin.credential.cert(sa) });
+          const db = admin.firestore();
+          const UID = 'moN9DMXz6GTUJgw1qEjaj5aqaUp2';
+          (async () => {
+            // 1) Kullanici ve token durumu
+            const snap = await db.collection('users').doc(UID).get();
+            if (!snap.exists) { console.log('FAIL: user doc yok'); process.exit(1); }
+            const data = snap.data();
+            const entries = Array.isArray(data.fcm_tokens) ? data.fcm_tokens : [];
+            console.log('fcm_tokens count:', entries.length);
+            entries.forEach((e, i) => {
+              const t = e && e.token ? String(e.token) : '';
+              console.log(' token', i, 'platform:', e.platform, '| len:', t.length, '| prefix:', t.slice(0, 24) + '...');
+            });
+            const tokens = entries.filter((e) => e && typeof e.token === 'string' && e.token.length > 20).map((e) => e.token);
+            if (!tokens.length) { console.log('FAIL: gecerli token yok'); process.exit(1); }
+
+            // 2) Dry-run: gercek gonderim yapmadan token + API dogrulamasi
+            try {
+              const dry = await admin.messaging().sendEachForMulticast({
+                tokens,
+                notification: { title: 'dry-run', body: 'dry-run' },
+                android: { notification: { channelId: 'kaderin-sesi-general', tag: 'debug' } },
+              }, true);
+              console.log('DRY-RUN success:', dry.successCount, 'failure:', dry.failureCount);
+              dry.responses.forEach((r, i) => { if (!r.success) console.log(' dry error', i, ':', r.error && r.error.code, r.error && r.error.message); });
+            } catch (e) {
+              console.log('DRY-RUN EXCEPTION:', e.code || '', e.message);
+            }
+
+            // 3) Gercek gonderim
+            try {
+              const res = await admin.messaging().sendEachForMulticast({
+                tokens,
+                notification: { title: 'Kader\'in Sesi', body: 'Push zinciri dogrulandi — bu bildirim geldiyse her sey calisiyor.' },
+                android: { notification: { channelId: 'kaderin-sesi-general', tag: 'debug-real' } },
+              });
+              console.log('REAL SEND success:', res.successCount, 'failure:', res.failureCount);
+              res.responses.forEach((r, i) => { if (!r.success) console.log(' real error', i, ':', r.error && r.error.code, r.error && r.error.message); });
+            } catch (e) {
+              console.log('REAL SEND EXCEPTION:', e.code || '', e.message);
+            }
+            process.exit(0);
+          })().catch((e) => { console.error('FATAL', e); process.exit(1); });
+          "
