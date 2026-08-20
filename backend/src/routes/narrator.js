@@ -56,7 +56,7 @@ const NIGHT_EVENTS = [
   'uzaktan_uluma',
 ];
 
-async function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = [], narratorTone = null, scenarioId = null, currentEnemies = []) {
+async function buildSystem(character, storySummary, sessionTitle, inventory, language = 'tr', knownNpcs = [], activeQuests = [], narratorTone = null, scenarioId = null, currentEnemies = [], worldAnchor = null) {
   const mod = v => Math.floor((v - 10) / 2);
   const fmt = v => (v >= 0 ? '+' : '') + v;
 
@@ -85,10 +85,14 @@ async function buildSystem(character, storySummary, sessionTitle, inventory, lan
     ? `\n## TANINAN NPC'LER — BUNLARI ASLA UNUTMA\nAşağıdaki NPC'lerle daha önce karşılaşıldı. Tekrar karşılaşırsan isimlerini ve ilişkilerini koru, kişiliklerini tutarlı oynat. npc_update/npc_topic/npc_recruit gibi event'lerde bu listedeki isimleri AYNEN kullan. Listede lakapla kayıtlı birinin (örn. "Yara Yüzlü Adam") gerçek adı öğrenilirse npc_rename event'i gönder:\n${knownNpcs.filter(n => !n.is_follower).map(n => `- **${n.name}** (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}${n.hire_cost ? ` [${n.hire_cost} altına hizmet sunuyor]` : ''}`).join('\n')}\n`
     : '';
 
+  const anchorBlock = worldAnchor && (worldAnchor.location || worldAnchor.objective || worldAnchor.party)
+    ? `\n## SAHNE DURUMU — GERÇEK OYUN VERİSİ, ASLA UNUTMA, ASLA ÇELİŞME\n- Bulunulan yer: ${worldAnchor.location || 'belirsiz'}\n- Şu anki amaç: ${worldAnchor.objective || 'belirsiz'}\n- Yanındakiler / birlikte olunan grup: ${worldAnchor.party || 'yok'}\nBu bilgiler sunucu tarafından takip edilir ve DOĞRUDUR. Yanındaki bir grup (kervan, kafile, asker birliği, yoldaşlar) iz bırakmadan kaybolamaz; bulunulan yer sen anlatmadıkça değişmez; amaç tamamlanmadıkça geçerlidir. Bir savaş, diyalog veya yan olay sonrası hikaye bu durumla TUTARLI devam etmelidir — savaş biter bitmez birlikte olunan grubun akıbetine (sağ kalanlar, yaralılar, kaçanlar) mutlaka değin. Eğer bu durumun değişmesi gerekiyorsa (grup ayrıldı, konum değişti, amaç tamamlandı) değişikliği hikayede açıkça anlat VE aynı yanıtta world_update eventi gönder.\n`
+    : '';
+
   const followers = knownNpcs.filter(n => n.is_follower && n.follower_status !== 'left');
   const partyFull = followers.length >= MAX_ACTIVE_FOLLOWERS;
   const followerBlock = followers.length > 0
-    ? `\n## TAKİPÇİLER — ${character.name} İLE BİRLİKTE SEYAHAT EDİYORLAR (${followers.length}/${MAX_ACTIVE_FOLLOWERS})\nBu karakterler artık ${character.name}'ın yol arkadaşı. Hikayede onları unutma, sahnelerde varlıklarını yansıt, diyaloglarına yer ver, tehlikede yardım etmelerine izin ver. Her takipçinin rol/seviye/can/moral/sadakat durumunu davranışlarına YANSIT: morali düşük (<30) yoldaş söylenir ve isteksizdir, sadakati düşük (<30) olan ayrılmayı ima eder, yaralı yoldaş temkinli dövüşür, 'downed' durumdaki yoldaş dinlenene kadar savaşamaz ve konuşamaz. SAVAŞTA yoldaşlar gerçekten rol oynar: her çatışma turunda uygun olan EN FAZLA 1 aktif yoldaş için follower_attack eventi gönder (healer rolündekiler saldırmaz; onların desteğini sadece hikayede anlat).${partyFull ? ` PARTİ DOLU (${MAX_ACTIVE_FOLLOWERS}/${MAX_ACTIVE_FOLLOWERS}): Yeni yoldaş alınamaz — npc_recruit eventi gönderme; oyuncu yeni birini davet ederse NPC parti dolu olduğu için kibarca reddetsin veya oyuncuya bir yoldaşıyla yollarını ayırması gerektiğini hatırlatsın.` : ''}\n${followers.map(n => `- **${n.name}** [${ROLE_LABELS_TR[n.follower_role] || 'Yoldaş'}, Sv.${n.follower_level || 1}, HP ${n.follower_hp ?? '?'}/${n.follower_max_hp ?? '?'}, moral ${n.follower_morale ?? 60}/100, sadakat ${n.follower_loyalty ?? 60}/100, durum: ${n.follower_status || 'active'}] (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}`).join('\n')}\n`
+    ? `\n## TAKİPÇİLER — ${character.name} İLE BİRLİKTE SEYAHAT EDİYORLAR (${followers.length}/${MAX_ACTIVE_FOLLOWERS})\nBu karakterler artık ${character.name}'ın yol arkadaşı. Hikayede onları unutma, sahnelerde varlıklarını yansıt, diyaloglarına yer ver, tehlikede yardım etmelerine izin ver. Her takipçinin rol/seviye/can/moral/sadakat durumunu davranışlarına YANSIT: morali düşük (<30) yoldaş söylenir ve isteksizdir, sadakati düşük (<30) olan ayrılmayı ima eder, yaralı yoldaş temkinli dövüşür, 'downed' durumdaki yoldaş dinlenene kadar savaşamaz ve konuşamaz. SAVAŞTA yoldaşlar gerçekten savaşır ve gerçekten hasar alır: aktif düşman varken HER çatışma turunda, savaşabilir durumdaki aktif yoldaşlardan TAM 1 tanesi için follower_attack eventi göndermek ZORUNLUDUR (healer rolündekiler saldırmaz; onların desteğini sadece hikayede anlat — bu durumda o tur follower_attack gönderilmez). Aynı şekilde düşmanlar sadece oyuncuya vurmaz: düşman saldırılarında oyuncu ile yoldaşlar arasında dönüşümlü hedef seç; bir yoldaş vurulduğunda follower_damage eventi gönder ve yaranın etkisini hikayede anlat. Yoldaşlar asla görünmez değildir — savaşta kimin kimi hedeflediği anlatımda açık olsun. DİYALOGDA da yoldaşlar canlıdır: oyuncu bir yoldaşına ismiyle hitap ettiğinde veya ona bir şey sorduğunda o yoldaş MUTLAKA kendi kişiliğine uygun 1-2 cümleyle yanıt versin; karar anlarında, kamp sahnelerinde ve önemli olaylarda yoldaşlar kısa yorumlar/tavsiyeler/çekişmelerle sahneye katılsın.${partyFull ? ` PARTİ DOLU (${MAX_ACTIVE_FOLLOWERS}/${MAX_ACTIVE_FOLLOWERS}): Yeni yoldaş alınamaz — npc_recruit eventi gönderme; oyuncu yeni birini davet ederse NPC parti dolu olduğu için kibarca reddetsin veya oyuncuya bir yoldaşıyla yollarını ayırması gerektiğini hatırlatsın.` : ''}\n${followers.map(n => `- **${n.name}** [${ROLE_LABELS_TR[n.follower_role] || 'Yoldaş'}, Sv.${n.follower_level || 1}, HP ${n.follower_hp ?? '?'}/${n.follower_max_hp ?? '?'}, moral ${n.follower_morale ?? 60}/100, sadakat ${n.follower_loyalty ?? 60}/100, durum: ${n.follower_status || 'active'}] (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}`).join('\n')}\n`
     : '';
 
   const questBlock = (activeQuests && activeQuests.length > 0)
@@ -178,7 +182,7 @@ Hikayedeki roller, sosyal tepkiler ve fiziksel yetenekler bu ırk özelliklerine
 
 ${character.background ? `## KARAKTER GEÇMİŞİ\n${character.background}\nBu geçmişi hikayenin akışına doğal yansıt: NPC'lerin tepkileri, geçmişle bağlantılı olaylar ve diyaloglar bu hikayeye göre şekillensin.\n` : ''}## SENARYO: ${sessionTitle || 'Bilinmeyen Macera'}
 ${scenarioHint}
-${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${storySummary}\n` : ''}${npcBlock}${followerBlock}${questBlock}${worldEventBlock}
+${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${storySummary}\n` : ''}${anchorBlock}${npcBlock}${followerBlock}${questBlock}${worldEventBlock}
 
 ## SAVAŞ KURALLARI
 1. **Saldırı**: Oyuncu d20 atıyorsa → sonuç >= düşman AC ise İSABET, sonra silah hasarı hesapla. Aksi halde ISKALAMA.
@@ -212,6 +216,7 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    **KRİTİK KURAL:** Zaten aktif bir düşmanla savaşırken yeni bir düşman daha eklemeden (enemy_spawn) ÖNCE hikayede bunun nereden geldiğini, neden ortaya çıktığını mutlaka 1 cümleyle anlat (örn: "Goblinin çığlığına başka bir goblin daha koştu geldi"). Anlatılmayan/sebepsiz düşman ekleme.
    **KRİTİK KURAL — SAVAŞ ARAYÜZÜ TAKILMASIN:** Aktif bir düşman varken hikayede o düşman artık tehdit oluşturmuyorsa (diz çöktü, teslim oldu, silahını attı, kaçtı, af diledi, barış yapıldı, dost edinildi, öldü) AYNI yanıtın SONUNA MUTLAKA {"event":"enemy_dead","name":"..."} ekle. Bunu unutursan oyuncunun ekranında düşman can barı ve savaş kısıtlamaları (envanter kilidi vb.) hiç kapanmadan asılı kalır — bu ciddi bir hatadır. Düşman hâlâ sahnede duruyor ama artık düşman DEĞİLSE (örn. esir alındı, tutsak edildi, arkadaş oldu) yine de enemy_dead gönder; "düşman" statüsü bitmiştir.
    **KRİTİK KURAL — ŞİDDETSİZ ÇÖZÜM:** Oyuncu savaşı dövüşmeden bitirdiyse (rüşvet verdi, ikna etti, rüşvet/para karşılığı anlaştı, teslimiyet aldı) AYNI yanıtın SONUNA {"event":"combat_end"} gönder — bu, SAHNEDEKİ TÜM düşmanları savaştan çıkarır. Çözülen her düşman için ayrıca dost oldularsa {"event":"npc_update","name":"...","relationship":"friendly"} göndermeyi unutma.
+   **KRİTİK KURAL — SAVAŞ SONRASI HAFIZA:** Savaş tamamen bittiğinde (son enemy_dead veya combat_end gönderdiğin yanıtta) hikaye KOPMAMALI: savaştan önce oyuncunun yanında olan grup/eşlik edilen kişiler (kervan, kafile, rehber, esir vb.) sahneden buharlaşamaz. Yanıtında bu grubun savaş sonrası durumunu 1 cümleyle anlat (sağ kalanlar, panikleyenler, teşekkür edenler) ve SAHNE DURUMU bilgisiyle tutarlı devam et. Konum/amaç/grup değiştiyse aynı yanıtta world_update eventi gönder.
 8. Oyun olaylarını yanıtın SONUNA ayrı satırda JSON yaz:
    {"event":"hp_change","value":-5}
    {"event":"gold_change","value":10}
@@ -227,6 +232,8 @@ ${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${sto
    {"event":"follower_damage","name":"Yoldaş Adı","value":-4}
    {"event":"item_used","name":"Mana İksiri"}
    {"event":"scene_change","scene":"cave"}
+   {"event":"world_update","location":"Kızıl Geçit kasabası","objective":"Kervanı Silverbrook'a sağ ulaştırmak","party":"Kervanbaşı Dorin ve 4 arabacı; yoldaşların Kaya ve Elin"}
+   world_update: HİKAYE HAFIZASI eventi — konum, amaç veya yanındaki grup değiştiğinde MUTLAKA gönder (yeni bir yere varış, görev alma/tamamlama, gruba katılan/ayrılan biri, kervan/kafile gibi eşlik edilen bir toplulukla yola çıkma veya yolları ayırma). Her savaş bittiğinde de (son enemy_dead veya combat_end sonrası) mevcut durumu teyit etmek için TEKRAR gönder. location=bulunulan yerin adı, objective=şu anki ana amaç (yoksa serbest keşif), party=oyuncunun yanındaki HERKES: yoldaşlar, eşlik edilen NPC'ler, kervan/kafile üyeleri, esirler vb. Bu event sunucunun hikaye hafızasıdır — göndermezsen savaş sonrası grup/konum unutulur ve hikaye kopar.
    enemy_dead: Düşman öldüğünde, kaçtığında, teslim olduğunda, barış yapıldığında veya dost edinildiğinde MUTLAKA kullan. Birden fazla düşman aktifse İSMİ MUTLAKA belirt (yoksa hangi düşmanın öldüğü belirsiz olur ve diğerleri de yanlışlıkla kaybolabilir). Sadece TEK bir düşman aktifken isim opsiyoneldir.
    combat_end: Savaş dövüş olmadan bittiğinde (rüşvet, ikna, teslimiyet, anlaşma, kaçış) SAHNEDEKİ TÜM düşmanları tek seferde kaldırır. Birden fazla düşmanın hepsiyle aynı anda barış yapıldığında tek tek enemy_dead yazmak yerine bunu kullan.
    gold_change: SADECE hikaye metninde altının açıkça bulunduğu/kazanıldığı/verildiği anlatıldığında kullan — anlatılmayan gold_change YASAK, oyuncu neden altın kazandığını mutlaka okumalı. Miktarlar KÜÇÜK tutulmalı: küçük bulgular (cepte birkaç sikke, küçük bahşiş) 2-15 altın, önemli bir ödül/görev tamamlama gibi büyük anlar 20-50 altın. Çok istisnai efsanevi bir hazine dışında asla 50'nin üzerine çıkma, asla -50/+50 aralığının dışına taşma.
@@ -358,11 +365,11 @@ async function refreshSummary(sessionId, characterName, existing, language = 'tr
 
     const prompt = isEn
       ? (truncatedExisting
-        ? `Existing summary:\n${truncatedExisting}\n\nNew events:\n${truncatedText}\n\nMerge everything into one coherent English summary of at most 200 words. Include key events, items, and the current location.`
-        : `Summarize the following D&D game log into a coherent English summary of at most 200 words:\n${truncatedText}`)
+        ? `Existing summary:\n${truncatedExisting}\n\nNew events:\n${truncatedText}\n\nMerge everything into one coherent English summary of at most 200 words. Include key events, items, and the current location. ALWAYS preserve: current location, the active objective/quest, and who is travelling with the player (followers, escorted caravan/group, guides, prisoners) — these are the backbone of story memory and must never be dropped.`
+        : `Summarize the following D&D game log into a coherent English summary of at most 200 words. Always state the current location, the active objective, and who is travelling with the player:\n${truncatedText}`)
       : (truncatedExisting
-        ? `Mevcut özet:\n${truncatedExisting}\n\nYeni olaylar:\n${truncatedText}\n\nTümünü 200 kelimeyi geçmeyen tutarlı Türkçe özete dönüştür. Önemli olaylar, eşyalar, konumu belirt.`
-        : `Aşağıdaki D&D oyun kayıtlarını 200 kelimeyi geçmeyen Türkçe özete dönüştür:\n${truncatedText}`);
+        ? `Mevcut özet:\n${truncatedExisting}\n\nYeni olaylar:\n${truncatedText}\n\nTümünü 200 kelimeyi geçmeyen tutarlı Türkçe özete dönüştür. Önemli olaylar, eşyalar, konumu belirt. Şunları MUTLAKA koru: şu anki konum, aktif amaç/görev ve oyuncunun yanındaki kişiler/gruplar (yoldaşlar, eşlik edilen kervan/kafile, rehber, esir vb.) — bunlar hikaye hafızasının omurgasıdır, özetten asla düşme.`
+        : `Aşağıdaki D&D oyun kayıtlarını 200 kelimeyi geçmeyen Türkçe özete dönüştür. Şu anki konumu, aktif amacı ve oyuncunun yanındaki kişileri/grupları mutlaka belirt:\n${truncatedText}`);
 
     const m = await getModel('gemini-2.5-flash', isEn
       ? 'You are a D&D story summarizer. You write short, information-dense summaries in English.'
@@ -570,6 +577,14 @@ async function applyEvents(aiReply, characterId, sessionId) {
 
     const character = docData(await characterRef.get());
     if (!character) continue;
+
+    if (event.event === 'world_update' && sessionRef) {
+      const anchorUpdate = { updated_at: serverTimestamp() };
+      if (typeof event.location === 'string' && event.location.trim()) anchorUpdate.world_location = event.location.trim().substring(0, 120);
+      if (typeof event.objective === 'string' && event.objective.trim()) anchorUpdate.world_objective = event.objective.trim().substring(0, 200);
+      if (typeof event.party === 'string' && event.party.trim()) anchorUpdate.world_party = event.party.trim().substring(0, 300);
+      if (Object.keys(anchorUpdate).length > 1) await sessionRef.update(anchorUpdate);
+    }
 
     if (event.event === 'hp_change' && typeof event.value === 'number') {
       event.value = Math.max(-30, Math.min(30, Math.round(event.value)));
@@ -1165,7 +1180,8 @@ router.post('/chat', async (req, res) => {
       activeQuests,
       character.narrator_tone,
       session.scenario,
-      Array.isArray(session.current_enemy) ? session.current_enemy : (session.current_enemy ? [session.current_enemy] : [])
+      Array.isArray(session.current_enemy) ? session.current_enemy : (session.current_enemy ? [session.current_enemy] : []),
+      { location: session.world_location, objective: session.world_objective, party: session.world_party }
     );
     let aiReply;
     try {

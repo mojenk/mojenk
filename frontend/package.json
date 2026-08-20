@@ -1,6 +1,6 @@
 {
   "name": "dnd-frontend",
-  "version": "1.2.37",
+  "version": "1.2.38",
   "type": "module",
   "scripts": {
     "dev": "vite --port 5174 --host 0.0.0.0",

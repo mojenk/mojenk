@@ -2185,7 +2185,7 @@ export default function GamePage({ user }) {
               borderBottom: '1px solid var(--border)',
             }}
           >
-            <div style={{ padding: '0.75rem 1rem' }}>
+            <div style={{ padding: '0.75rem 1rem', maxHeight: '48vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
               {npcMsg && (
                 <div style={{
                   padding: '0.4rem 0.6rem',

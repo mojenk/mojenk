@@ -1,0 +1,51 @@
+name: One-off Notify All Users
+
+on:
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Send re-engagement push to all users
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          cd backend
+          npm ci --omit=dev
+          node -e "
+          const admin = require('firebase-admin');
+          const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+          admin.initializeApp({ credential: admin.credential.cert(sa) });
+          const db = admin.firestore();
+          (async () => {
+            const snap = await db.collection('users').get();
+            const tokenMap = new Map();
+            snap.docs.forEach((doc) => {
+              const d = doc.data();
+              const entries = Array.isArray(d.fcm_tokens) ? d.fcm_tokens : [];
+              entries.forEach((e) => {
+                if (e && typeof e.token === 'string' && e.token.length > 20) tokenMap.set(e.token, true);
+              });
+            });
+            const tokens = [...tokenMap.keys()];
+            console.log('Unique tokens:', tokens.length);
+            if (!tokens.length) { console.log('Gonderilecek token yok'); process.exit(0); }
+            const res = await admin.messaging().sendEachForMulticast({
+              tokens,
+              notification: {
+                title: 'Kader\'in Sesi seni çağırıyor!',
+                body: 'Maceran kaldığı yerden devam ediyor — zarlar seni bekliyor. Hikayeni yazmaya devam et!',
+              },
+              android: { notification: { channelId: 'kaderin-sesi-general', tag: 'reengage' } },
+              webpush: { notification: { icon: '/icon-192.png', tag: 'reengage' } },
+            });
+            console.log('SUCCESS:', res.successCount, 'FAIL:', res.failureCount);
+            res.responses.forEach((r, i) => { if (!r.success) console.log(' err', i, ':', r.error && r.error.code); });
+            process.exit(0);
+          })().catch((e) => { console.error('FATAL', e); process.exit(1); });
+          "

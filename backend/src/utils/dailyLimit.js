@@ -212,7 +212,10 @@ async function getDiceLuck(uid) {
   try {
     const doc = await firestore.collection('users').doc(uid).get();
     const value = Number(doc.data()?.dice_luck) || 0;
-    return Math.max(0, Math.min(0.9, value));
+    const base = Math.max(0, Math.min(0.9, value));
+    // Premium oyunculara sansli zar: %30 ihtimalle ikinci zar atilip yuksegi alinir
+    if (await isPremium(uid)) return Math.max(base, 0.3);
+    return base;
   } catch {
     return 0;
   }

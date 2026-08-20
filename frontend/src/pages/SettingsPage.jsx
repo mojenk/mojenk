@@ -288,6 +288,7 @@ export default function SettingsPage({ user, onUserUpdate }) {
                 <li>{t('premium_benefit_no_ads')}</li>
                 <li>{t('premium_benefit_unlimited_moves')}</li>
                 <li>{t('premium_benefit_wheel_spins')}</li>
+                <li>{t('premium_benefit_dice_luck')}</li>
               </ul>
 
               {!billingAvailable ? (
