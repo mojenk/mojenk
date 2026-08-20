@@ -1050,6 +1050,13 @@ function UsersTab({ users, onTogglePremium, onToggleSuspension, onSendTestPush, 
               <div>Kayıt: {selected.created_at ? new Date(selected.created_at).toLocaleString('tr-TR') : '-'}</div>
               <div>Premium: {selected.is_premium ? 'Evet' : 'Hayır'} {selected.premium_until ? `(bitiş: ${new Date(selected.premium_until).toLocaleDateString('tr-TR')})` : ''}</div>
               <div>FCM: {(selected.fcmTokens?.length || selected.fcmToken ? 1 : 0) > 0 ? 'Var' : 'Yok'}</div>
+              {selected.pushDebug && (
+                <div style={{ marginTop: '0.25rem', padding: '0.35rem 0.5rem', background: 'rgba(92,74,42,0.2)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  Push teşhis: <b style={{ color: 'var(--gold)' }}>{selected.pushDebug.step}</b>
+                  {selected.pushDebug.detail ? ` — ${selected.pushDebug.detail}` : ''}
+                  {selected.pushDebug.at ? ` (${new Date(selected.pushDebug.at).toLocaleString('tr-TR')})` : ''}
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1rem' }}>

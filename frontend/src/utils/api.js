@@ -69,6 +69,18 @@ export async function registerFcmToken(token, platform = 'web') {
   });
 }
 
+// Push teshis raporu: token kaydinin hangi adimda kirildigini sunucuya bildirir.
+// Hata firlatmaz; admin panelinde kullanici detayinda gorunur.
+export async function reportPushDebug(step, detail = '') {
+  try {
+    await safeFetch(`${API}/auth/fcm-debug`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step, detail: String(detail).slice(0, 300) }),
+    });
+  } catch { /* teshis hep sessiz */ }
+}
+
 export async function loginUser(username) {
   return safeFetch(`${API}/auth/login`, {
     method: 'POST',

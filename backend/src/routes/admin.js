@@ -244,10 +244,19 @@ router.get('/users', async (req, res) => {
     });
     const users = snapshot.docs.map((doc) => {
       const data = docData(doc);
+      // Token kayitlari fcm_tokens: [{token, platform, created_at}] formatinda tutulur.
+      // (Eski istemciler fcmToken/fcmTokens camelCase yazardı — ikisini de destekle.)
+      const tokens = [];
+      if (Array.isArray(data.fcm_tokens)) {
+        data.fcm_tokens.forEach((entry) => { if (entry && entry.token) tokens.push(entry.token); });
+      }
+      if (Array.isArray(data.fcmTokens)) tokens.push(...data.fcmTokens.filter(Boolean));
+      if (data.fcmToken) tokens.push(data.fcmToken);
       return {
         ...data,
         characterCount: countsByUser[doc.id] || 0,
-        fcmTokens: data.fcmTokens || data.fcmToken ? [data.fcmToken].filter(Boolean) : [],
+        fcmTokens: [...new Set(tokens)],
+        pushDebug: data.push_debug || null,
       };
     });
     return res.json({ users });
@@ -324,7 +333,9 @@ router.post('/users/:uid/push-test', async (req, res) => {
     const userDoc = await firestore.collection('users').doc(req.params.uid).get();
     if (!userDoc.exists) return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
     const user = docData(userDoc);
-    const tokens = (user.fcmTokens || []).filter(Boolean);
+    const tokens = [];
+    if (Array.isArray(user.fcm_tokens)) user.fcm_tokens.forEach((entry) => { if (entry && entry.token) tokens.push(entry.token); });
+    if (Array.isArray(user.fcmTokens)) tokens.push(...user.fcmTokens.filter(Boolean));
     if (user.fcmToken) tokens.push(user.fcmToken);
     const uniqueTokens = [...new Set(tokens)];
     if (!uniqueTokens.length) return res.status(400).json({ error: 'Kullanıcının kayıtlı FCM tokeni yok' });

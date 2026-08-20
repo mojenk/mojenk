@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { getMessaging, getToken as webGetToken, onMessage as webOnMessage } from 'firebase/messaging';
 import app from '../firebase';
-import { registerFcmToken } from './api';
+import { registerFcmToken, reportPushDebug } from './api';
 
 const isNative = Capacitor.isNativePlatform();
 
@@ -53,12 +53,16 @@ export async function registerPushToken(uid) {
       }
       if (perm.receive !== 'granted') {
         console.warn('Push permission not granted, skipping FCM token registration');
+        reportPushDebug('permission_denied', perm.receive || 'unknown');
         return;
       }
       const { token } = await FirebaseMessaging.getToken();
-      if (token) {
-        await registerFcmToken(token, Capacitor.getPlatform());
+      if (!token) {
+        reportPushDebug('token_empty', 'getToken bos dondu');
+        return;
       }
+      await registerFcmToken(token, Capacitor.getPlatform());
+      reportPushDebug('registered', `platform=${Capacitor.getPlatform()}`);
       // Token yenilenirse sunucuyu da guncelle
       FirebaseMessaging.addListener('tokenReceived', (event) => {
         if (event?.token) registerFcmToken(event.token, Capacitor.getPlatform()).catch(() => {});
@@ -71,6 +75,7 @@ export async function registerPushToken(uid) {
       });
     } catch (err) {
       console.warn('Native push token error:', err.message);
+      reportPushDebug('native_error', err.message || String(err));
     }
     return;
   }

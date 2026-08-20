@@ -75,6 +75,24 @@ router.post('/fcm-token', verifyFirebaseToken, async (req, res) => {
   }
 });
 
+// Push teshis: istemci token kaydinin hangi adimda oldugunu/kirildigini bildirir.
+router.post('/fcm-debug', verifyFirebaseToken, async (req, res) => {
+  const { step, detail } = req.body || {};
+  if (!step) return res.status(400).json({ error: 'step gerekli' });
+  try {
+    await firestore.collection('users').doc(req.firebaseUser.uid).set({
+      push_debug: {
+        step: String(step).slice(0, 60),
+        detail: String(detail || '').slice(0, 300),
+        at: new Date().toISOString(),
+      },
+    }, { merge: true });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
 router.delete('/me', verifyFirebaseToken, async (req, res) => {
   const uid = req.firebaseUser.uid;
   try {
