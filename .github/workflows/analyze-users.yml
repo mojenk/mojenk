@@ -1,0 +1,85 @@
+name: One-off User Analysis
+
+on:
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Analyze user base (bot tespiti)
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          cd backend
+          npm ci --omit=dev
+          node -e "
+          const admin = require('firebase-admin');
+          const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+          admin.initializeApp({ credential: admin.credential.cert(sa) });
+          const db = admin.firestore();
+          (async () => {
+            // Auth tarafi: provider bilgisi
+            const authUsers = [];
+            let pageToken;
+            do {
+              const r = await admin.auth().listUsers(1000, pageToken);
+              authUsers.push(...r.users);
+              pageToken = r.pageToken;
+            } while (pageToken);
+            console.log('=== AUTH TOPLAM:', authUsers.length, '===');
+            const byProvider = {};
+            authUsers.forEach((u) => {
+              const p = u.providerData.length ? u.providerData.map((x) => x.providerId).join('+') : 'anonymous/guest';
+              byProvider[p] = (byProvider[p] || 0) + 1;
+            });
+            console.log('Provider dagilimi:', JSON.stringify(byProvider));
+
+            const usersSnap = await db.collection('users').get();
+            const charsSnap = await db.collection('characters').get();
+            const charCount = {};
+            const charOwnerStatus = {};
+            charsSnap.docs.forEach((d) => {
+              const c = d.data();
+              const uid = c.ownerUid || c.owner_uid;
+              if (uid) charCount[uid] = (charCount[uid] || 0) + 1;
+            });
+
+            const day = (ts) => {
+              if (!ts) return 'yok';
+              const d = ts.toDate ? ts.toDate() : new Date(ts);
+              return d.toISOString().slice(0, 10);
+            };
+
+            // Gun bazinda kayit dagilimi
+            const perDay = {};
+            let guests = 0, google = 0, noChar = 0, neverPlayed = 0, playedSome = 0;
+            const rows = [];
+            usersSnap.docs.forEach((d) => {
+              const u = d.data();
+              const created = day(u.created_at);
+              perDay[created] = (perDay[created] || 0) + 1;
+              const isGuest = u.isGuest || !u.email;
+              if (isGuest) guests++; else google++;
+              const cc = charCount[d.id] || 0;
+              if (!cc) noChar++;
+              const createdMs = u.created_at && u.created_at.toDate ? u.created_at.toDate().getTime() : 0;
+              const activeMs = u.last_active_at && u.last_active_at.toDate ? u.last_active_at.toDate().getTime() : 0;
+              const sessionSec = activeMs && createdMs ? Math.round((activeMs - createdMs) / 1000) : 0;
+              if (sessionSec < 120) neverPlayed++; else playedSome++;
+              rows.push({ id: d.id.slice(0, 8), guest: isGuest, email: u.email || '-', created, sessionSec, chars: cc });
+            });
+            console.log('=== FIRESTORE USERS:', usersSnap.docs.size, '| guest:', guests, '| google:', google, '===');
+            console.log('Karaktersiz:', noChar, '| 2 dkden kisa oturum (bot suphelisi):', neverPlayed, '| oynamis:', playedSome);
+            console.log('=== GUN BAZINDA KAYIT ===');
+            Object.keys(perDay).sort().forEach((k) => console.log(' ', k, '=>', perDay[k], 'kayit'));
+            console.log('=== SON 30 KULLANICI ===');
+            rows.sort((a, b) => (a.created < b.created ? 1 : -1)).slice(0, 30).forEach((r) =>
+              console.log(' ', r.created, r.guest ? 'GUEST ' : 'GOOGLE', r.email.slice(0, 28).padEnd(28), 'oturum:' + r.sessionSec + 's', 'karakter:' + r.chars));
+            process.exit(0);
+          })().catch((e) => { console.error('FATAL', e); process.exit(1); });
+          "
