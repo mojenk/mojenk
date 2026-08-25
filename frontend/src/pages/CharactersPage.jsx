@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCharacters, getSessions, deleteCharacter, deleteSession, getLeaderboard } from '../utils/api';
+import { getCharacters, getSessions, deleteCharacter, deleteSession, getLeaderboard, shopCatalog, verifyCosmeticPurchase } from '../utils/api';
+import { isBillingAvailable, initBilling, purchaseProduct, getPurchaseToken, getProductId, getBillingProducts } from '../utils/billing';
+import { COSMETIC_PLAY_PRODUCTS } from '../utils/cosmeticProducts';
 import { playClick, playDamage, playError } from '../utils/sounds';
 import Particles from '../components/Particles';
 import AnnouncementsBar from '../components/AnnouncementsBar';
-import { Sparkles, Swords, Castle, Skull, Heart, Coins, ScrollText, Trash2, X, Dices, Crown, ChevronRight, Play, Trophy } from 'lucide-react';
+import { Sparkles, Swords, Castle, Skull, Heart, Coins, ScrollText, Trash2, X, Dices, Crown, ChevronRight, Play, Trophy, Gem } from 'lucide-react';
 import { useLang, t, getLang } from '../utils/i18n';
 
 const RACE_PORTRAITS = {
@@ -31,6 +33,10 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
   const [deleting, setDeleting] = useState(false);
   const [createdNotice, setCreatedNotice] = useState('');
   const [lbData, setLbData] = useState(null);
+  const [cosmetics, setCosmetics] = useState([]);
+  const [storeProducts, setStoreProducts] = useState([]);
+  const [cosBusy, setCosBusy] = useState(null);
+  const [cosNotice, setCosNotice] = useState('');
   const [lbTab, setLbTab] = useState('level');
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,6 +62,14 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
         map[c.id] = (sessionsResults[i].sessions || []).slice(0, 5);
       });
       setSessionMap(map);
+      shopCatalog()
+        .then((d) => setCosmetics((d.items || []).filter((it) => it.play_product_id)))
+        .catch(() => {});
+      if (isBillingAvailable()) {
+        initBilling(COSMETIC_PLAY_PRODUCTS, [], { onProductUpdated: () => setStoreProducts(getBillingProducts()) })
+          .then(() => setStoreProducts(getBillingProducts()))
+          .catch(() => {});
+      }
       getLeaderboard()
         .then((lb) => { console.log('leaderboard data:', lb); setLbData({ level: lb.level || [], gold: lb.gold || [] }); })
         .catch((err) => { console.error('leaderboard fetch error:', err); setLbData({ level: [], gold: [], error: err.message || 'hata' }); });
