@@ -85,7 +85,7 @@ function AnimatedRoutes({ user, onLogout, isAdmin, onUserUpdate }) {
           path="/"
           element={
             <motion.div {...pageVariants} style={{ flex: 1 }}>
-              <CharactersPage user={user} onLogout={onLogout} isAdmin={isAdmin} />
+              <CharactersPage user={user} onLogout={onLogout} isAdmin={isAdmin} onUserUpdate={onUserUpdate} />
             </motion.div>
           }
         />

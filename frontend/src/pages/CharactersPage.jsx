@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCharacters, getSessions, deleteCharacter, deleteSession, getLeaderboard, shopCatalog, verifyCosmeticPurchase } from '../utils/api';
+import { getCharacters, getSessions, deleteCharacter, deleteSession, getLeaderboard, shopCatalog, verifyCosmeticPurchase, verifyPurchase } from '../utils/api';
 import { isBillingAvailable, initBilling, purchaseProduct, getPurchaseToken, getProductId, getBillingProducts } from '../utils/billing';
 import { COSMETIC_PLAY_PRODUCTS } from '../utils/cosmeticProducts';
 import { playClick, playDamage, playError } from '../utils/sounds';
@@ -22,7 +22,7 @@ const RACE_PORTRAITS = {
   'Melek Soylu': '/races/meleksoylu.png',
 };
 
-export default function CharactersPage({ user, onLogout, isAdmin }) {
+export default function CharactersPage({ user, onLogout, isAdmin, onUserUpdate }) {
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
   useLang(); // re-render on language change
@@ -66,7 +66,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
         .then((d) => setCosmetics((d.items || []).filter((it) => it.play_product_id)))
         .catch(() => {});
       if (isBillingAvailable()) {
-        initBilling(COSMETIC_PLAY_PRODUCTS, [], { onProductUpdated: () => setStoreProducts(getBillingProducts()) })
+        initBilling([...COSMETIC_PLAY_PRODUCTS, 'premium_lifetime'], ['premium_monthly'], { onProductUpdated: () => setStoreProducts(getBillingProducts()) })
           .then(() => setStoreProducts(getBillingProducts()))
           .catch(() => {});
       }
@@ -77,6 +77,25 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
       setError(err.message || t('data_load_fail'));
     }
     setLoading(false);
+  };
+
+  const handlePremiumBuy = async () => {
+    if (cosBusy) return;
+    setCosBusy('premium');
+    setCosNotice('');
+    try {
+      const transaction = await purchaseProduct('premium_monthly');
+      const token = getPurchaseToken(transaction);
+      const pid = getProductId(transaction);
+      if (!token || !pid) throw new Error('Satın alma jetonu alınamadı');
+      const result = await verifyPurchase(pid, token, true);
+      onUserUpdate?.(result.user);
+      setCosNotice(t('premium_purchase_success'));
+    } catch (err) {
+      if (!/cancel/i.test(err.message || '')) setCosNotice(err.message || t('premium_purchase_error'));
+    } finally {
+      setCosBusy(null);
+    }
   };
 
   const handleCosmeticBuy = async (item) => {
@@ -766,7 +785,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
           </div>
         )}
         {/* Kozmetik Magaza — gercek parayla (ana ekran) */}
-        {cosmetics.length > 0 && (
+        {(cosmetics.length > 0 || !user?.is_premium) && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -786,6 +805,34 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
               </p>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(4.6rem, 1fr))', gap: '0.5rem' }}>
+              {!user?.is_premium && (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handlePremiumBuy}
+                  disabled={cosBusy === 'premium'}
+                  style={{
+                    background: 'linear-gradient(145deg, rgba(201,150,58,0.25), rgba(201,150,58,0.08))',
+                    border: '1px solid rgba(232,193,90,0.65)',
+                    borderRadius: '8px',
+                    padding: '0.4rem 0.25rem',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem',
+                    cursor: 'pointer', opacity: cosBusy === 'premium' ? 0.6 : 1,
+                    boxShadow: '0 0 12px rgba(201,150,58,0.25)',
+                  }}
+                >
+                  <div style={{ width: '3.2rem', height: '3.2rem', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(201,150,58,0.15)' }}>
+                    <Crown size={26} style={{ color: '#e8c15a' }} />
+                  </div>
+                  <span className="font-fantasy" style={{ color: '#e8c15a', fontSize: '0.58rem', textAlign: 'center', lineHeight: 1.15 }}>
+                    {t('premium_monthly')}
+                  </span>
+                  <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif", fontSize: '0.62rem', fontWeight: 700 }}>
+                    {(storeProducts.find((sp) => sp.id === 'premium_monthly')?.pricing?.price)
+                      || (storeProducts.find((sp) => sp.id === 'premium_monthly')?.price)
+                      || t('shop_real_money')}
+                  </span>
+                </motion.button>
+              )}
               {cosmetics.map((item) => {
                 const price = (storeProducts.find((sp) => sp.id === item.play_product_id)?.pricing?.price)
                   || (storeProducts.find((sp) => sp.id === item.play_product_id)?.price)
