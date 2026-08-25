@@ -30,7 +30,7 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [createdNotice, setCreatedNotice] = useState('');
-  const [lbData, setLbData] = useState({ level: [], gold: [] });
+  const [lbData, setLbData] = useState(null);
   const [lbTab, setLbTab] = useState('level');
   const navigate = useNavigate();
   const location = useLocation();
@@ -57,12 +57,35 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
       });
       setSessionMap(map);
       getLeaderboard()
-        .then((lb) => setLbData({ level: lb.level || [], gold: lb.gold || [] }))
-        .catch(() => {});
+        .then((lb) => { console.log('leaderboard data:', lb); setLbData({ level: lb.level || [], gold: lb.gold || [] }); })
+        .catch((err) => { console.error('leaderboard fetch error:', err); setLbData({ level: [], gold: [], error: err.message || 'hata' }); });
     } catch (err) {
       setError(err.message || t('data_load_fail'));
     }
     setLoading(false);
+  };
+
+  const handleCosmeticBuy = async (item) => {
+    if (cosBusy) return;
+    const target = characters.find((c) => c.status !== 'dead') || characters[0];
+    if (!target) {
+      setCosNotice(t('cosmetic_need_character'));
+      return;
+    }
+    setCosBusy(item.id);
+    setCosNotice('');
+    try {
+      const transaction = await purchaseProduct(item.play_product_id);
+      const token = getPurchaseToken(transaction);
+      const pid = getProductId(transaction);
+      if (!token || !pid) throw new Error('Satın alma jetonu alınamadı');
+      await verifyCosmeticPurchase(pid, token, target.id);
+      setCosNotice(`${item.name} → ${target.name} (${t('shop_owned')})`);
+    } catch (err) {
+      if (!/cancel/i.test(err.message || '')) setCosNotice(err.message || 'Satın alma başarısız');
+    } finally {
+      setCosBusy(null);
+    }
   };
 
   useEffect(() => { loadData(); }, [user.id]);
@@ -803,8 +826,75 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
       </AnimatePresence>
       </div>
 
+        {/* Kozmetik Magaza — gercek parayla (ana ekran) */}
+        {cosmetics.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="stone-card"
+            style={{ margin: '0 1rem 1rem', padding: '0.85rem 0.9rem' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.55rem' }}>
+              <Gem size={16} style={{ color: 'var(--gold)' }} />
+              <span className="font-fantasy" style={{ color: 'var(--gold2)', fontSize: '0.9rem', letterSpacing: '0.08em' }}>
+                {t('cosmetic_store_title')}
+              </span>
+            </div>
+            {characters.length > 0 && (
+              <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.7rem', margin: '0 0 0.5rem' }}>
+                {t('cosmetic_store_target')}: {(characters.find((c) => c.status !== 'dead') || characters[0])?.name}
+              </p>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(4.6rem, 1fr))', gap: '0.5rem' }}>
+              {cosmetics.map((item) => {
+                const price = (storeProducts.find((sp) => sp.id === item.play_product_id)?.pricing?.price)
+                  || (storeProducts.find((sp) => sp.id === item.play_product_id)?.price)
+                  || null;
+                return (
+                  <motion.button
+                    key={item.id}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleCosmeticBuy(item)}
+                    disabled={cosBusy === item.id}
+                    style={{
+                      background: 'rgba(201,150,58,0.06)',
+                      border: '1px solid rgba(92,74,42,0.5)',
+                      borderRadius: '8px',
+                      padding: '0.4rem 0.25rem',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem',
+                      cursor: 'pointer', opacity: cosBusy === item.id ? 0.6 : 1,
+                    }}
+                  >
+                    <div style={{ width: '3.2rem', height: '3.2rem', borderRadius: '6px', overflow: 'hidden', background: 'rgba(0,0,0,0.35)' }}>
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Gem size={20} style={{ color: 'var(--gold)' }} />
+                        </div>
+                      )}
+                    </div>
+                    <span className="font-fantasy" style={{ color: 'var(--parch)', fontSize: '0.58rem', textAlign: 'center', lineHeight: 1.15 }}>
+                      {item.name}
+                    </span>
+                    <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif", fontSize: '0.62rem', fontWeight: 700 }}>
+                      {price || t('shop_real_money')}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
+            {cosNotice && (
+              <p style={{ color: 'var(--gold2)', fontFamily: "'Crimson Text', serif", fontSize: '0.75rem', margin: '0.5rem 0 0', textAlign: 'center' }}>
+                {cosNotice}
+              </p>
+            )}
+          </motion.div>
+        )}
+
         {/* Gomulu Liderlik Tablosu — top 5 */}
-        {(lbData.level.length > 0 || lbData.gold.length > 0) && (
+        {lbData && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -833,6 +923,11 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              {(lbTab === 'level' ? lbData.level : lbData.gold).length === 0 && (
+                <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.78rem', textAlign: 'center', padding: '0.5rem 0', margin: 0 }}>
+                  {lbData.error ? lbData.error : t('leaderboard_empty')}
+                </p>
+              )}
               {(lbTab === 'level' ? lbData.level : lbData.gold).slice(0, 5).map((e) => (
                 <div
                   key={e.id}
