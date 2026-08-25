@@ -200,6 +200,14 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.96 }}
+            onClick={() => { playClick(); navigate('/leaderboard'); }}
+            className="btn-dark"
+            style={{ fontSize: '0.75rem', padding: '0.35rem 0.85rem', minHeight: '36px' }}
+          >
+            {t('leaderboard_btn')}
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={() => { playClick(); navigate('/settings'); }}
             className="btn-dark"
             style={{ fontSize: '0.75rem', padding: '0.35rem 0.85rem', minHeight: '36px' }}

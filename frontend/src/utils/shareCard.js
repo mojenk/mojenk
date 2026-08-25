@@ -1,5 +1,8 @@
 // Macera paylaşım kartı: canvas ile 1080x1350 (4:5) görsel üretir.
 // Harici kütüphane yok; sayfadaki Cinzel/Crimson Text fontları kullanılır.
+import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 const STORE_URL = 'https://play.google.com/store/apps/details?id=com.kaderinsesi.app';
 
@@ -137,19 +140,57 @@ export async function generateShareCardBlob({ quote, characterName, lang = 'tr' 
   return await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
 }
 
-// Kartı paylaş: Web Share API (dosyalı) → metin paylaşımı → indirme fallback.
+// Kartı paylaş: Native (Capacitor Share + Filesystem) → Web Share (dosyalı) → metin → indirme.
 export async function shareAdventureCard({ quote, characterName, lang = 'tr' }) {
   const blob = await generateShareCardBlob({ quote, characterName, lang });
   if (!blob) return { ok: false, method: 'none' };
 
-  const file = new File([blob], 'kaderin-sesi-macera.png', { type: 'image/png' });
   const shareText = lang === 'en'
     ? `My adventure in Voice of Destiny — an AI RPG. ${STORE_URL}`
     : `Kader'in Sesi'ndeki maceram — AI destekli RPG. ${STORE_URL}`;
+  const title = STR[lang]?.gameTitle || STR.tr.gameTitle;
+
+  // Native (Android/iOS): WebView'de navigator.share calismaz; dosyayi cache'e yazip
+  // Capacitor Share ile sistem paylasim penceresini aciyoruz.
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const fileName = `kaderin-sesi-macera-${Date.now()}.png`;
+      const saved = await Filesystem.writeFile({
+        path: fileName,
+        data: base64,
+        directory: Directory.Cache,
+      });
+      await Share.share({
+        title,
+        text: shareText,
+        url: saved.uri,
+        dialogTitle: title,
+      });
+      return { ok: true, method: 'native-share' };
+    } catch (err) {
+      if (err && /cancel/i.test(err.message || '')) return { ok: false, method: 'aborted' };
+      // Native paylasim basarisizsa metin paylasimina dus
+      try {
+        await Share.share({ title, text: shareText, dialogTitle: title });
+        return { ok: true, method: 'native-share-text' };
+      } catch (err2) {
+        if (err2 && /cancel/i.test(err2.message || '')) return { ok: false, method: 'aborted' };
+        return { ok: false, method: 'none' };
+      }
+    }
+  }
+
+  const file = new File([blob], 'kaderin-sesi-macera.png', { type: 'image/png' });
 
   try {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], text: shareText, title: STR[lang]?.gameTitle || STR.tr.gameTitle });
+      await navigator.share({ files: [file], text: shareText, title });
       return { ok: true, method: 'share-file' };
     }
   } catch (err) {
@@ -158,7 +199,7 @@ export async function shareAdventureCard({ quote, characterName, lang = 'tr' }) 
 
   try {
     if (navigator.share) {
-      await navigator.share({ text: shareText, title: STR[lang]?.gameTitle || STR.tr.gameTitle });
+      await navigator.share({ text: shareText, title });
       return { ok: true, method: 'share-text' };
     }
   } catch (err) {

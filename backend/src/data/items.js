@@ -77,6 +77,36 @@ const CATALOG = [
   { id: 'lockpicks',      name: 'Kilit Maşası',        type: 'misc',   price: 40,  sellPrice: 20,  description: 'Kilitli kapılar için',                category: 'Çeşitli', rarity: RARITY.UNCOMMON, scenarios: ['all'], image: '/items/lockpicks.png' },
   { id: 'trap_kit',       name: 'Tuzak Seti',          type: 'misc',   price: 35,  sellPrice: 17,  description: 'Basit av tuzakları kurar',            category: 'Çeşitli', rarity: RARITY.UNCOMMON, scenarios: [...MEDIEVAL_FANTASY, 'realistic', 'western'], image: '/items/trap_kit.png' },
 
+  // ── EVCİL HAYVANLAR & BİNEKLER — mağazadan alınır, envanter slotu kaplamaz ──
+  // dice_luck_bonus: zar sansina kucuk katki (0.05 = %5). carry_bonus: envanter kapasitesi.
+  { id: 'pet_wolf',       name: 'Kurt Yavrusu',      type: 'pet',   price: 150, sellPrice: 0, description: 'Sadık bir kurt. Zar şansı +%5, hikayede yanında savaşır.', category: 'Evcil Hayvan', rarity: RARITY.RARE, scenarios: ['all'], dice_luck_bonus: 0.05 },
+  { id: 'pet_owl',        name: 'Bilge Baykuş',      type: 'pet',   price: 100, sellPrice: 0, description: 'Gece gözcüsü. Zar şansı +%3, tuzak ve tehlikeleri önceden sezer.', category: 'Evcil Hayvan', rarity: RARITY.UNCOMMON, scenarios: ['all'], dice_luck_bonus: 0.03 },
+  { id: 'pet_raven',      name: 'Kuzgun',            type: 'pet',   price: 120, sellPrice: 0, description: 'Kehanet kuşu. Zar şansı +%4, sırları kulağına fısıldar.', category: 'Evcil Hayvan', rarity: RARITY.UNCOMMON, scenarios: ['all'], dice_luck_bonus: 0.04 },
+  { id: 'pet_cat',        name: 'Gölge Kedisi',      type: 'pet',   price: 90,  sellPrice: 0, description: 'Sessiz avcı. Zar şansı +%2, gizlilik anlarında yardım eder.', category: 'Evcil Hayvan', rarity: RARITY.COMMON, scenarios: ['all'], dice_luck_bonus: 0.02 },
+  { id: 'mount_horse',    name: 'Binek Atı',         type: 'mount', price: 200, sellPrice: 0, description: 'Hızlı ve sadık. Zar şansı +%3, kaçış ve yolculuklarda avantaj.', category: 'Binek', rarity: RARITY.RARE, scenarios: ['all'], dice_luck_bonus: 0.03 },
+  { id: 'mount_mule',     name: 'Yük Katırı',        type: 'mount', price: 120, sellPrice: 0, description: 'İnatçı ve dayanıklı. Envanter kapasitesi +8.', category: 'Binek', rarity: RARITY.UNCOMMON, scenarios: ['all'], carry_bonus: 8 },
+
+  // ── KOZMETİK: UNVANLAR — karakter adının yanında görünür ──
+  { id: 'title_dragon_slayer',    name: 'Ejder Avcısı',         type: 'cosmetic', cosmetic_kind: 'title', cosmetic_value: 'Ejder Avcısı',         price: 300, sellPrice: 0, description: 'Adının yanında «Ejder Avcısı» unvanı görünür.',        category: 'Unvan', rarity: RARITY.LEGENDARY, scenarios: ['all'] },
+  { id: 'title_shadow_walker',    name: 'Gölge Yürüyen',        type: 'cosmetic', cosmetic_kind: 'title', cosmetic_value: 'Gölge Yürüyen',        price: 200, sellPrice: 0, description: 'Adının yanında «Gölge Yürüyen» unvanı görünür.',       category: 'Unvan', rarity: RARITY.EPIC, scenarios: ['all'] },
+  { id: 'title_fate_writer',      name: 'Kader Yazıcısı',       type: 'cosmetic', cosmetic_kind: 'title', cosmetic_value: 'Kader Yazıcısı',       price: 250, sellPrice: 0, description: 'Adının yanında «Kader Yazıcısı» unvanı görünür.',      category: 'Unvan', rarity: RARITY.EPIC, scenarios: ['all'] },
+  { id: 'title_dungeon_conqueror',name: 'Zindan Fatihi',        type: 'cosmetic', cosmetic_kind: 'title', cosmetic_value: 'Zindan Fatihi',        price: 200, sellPrice: 0, description: 'Adının yanında «Zindan Fatihi» unvanı görünür.',       category: 'Unvan', rarity: RARITY.EPIC, scenarios: ['all'] },
+  { id: 'title_caravan_lord',     name: 'Kervan Lordu',         type: 'cosmetic', cosmetic_kind: 'title', cosmetic_value: 'Kervan Lordu',         price: 180, sellPrice: 0, description: 'Adının yanında «Kervan Lordu» unvanı görünür.',        category: 'Unvan', rarity: RARITY.RARE, scenarios: ['all'] },
+  { id: 'title_arena_champion',   name: 'Arena Şampiyonu',      type: 'cosmetic', cosmetic_kind: 'title', cosmetic_value: 'Arena Şampiyonu',      price: 220, sellPrice: 0, description: 'Adının yanında «Arena Şampiyonu» unvanı görünür.',     category: 'Unvan', rarity: RARITY.EPIC, scenarios: ['all'] },
+  { id: 'title_immortal',         name: 'Ölümsüz',              type: 'cosmetic', cosmetic_kind: 'title', cosmetic_value: 'Ölümsüz',              price: 400, sellPrice: 0, description: 'Adının yanında «Ölümsüz» unvanı görünür.',             category: 'Unvan', rarity: RARITY.LEGENDARY, scenarios: ['all'] },
+
+  // ── KOZMETİK: PORTRE ÇERÇEVELERİ — karakter portresinin etrafını süsler ──
+  { id: 'frame_gold',     name: 'Altın Çerçeve',     type: 'cosmetic', cosmetic_kind: 'frame', cosmetic_value: 'gold',     price: 150, sellPrice: 0, description: 'Portreni altın bir çerçeveyle süsler.',   category: 'Çerçeve', rarity: RARITY.RARE, scenarios: ['all'] },
+  { id: 'frame_emerald',  name: 'Zümrüt Çerçeve',    type: 'cosmetic', cosmetic_kind: 'frame', cosmetic_value: 'emerald',  price: 150, sellPrice: 0, description: 'Portreni zümrüt bir çerçeveyle süsler.',  category: 'Çerçeve', rarity: RARITY.RARE, scenarios: ['all'] },
+  { id: 'frame_crimson',  name: 'Kızıl Çerçeve',     type: 'cosmetic', cosmetic_kind: 'frame', cosmetic_value: 'crimson',  price: 150, sellPrice: 0, description: 'Portreni kızıl bir çerçeveyle süsler.',   category: 'Çerçeve', rarity: RARITY.RARE, scenarios: ['all'] },
+
+  // ── KOZMETİK: ZAR TEMALARI — zar animasyonunun rengini değiştirir ──
+  { id: 'dice_skin_ember',  name: 'Kor Zar',      type: 'cosmetic', cosmetic_kind: 'dice_skin', cosmetic_value: 'ember',  price: 120, sellPrice: 0, description: 'Zarların ateşli kor rengiyle yanar.',    category: 'Zar Teması', rarity: RARITY.RARE, scenarios: ['all'] },
+  { id: 'dice_skin_frost',  name: 'Buz Zarı',     type: 'cosmetic', cosmetic_kind: 'dice_skin', cosmetic_value: 'frost',  price: 120, sellPrice: 0, description: 'Zarların buz mavisiyle parlar.',         category: 'Zar Teması', rarity: RARITY.RARE, scenarios: ['all'] },
+  { id: 'dice_skin_shadow', name: 'Gölge Zarı',   type: 'cosmetic', cosmetic_kind: 'dice_skin', cosmetic_value: 'shadow', price: 120, sellPrice: 0, description: 'Zarların karanlık morla kaplanır.',      category: 'Zar Teması', rarity: RARITY.RARE, scenarios: ['all'] },
+  { id: 'dice_skin_royal',  name: 'Kraliyet Zarı',type: 'cosmetic', cosmetic_kind: 'dice_skin', cosmetic_value: 'royal',  price: 180, sellPrice: 0, description: 'Zarların saf altın ihtişamıyla döner.',  category: 'Zar Teması', rarity: RARITY.EPIC, scenarios: ['all'] },
+  { id: 'dice_skin_arcane', name: 'Arkane Zar',   type: 'cosmetic', cosmetic_kind: 'dice_skin', cosmetic_value: 'arcane', price: 150, sellPrice: 0, description: 'Zarların büyülü turkuazla ışıldar.',     category: 'Zar Teması', rarity: RARITY.RARE, scenarios: ['all'] },
+
   // ── Senaryo-temalı eşyalar (her senaryoya özel, mağazada satılmaz, sadece hikayede bulunur) ──
   { id: 'dungeon_key',     name: 'Pas Tutmuş Zindan Anahtarı', type: 'misc',   price: 18,  sellPrice: 9,   description: 'Eski hücrelerin kilidini açar',        category: 'Çeşitli', rarity: RARITY.UNCOMMON, scenarios: ['dungeon'], image: '/items/dungeon_key.png' },
   { id: 'chain_gauntlet',  name: 'Kırık Zincir Eldiveni',      type: 'armor',  price: 45,  sellPrice: 22,  description: '+1 AC, zindan enkazından toplanmış',   category: 'Zırh', rarity: RARITY.UNCOMMON, scenarios: ['dungeon'], image: '/items/chain_gauntlet.png' },
@@ -198,3 +228,30 @@ function pickWeightedItem(scenario) {
 
 module.exports.rollRarity = rollRarity;
 module.exports.pickWeightedItem = pickWeightedItem;
+
+// ── Evcil hayvan / binek / kozmetik yardimcilari ──
+function findCatalog(idOrName) {
+  return CATALOG.find((e) => e.id === idOrName || e.name === idOrName) || null;
+}
+
+// Karakterin aktif evcil hayvan + bineginden gelen zar sansi bonusu
+function getCompanionLuckBonus(character) {
+  if (!character) return 0;
+  let bonus = 0;
+  for (const id of [character.active_pet, character.active_mount]) {
+    const def = id ? findCatalog(id) : null;
+    if (def && def.dice_luck_bonus) bonus += def.dice_luck_bonus;
+  }
+  return Math.min(0.15, bonus);
+}
+
+// Aktif binegin tasima bonusu
+function getMountCarryBonus(character) {
+  if (!character || !character.active_mount) return 0;
+  const def = findCatalog(character.active_mount);
+  return (def && def.carry_bonus) || 0;
+}
+
+module.exports.getCompanionLuckBonus = getCompanionLuckBonus;
+module.exports.getMountCarryBonus = getMountCarryBonus;
+module.exports.findCatalog = findCatalog;

@@ -1,8 +1,58 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
-export default function DiceRoll({ value, rolling, size = 64, label }) {
+// Zar temalari: kozmetik magazasindan alinan dice_skin degerleri
+export const DICE_SKINS = {
+  ember: {
+    normal: 'linear-gradient(145deg, #ff9a3c, #8f2d0e)',
+    crit: 'linear-gradient(145deg, #ffd700, #ff6a00)',
+    fail: 'linear-gradient(145deg, #6b1414, #2b0808)',
+    border: '#ff7a2d',
+    text: '#fff3e0',
+    label: '#ffc9a0',
+    glow: '0 0 18px rgba(255,110,30,0.55)',
+  },
+  frost: {
+    normal: 'linear-gradient(145deg, #a8e6ff, #2a6fa8)',
+    crit: 'linear-gradient(145deg, #e6fbff, #57c7ff)',
+    fail: 'linear-gradient(145deg, #223a5e, #0c1526)',
+    border: '#7fd4ff',
+    text: '#eaf9ff',
+    label: '#bfe8ff',
+    glow: '0 0 18px rgba(110,200,255,0.5)',
+  },
+  shadow: {
+    normal: 'linear-gradient(145deg, #5b3a8e, #1c0f33)',
+    crit: 'linear-gradient(145deg, #b07dff, #4c1d95)',
+    fail: 'linear-gradient(145deg, #2a0a2a, #0e0414)',
+    border: '#8b5cf6',
+    text: '#efe4ff',
+    label: '#c4a8f0',
+    glow: '0 0 18px rgba(139,92,246,0.55)',
+  },
+  royal: {
+    normal: 'linear-gradient(145deg, #ffe9a3, #b8860b)',
+    crit: 'linear-gradient(145deg, #fff7cc, #ffd700)',
+    fail: 'linear-gradient(145deg, #7a1f1f, #2d0b0b)',
+    border: '#ffd700',
+    text: '#3a2a00',
+    label: '#7a5c00',
+    glow: '0 0 22px rgba(255,215,0,0.6)',
+  },
+  arcane: {
+    normal: 'linear-gradient(145deg, #5eead4, #0f5e54)',
+    crit: 'linear-gradient(145deg, #b8fff2, #14b8a6)',
+    fail: 'linear-gradient(145deg, #1f3a44, #0a1418)',
+    border: '#2dd4bf',
+    text: '#e6fffa',
+    label: '#99f6e4',
+    glow: '0 0 18px rgba(45,212,191,0.55)',
+  },
+};
+
+export default function DiceRoll({ value, rolling, size = 64, label, skin }) {
   const [displayValue, setDisplayValue] = useState(value || 1);
+  const theme = skin && DICE_SKINS[skin] ? DICE_SKINS[skin] : null;
 
   useEffect(() => {
     if (!rolling) {
@@ -22,6 +72,24 @@ export default function DiceRoll({ value, rolling, size = 64, label }) {
     return () => clearInterval(interval);
   }, [rolling, value]);
 
+  const background = theme
+    ? (value === 20 ? theme.crit : value === 1 ? theme.fail : theme.normal)
+    : (value === 20
+      ? 'linear-gradient(145deg, #ffd700, #c9a94a)'
+      : value === 1
+      ? 'linear-gradient(145deg, #8b2e2e, #3a1212)'
+      : 'linear-gradient(145deg, #f5e6c8, #c9a94a)');
+
+  const borderColor = theme
+    ? theme.border
+    : (value === 20 ? '#fff5b0' : value === 1 ? '#5c1a1a' : '#9c7d3c');
+
+  const textColor = theme
+    ? (skin === 'royal' && value !== 1 ? theme.text : theme.text)
+    : (value === 20 ? '#3a2a00' : value === 1 ? '#f5c6c6' : '#1a1510');
+
+  const labelColor = theme ? theme.label : (value === 1 ? '#d4a0a0' : '#5c4a2a');
+
   return (
     <motion.div
       animate={
@@ -40,18 +108,14 @@ export default function DiceRoll({ value, rolling, size = 64, label }) {
         width: size,
         height: size,
         borderRadius: size * 0.22,
-        background: value === 20
-          ? 'linear-gradient(145deg, #ffd700, #c9a94a)'
-          : value === 1
-          ? 'linear-gradient(145deg, #8b2e2e, #3a1212)'
-          : 'linear-gradient(145deg, #f5e6c8, #c9a94a)',
-        boxShadow: `inset 0 0 ${size * 0.14}px rgba(0,0,0,0.35), 0 ${size * 0.08}px ${size * 0.18}px rgba(0,0,0,0.45)`,
+        background,
+        boxShadow: `inset 0 0 ${size * 0.14}px rgba(0,0,0,0.35), 0 ${size * 0.08}px ${size * 0.18}px rgba(0,0,0,0.45)${theme ? `, ${theme.glow}` : ''}`,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
-        border: `2px solid ${value === 20 ? '#fff5b0' : value === 1 ? '#5c1a1a' : '#9c7d3c'}`,
+        border: `2px solid ${borderColor}`,
       }}
     >
       <span
@@ -59,9 +123,9 @@ export default function DiceRoll({ value, rolling, size = 64, label }) {
           fontFamily: "'Cinzel', serif",
           fontSize: size * 0.45,
           fontWeight: 900,
-          color: value === 20 ? '#3a2a00' : value === 1 ? '#f5c6c6' : '#1a1510',
+          color: textColor,
           lineHeight: 1,
-          textShadow: value === 20 ? '0 0 8px rgba(255,255,255,0.6)' : 'none',
+          textShadow: value === 20 ? '0 0 8px rgba(255,255,255,0.6)' : theme ? '0 1px 2px rgba(0,0,0,0.5)' : 'none',
         }}
       >
         {displayValue}
@@ -71,7 +135,7 @@ export default function DiceRoll({ value, rolling, size = 64, label }) {
           style={{
             fontFamily: "'Cinzel', serif",
             fontSize: size * 0.16,
-            color: value === 1 ? '#d4a0a0' : '#5c4a2a',
+            color: labelColor,
             letterSpacing: '0.06em',
             marginTop: size * 0.04,
           }}

@@ -3,12 +3,12 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Coins, ShoppingBag, Backpack } from 'lucide-react';
 import { getItemIcon } from '../utils/icons';
-import { getCharacter, shopCatalog, shopBuy, shopSell } from '../utils/api';
+import { getCharacter, shopCatalog, shopBuy, shopSell, shopCompanionActivate, shopCosmeticEquip } from '../utils/api';
 import { useLang, t } from '../utils/i18n';
 import { playClick, playHeal, playError, playLevelUp } from '../utils/sounds';
 import Particles from '../components/Particles';
 
-const CATEGORY_ORDER = ['Tüketici', 'Silah', 'Zırh', 'Çeşitli'];
+const CATEGORY_ORDER = ['Tüketici', 'Silah', 'Zırh', 'Çeşitli', 'Evcil Hayvan', 'Binek', 'Unvan', 'Çerçeve', 'Zar Teması'];
 
 // Turkish category label -> item type key, so getItemIcon() can resolve the
 // correct lucide icon for each category tab.
@@ -17,7 +17,14 @@ const CATEGORY_TYPE = {
   'Silah':    'weapon',
   'Zırh':     'armor',
   'Çeşitli':  'misc',
+  'Evcil Hayvan': 'pet',
+  'Binek': 'mount',
+  'Unvan': 'title',
+  'Çerçeve': 'frame',
+  'Zar Teması': 'dice_skin',
 };
+
+const COSMETIC_CATEGORY_KIND = { 'Unvan': 'title', 'Çerçeve': 'frame', 'Zar Teması': 'dice_skin' };
 
 const TABS_DEF = [
   { key: 'buy', labelKey: 'buy_tab', Icon: ShoppingBag },
@@ -119,6 +126,42 @@ export default function ShopPage({ user }) {
       playLevelUp();
     } catch (err) {
       showToast(err.message || 'Satılamadı', 'error');
+      playError();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleCompanion = async (item, slot) => {
+    if (busy) return;
+    setBusy(item.id);
+    const activeField = slot === 'pet' ? 'active_pet' : 'active_mount';
+    const isActive = character?.[activeField] === item.id;
+    try {
+      await shopCompanionActivate(characterId, isActive ? null : item.id, slot);
+      setCharacter((c) => ({ ...c, [activeField]: isActive ? null : item.id }));
+      showToast(isActive ? `${item.name} ayrıldı` : `${item.name} artık yanında!`, 'success');
+      playLevelUp();
+    } catch (err) {
+      showToast(err.message || 'İşlem başarısız', 'error');
+      playError();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleCosmetic = async (item, kind) => {
+    if (busy) return;
+    setBusy(item.id);
+    const field = { title: 'equipped_title', frame: 'equipped_frame', dice_skin: 'equipped_dice_skin' }[kind];
+    const isEquipped = character?.[field] === item.cosmetic_value;
+    try {
+      await shopCosmeticEquip(characterId, isEquipped ? null : item.id, kind);
+      setCharacter((c) => ({ ...c, [field]: isEquipped ? null : item.cosmetic_value }));
+      showToast(isEquipped ? `${item.name} çıkarıldı` : `${item.name} kuşanıldı!`, 'success');
+      playLevelUp();
+    } catch (err) {
+      showToast(err.message || 'İşlem başarısız', 'error');
       playError();
     } finally {
       setBusy(null);
@@ -274,6 +317,19 @@ export default function ShopPage({ user }) {
           <div style={{ flex: 1, overflowY: 'auto', padding: '0.85rem', paddingBottom: '2rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
               {(categorized[activeCategory] || []).map((item) => {
+                const isCompanion = item.type === 'pet' || item.type === 'mount';
+                const cosmeticKind = item.type === 'cosmetic' ? item.cosmetic_kind : null;
+                const owned = isCompanion
+                  ? (character?.[item.type === 'pet' ? 'owned_pets' : 'owned_mounts'] || []).includes(item.id)
+                  : cosmeticKind
+                  ? (character?.owned_cosmetics || []).includes(item.id)
+                  : false;
+                const equipFieldMap = { title: 'equipped_title', frame: 'equipped_frame', dice_skin: 'equipped_dice_skin' };
+                const isActive = isCompanion
+                  ? character?.[item.type === 'pet' ? 'active_pet' : 'active_mount'] === item.id
+                  : cosmeticKind
+                  ? character?.[equipFieldMap[cosmeticKind]] === item.cosmetic_value
+                  : false;
                 const canAfford = (character?.gold ?? 0) >= item.price;
                 const ItemTypeIcon = getItemIcon(item.type);
                 return (
@@ -286,8 +342,9 @@ export default function ShopPage({ user }) {
                       padding: 0,
                       display: 'flex',
                       flexDirection: 'column',
-                      opacity: canAfford ? 1 : 0.55,
+                      opacity: owned || canAfford ? 1 : 0.55,
                       overflow: 'hidden',
+                      border: isActive ? '1px solid rgba(232,193,90,0.7)' : undefined,
                     }}
                   >
                     <div
@@ -307,6 +364,18 @@ export default function ShopPage({ user }) {
                         <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <ItemTypeIcon size={28} color="var(--gold)" />
+                      )}
+                      {isActive && (
+                        <span
+                          style={{
+                            position: 'absolute', top: '0.3rem', right: '0.3rem',
+                            background: 'rgba(201,150,58,0.9)', color: '#1a1510',
+                            fontFamily: "'Cinzel', serif", fontSize: '0.55rem', fontWeight: 700,
+                            padding: '0.12rem 0.4rem', borderRadius: '8px',
+                          }}
+                        >
+                          {t('shop_active_badge')}
+                        </span>
                       )}
                     </div>
                     <div style={{ padding: '0.65rem 0.7rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
@@ -335,19 +404,31 @@ export default function ShopPage({ user }) {
                         >
                           <Coins size={13} />{item.price}
                         </span>
-                        <motion.button
-                          whileTap={canAfford ? { scale: 0.94 } : {}}
-                          onClick={() => canAfford && handleBuy(item)}
-                          disabled={!canAfford || busy === item.id}
-                          className="btn-gold"
-                          style={{
-                            fontSize: '0.7rem', padding: '0.3rem 0.7rem',
-                            opacity: busy === item.id ? 0.6 : 1,
-                            minHeight: '30px',
-                          }}
-                        >
-                          {busy === item.id ? '...' : 'Al'}
-                        </motion.button>
+                        {owned ? (
+                          <motion.button
+                            whileTap={{ scale: 0.94 }}
+                            onClick={() => isCompanion ? handleCompanion(item, item.type) : handleCosmetic(item, cosmeticKind)}
+                            disabled={busy === item.id}
+                            className={isActive ? 'btn-dark' : 'btn-gold'}
+                            style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem', opacity: busy === item.id ? 0.6 : 1, minHeight: '30px' }}
+                          >
+                            {busy === item.id ? '...' : isActive ? t('shop_deactivate') : t('shop_activate')}
+                          </motion.button>
+                        ) : (
+                          <motion.button
+                            whileTap={canAfford ? { scale: 0.94 } : {}}
+                            onClick={() => canAfford && handleBuy(item)}
+                            disabled={!canAfford || busy === item.id}
+                            className="btn-gold"
+                            style={{
+                              fontSize: '0.7rem', padding: '0.3rem 0.7rem',
+                              opacity: busy === item.id ? 0.6 : 1,
+                              minHeight: '30px',
+                            }}
+                          >
+                            {busy === item.id ? '...' : 'Al'}
+                          </motion.button>
+                        )}
                       </div>
                     </div>
                   </motion.div>

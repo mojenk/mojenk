@@ -95,6 +95,15 @@ async function buildSystem(character, storySummary, sessionTitle, inventory, lan
     ? `\n## TAKİPÇİLER — ${character.name} İLE BİRLİKTE SEYAHAT EDİYORLAR (${followers.length}/${MAX_ACTIVE_FOLLOWERS})\nBu karakterler artık ${character.name}'ın yol arkadaşı. Hikayede onları unutma, sahnelerde varlıklarını yansıt, diyaloglarına yer ver, tehlikede yardım etmelerine izin ver. Her takipçinin rol/seviye/can/moral/sadakat durumunu davranışlarına YANSIT: morali düşük (<30) yoldaş söylenir ve isteksizdir, sadakati düşük (<30) olan ayrılmayı ima eder, yaralı yoldaş temkinli dövüşür, 'downed' durumdaki yoldaş dinlenene kadar savaşamaz ve konuşamaz. SAVAŞTA yoldaşlar gerçekten savaşır ve gerçekten hasar alır: aktif düşman varken HER çatışma turunda, savaşabilir durumdaki aktif yoldaşlardan TAM 1 tanesi için follower_attack eventi göndermek ZORUNLUDUR (healer rolündekiler saldırmaz; onların desteğini sadece hikayede anlat — bu durumda o tur follower_attack gönderilmez). Aynı şekilde düşmanlar sadece oyuncuya vurmaz: düşman saldırılarında oyuncu ile yoldaşlar arasında dönüşümlü hedef seç; bir yoldaş vurulduğunda follower_damage eventi gönder ve yaranın etkisini hikayede anlat. Yoldaşlar asla görünmez değildir — savaşta kimin kimi hedeflediği anlatımda açık olsun. DİYALOGDA da yoldaşlar canlıdır: oyuncu bir yoldaşına ismiyle hitap ettiğinde veya ona bir şey sorduğunda o yoldaş MUTLAKA kendi kişiliğine uygun 1-2 cümleyle yanıt versin; karar anlarında, kamp sahnelerinde ve önemli olaylarda yoldaşlar kısa yorumlar/tavsiyeler/çekişmelerle sahneye katılsın.${partyFull ? ` PARTİ DOLU (${MAX_ACTIVE_FOLLOWERS}/${MAX_ACTIVE_FOLLOWERS}): Yeni yoldaş alınamaz — npc_recruit eventi gönderme; oyuncu yeni birini davet ederse NPC parti dolu olduğu için kibarca reddetsin veya oyuncuya bir yoldaşıyla yollarını ayırması gerektiğini hatırlatsın.` : ''}\n${followers.map(n => `- **${n.name}** [${ROLE_LABELS_TR[n.follower_role] || 'Yoldaş'}, Sv.${n.follower_level || 1}, HP ${n.follower_hp ?? '?'}/${n.follower_max_hp ?? '?'}, moral ${n.follower_morale ?? 60}/100, sadakat ${n.follower_loyalty ?? 60}/100, durum: ${n.follower_status || 'active'}] (${n.relationship}): ${n.description}${n.notes ? ' — ' + n.notes : ''}`).join('\n')}\n`
     : '';
 
+  const { findCatalog: findCompanionDef } = require('../data/items');
+  const companions = [
+    character.active_pet ? findCompanionDef(character.active_pet) : null,
+    character.active_mount ? findCompanionDef(character.active_mount) : null,
+  ].filter(Boolean);
+  const petBlock = companions.length > 0
+    ? `\n## EVCİL HAYVAN & BİNEK — OYUNCUNUN YANINDA\n${companions.map((c) => `- **${c.name}** (${c.type === 'pet' ? 'evcil hayvan' : 'binek'}): ${c.description}`).join('\n')}\nBu hayvanlar oyuncunun sadık yoldaşıdır; hikayede ara sıra görünsünler (kurt hırlar, baykuş tehlikeyi önceden sezer, at huysuzlanır). Savaşta evcil hayvan oyuncuya eşlik edebilir ama ayrı follower_attack eventi GEREKMEZ — katkılarını anlatımda yansıt. Hayvanlar asla konuşmaz; davranışlarıyla anlat.\n`
+    : '';
+
   const questBlock = (activeQuests && activeQuests.length > 0)
     ? `\n## AKTİF GÖREVLER — title'ı BUNLARLA HARFİ HARFİNE AYNI YAZ (kopyala-yapıştır gibi düşün, tek bir harf bile farklı olamaz)\n${activeQuests.map(q => `- "${q.title}": ${q.description || ''}`).join('\n')}\nOyuncunun eylemi bu görevlerden birinin hedefini karşılıyorsa (istenen yere gitti, istenen kişiyle konuştu, istenen eşyayı buldu/getirdi, istenen düşmanı yendi vb.) GECİKMEDEN, AYNI yanıtta {"event":"quest_complete","title":"..."} event'ini yukarıdaki title ile HARFİ HARFİNE aynı şekilde ekle. Emin değilsen bile oyuncu mantıklı bir şekilde hedefi tamamladıysa görevi kapat, ertelemeyip oyuncuyu bekletme.\n`
     : '';
@@ -182,7 +191,7 @@ Hikayedeki roller, sosyal tepkiler ve fiziksel yetenekler bu ırk özelliklerine
 
 ${character.background ? `## KARAKTER GEÇMİŞİ\n${character.background}\nBu geçmişi hikayenin akışına doğal yansıt: NPC'lerin tepkileri, geçmişle bağlantılı olaylar ve diyaloglar bu hikayeye göre şekillensin.\n` : ''}## SENARYO: ${sessionTitle || 'Bilinmeyen Macera'}
 ${scenarioHint}
-${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${storySummary}\n` : ''}${anchorBlock}${npcBlock}${followerBlock}${questBlock}${worldEventBlock}
+${storySummary ? `## ŞİMDİYE KADAR YAŞANANLAR — BUNLARI ASLA UNUTMA\n${storySummary}\n` : ''}${anchorBlock}${npcBlock}${followerBlock}${petBlock}${questBlock}${worldEventBlock}
 
 ## SAVAŞ KURALLARI
 1. **Saldırı**: Oyuncu d20 atıyorsa → sonuç >= düşman AC ise İSABET, sonra silah hasarı hesapla. Aksi halde ISKALAMA.
@@ -1481,7 +1490,8 @@ router.post('/final-death-save', async (req, res) => {
     if (!character || character.ownerUid !== req.firebaseUser.uid) return res.status(404).json({ error: 'Karakter bulunamadı' });
     if (character.status !== 'dead') return res.status(400).json({ error: 'Karakter ölü değil' });
 
-    const luck = await getDiceLuck(req.firebaseUser.uid);
+    const { getCompanionLuckBonus } = require('../data/items');
+    const luck = Math.min(0.9, (await getDiceLuck(req.firebaseUser.uid)) + getCompanionLuckBonus(character));
     const roll = rollLuckyDice(20, luck);
     const success = roll >= 10;
 

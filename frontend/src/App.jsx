@@ -11,6 +11,7 @@ import GamePage from './pages/GamePage';
 import CharacterSheetPage from './pages/CharacterSheetPage';
 import SettingsPage from './pages/SettingsPage';
 import HallOfFamePage from './pages/HallOfFamePage';
+import LeaderboardPage from './pages/LeaderboardPage';
 import AchievementsPage from './pages/AchievementsPage';
 import ShopPage from './pages/ShopPage';
 import AdminPage from './pages/AdminPage';
@@ -141,6 +142,14 @@ function AnimatedRoutes({ user, onLogout, isAdmin, onUserUpdate }) {
           element={
             <motion.div {...pageVariants} style={{ flex: 1 }}>
               <AchievementsPage user={user} />
+            </motion.div>
+          }
+        />
+        <Route
+          path="/leaderboard"
+          element={
+            <motion.div {...pageVariants} style={{ flex: 1 }}>
+              <LeaderboardPage user={user} />
             </motion.div>
           }
         />

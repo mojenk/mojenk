@@ -234,6 +234,10 @@ export async function getFallenHeroes() {
   return safeFetch(`${API}/characters/fallen`);
 }
 
+export async function getLeaderboard() {
+  return safeFetch(`${API}/leaderboard`);
+}
+
 export async function getSession(sessionId) {
   return safeFetch(`${API}/game/sessions/${sessionId}`);
 }
@@ -300,6 +304,20 @@ export async function shopBuy(characterId, itemId) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ characterId, itemId }),
+  });
+}
+
+export async function shopCompanionActivate(characterId, itemId, slot) {
+  return safeFetch(`${API}/shop/companion/activate`, {
+    method: 'POST',
+    body: JSON.stringify({ characterId, itemId, slot }),
+  });
+}
+
+export async function shopCosmeticEquip(characterId, itemId, kind) {
+  return safeFetch(`${API}/shop/cosmetic/equip`, {
+    method: 'POST',
+    body: JSON.stringify({ characterId, itemId, kind }),
   });
 }
 

@@ -21,6 +21,12 @@ export const ItemIcon = {
   scroll: ScrollText,
   ring: Diamond,
   gold: Coins,
+  pet: Rabbit,
+  mount: Target,
+  cosmetic: Gem,
+  title: Crown,
+  frame: Diamond,
+  dice_skin: Dices,
 };
 
 // Class icons — used in character creation / sheet

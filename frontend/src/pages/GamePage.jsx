@@ -1635,11 +1635,13 @@ export default function GamePage({ user }) {
               height: '2.5rem',
               borderRadius: '50%',
               background: 'rgba(92,74,42,0.15)',
-              border: '2px solid var(--gold)',
+              border: `2px solid ${{ gold: '#ffd700', emerald: '#34d399', crimson: '#e5484d' }[character?.equipped_frame] || 'var(--gold)'}`,
               padding: 0,
               overflow: 'hidden',
               flexShrink: 0,
-              boxShadow: '0 0 8px rgba(201,150,58,0.2)',
+              boxShadow: character?.equipped_frame
+                ? `0 0 10px ${{ gold: 'rgba(255,215,0,0.55)', emerald: 'rgba(52,211,153,0.55)', crimson: 'rgba(229,72,77,0.55)' }[character.equipped_frame]}`
+                : '0 0 8px rgba(201,150,58,0.2)',
             }}
           >
             <img
@@ -1665,6 +1667,20 @@ export default function GamePage({ user }) {
               >
                 {character.name}
               </span>
+              {character?.equipped_title && (
+                <span
+                  style={{
+                    color: '#c9a227',
+                    fontFamily: "'Crimson Text', serif",
+                    fontStyle: 'italic',
+                    fontSize: '0.72rem',
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  «{character.equipped_title}»
+                </span>
+              )}
               <span
                 style={{
                   color: 'var(--text-dim)',
@@ -3065,7 +3081,7 @@ export default function GamePage({ user }) {
 
             {reviveState === 'rolling' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
-                <DiceRoll value={reviveRoll?.roll || 1} rolling={true} size={88} label="d20" />
+                <DiceRoll value={reviveRoll?.roll || 1} rolling={true} size={88} label="d20" skin={character?.equipped_dice_skin} />
                 <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif", fontSize: '0.85rem' }}>{t('death_save_rolling')}</span>
               </div>
             )}
@@ -3076,7 +3092,7 @@ export default function GamePage({ user }) {
                 animate={{ scale: 1, opacity: 1 }}
                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}
               >
-                <DiceRoll value={reviveRoll.roll} rolling={false} size={88} label="d20" />
+                <DiceRoll value={reviveRoll.roll} rolling={false} size={88} label="d20" skin={character?.equipped_dice_skin} />
                 <span
                   style={{
                     color: reviveRoll.success ? '#4ade80' : 'var(--blood)',
@@ -3228,6 +3244,7 @@ export default function GamePage({ user }) {
                   rolling={diceRolling}
                   size={56}
                   label="d20"
+                  skin={character?.equipped_dice_skin}
                 />
                 <div>
                   <div

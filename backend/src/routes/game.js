@@ -149,7 +149,8 @@ router.post('/combat/attack', async (req, res) => {
       ? dexterityModifier
       : isFinesse ? Math.max(strengthModifier, dexterityModifier) : strengthModifier;
     const proficiencyBonus = Math.ceil(character.level / 4) + 1;
-    const diceLuck = await getDiceLuck(req.firebaseUser.uid);
+    const { getCompanionLuckBonus } = require('../data/items');
+    const diceLuck = Math.min(0.9, (await getDiceLuck(req.firebaseUser.uid)) + getCompanionLuckBonus(character));
     const attackRoll = rollLuckyDice(20, diceLuck);
     const attackTotal = attackRoll + attackModifier + proficiencyBonus;
     const isCritical = attackRoll === 20

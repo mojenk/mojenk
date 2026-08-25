@@ -1,9 +1,12 @@
 const express = require('express');
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
-const { CATALOG, RARITY } = require('../data/items');
+const { CATALOG, RARITY, findCatalog, getMountCarryBonus } = require('../data/items');
 
 const router = express.Router();
+
+const COMPANION_TYPES = ['pet', 'mount'];
+const COSMETIC_KIND_FIELD = { title: 'equipped_title', frame: 'equipped_frame', dice_skin: 'equipped_dice_skin' };
 
 function estimateSellPrice(item) {
   const catalogItem = CATALOG.find((entry) => entry.name === item.name);
@@ -25,7 +28,9 @@ function getCarryBonus(inventory) {
 
 router.get('/catalog', (req, res) => {
   const { scenario } = req.query;
-  let items = CATALOG.filter((item) => item.rarity === RARITY.COMMON);
+  // Temel esyalar sadece common; evcil hayvan/binek/kozmetik her rarity'de satilir
+  let items = CATALOG.filter((item) => item.rarity === RARITY.COMMON
+    || COMPANION_TYPES.includes(item.type) || item.type === 'cosmetic');
   if (scenario) {
     items = items.filter((item) => item.scenarios.includes(scenario) || item.scenarios.includes('all'));
   }
@@ -43,7 +48,7 @@ router.get('/inventory-status', verifyFirebaseToken, async (req, res) => {
       return res.status(404).json({ error: 'Karakter bulunamadı' });
     }
     const inventory = (await characterRef.collection('inventory').get()).docs.map(docData);
-    const capacity = INVENTORY_BASE_LIMIT + getCarryBonus(inventory);
+    const capacity = INVENTORY_BASE_LIMIT + getCarryBonus(inventory) + getMountCarryBonus(character);
     return res.json({ used: inventory.length, capacity });
   } catch (err) {
     return res.status(500).json({ error: 'Sunucu hatası' });
@@ -54,7 +59,8 @@ router.use(verifyFirebaseToken);
 
 router.post('/buy', async (req, res) => {
   const { characterId, itemId } = req.body;
-  const item = CATALOG.find((entry) => entry.id === itemId && entry.rarity === RARITY.COMMON);
+  const item = CATALOG.find((entry) => entry.id === itemId
+    && (entry.rarity === RARITY.COMMON || COMPANION_TYPES.includes(entry.type) || entry.type === 'cosmetic'));
   if (!characterId || !item) return res.status(400).json({ error: 'Geçersiz ürün veya karakter' });
 
   try {
@@ -67,14 +73,35 @@ router.post('/buy', async (req, res) => {
       return res.status(400).json({ error: `Yeterli altın yok. Gerekli: ${item.price}, Mevcut: ${character.gold || 0}` });
     }
 
+    // Evcil hayvan / binek / kozmetik: envanter slotu kaplamaz, karakter kartina islenir
+    if (COMPANION_TYPES.includes(item.type) || item.type === 'cosmetic') {
+      const ownedField = item.type === 'pet' ? 'owned_pets' : item.type === 'mount' ? 'owned_mounts' : 'owned_cosmetics';
+      const owned = Array.isArray(character[ownedField]) ? character[ownedField] : [];
+      if (owned.includes(item.id)) {
+        return res.status(400).json({ error: `${item.name} zaten sende var` });
+      }
+      const update = { gold: character.gold - item.price, updated_at: serverTimestamp() };
+      update[ownedField] = [...owned, item.id];
+      // Ilk evcil hayvan/binek otomatik aktif olsun
+      if (item.type === 'pet' && !character.active_pet) update.active_pet = item.id;
+      if (item.type === 'mount' && !character.active_mount) update.active_mount = item.id;
+      if (item.type === 'cosmetic' && item.cosmetic_kind && COSMETIC_KIND_FIELD[item.cosmetic_kind]) {
+        const eqField = COSMETIC_KIND_FIELD[item.cosmetic_kind];
+        if (!character[eqField]) update[eqField] = item.cosmetic_value;
+      }
+      await characterRef.update(update);
+      return res.json({ success: true, gold: character.gold - item.price, message: `${item.name} satın alındı!` });
+    }
+
     const inventorySnapshot = await characterRef.collection('inventory').get();
     const inventory = inventorySnapshot.docs.map(docData);
     const existing = inventory
       .find((entry) => entry.name === item.name && ['potion', 'misc'].includes(item.type));
     // Kapasite kontrolu: mevcut yigina ekleme yeni slot kaplamaz
-    if (!existing && inventory.length >= INVENTORY_BASE_LIMIT + getCarryBonus(inventory)) {
+    const capacity = INVENTORY_BASE_LIMIT + getCarryBonus(inventory) + getMountCarryBonus(character);
+    if (!existing && inventory.length >= capacity) {
       return res.status(400).json({
-        error: `Envanterin dolu (${INVENTORY_BASE_LIMIT + getCarryBonus(inventory)} eşya). Bir şeyler sat ya da Sırt Çantası gibi kapasite artıran bir eşya taşı.`,
+        error: `Envanterin dolu (${capacity} eşya). Bir şeyler sat ya da Sırt Çantası gibi kapasite artıran bir eşya taşı.`,
       });
     }
     const batch = firestore.batch();
@@ -137,6 +164,57 @@ router.post('/sell', async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ error: 'Satış tamamlanamadı' });
+  }
+});
+
+// Evcil hayvan / binek aktiflestir (itemId null = ayir)
+router.post('/companion/activate', async (req, res) => {
+  const { characterId, itemId, slot } = req.body; // slot: 'pet' | 'mount'
+  if (!characterId || !['pet', 'mount'].includes(slot)) {
+    return res.status(400).json({ error: 'Geçersiz istek' });
+  }
+  try {
+    const characterRef = firestore.collection('characters').doc(characterId);
+    const character = docData(await characterRef.get());
+    if (!character || character.ownerUid !== req.firebaseUser.uid) {
+      return res.status(404).json({ error: 'Karakter bulunamadı' });
+    }
+    const ownedField = slot === 'pet' ? 'owned_pets' : 'owned_mounts';
+    const activeField = slot === 'pet' ? 'active_pet' : 'active_mount';
+    const owned = Array.isArray(character[ownedField]) ? character[ownedField] : [];
+    if (itemId !== null && !owned.includes(itemId)) {
+      return res.status(400).json({ error: 'Bu hayvan sende yok' });
+    }
+    const def = itemId ? findCatalog(itemId) : null;
+    if (itemId && (!def || def.type !== slot)) return res.status(400).json({ error: 'Geçersiz hayvan' });
+    await characterRef.update({ [activeField]: itemId, updated_at: serverTimestamp() });
+    return res.json({ success: true, active: itemId, message: itemId ? `${def.name} artık yanında!` : 'Hayvan ayrıldı' });
+  } catch (err) {
+    return res.status(500).json({ error: 'İşlem tamamlanamadı' });
+  }
+});
+
+// Kozmetik kus an (itemId null = cikar)
+router.post('/cosmetic/equip', async (req, res) => {
+  const { characterId, itemId, kind } = req.body; // kind: 'title' | 'frame' | 'dice_skin'
+  if (!characterId || !COSMETIC_KIND_FIELD[kind]) return res.status(400).json({ error: 'Geçersiz istek' });
+  try {
+    const characterRef = firestore.collection('characters').doc(characterId);
+    const character = docData(await characterRef.get());
+    if (!character || character.ownerUid !== req.firebaseUser.uid) {
+      return res.status(404).json({ error: 'Karakter bulunamadı' });
+    }
+    const owned = Array.isArray(character.owned_cosmetics) ? character.owned_cosmetics : [];
+    if (itemId !== null && !owned.includes(itemId)) {
+      return res.status(400).json({ error: 'Bu kozmetik sende yok' });
+    }
+    const def = itemId ? findCatalog(itemId) : null;
+    if (itemId && (!def || def.cosmetic_kind !== kind)) return res.status(400).json({ error: 'Geçersiz kozmetik' });
+    const field = COSMETIC_KIND_FIELD[kind];
+    await characterRef.update({ [field]: itemId ? def.cosmetic_value : null, updated_at: serverTimestamp() });
+    return res.json({ success: true, equipped: itemId ? def.cosmetic_value : null });
+  } catch (err) {
+    return res.status(500).json({ error: 'İşlem tamamlanamadı' });
   }
 });
 
