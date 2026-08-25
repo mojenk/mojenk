@@ -1,0 +1,43 @@
+name: One-off Leaderboard Debug
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check leaderboard data
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          cd backend
+          npm ci --omit=dev
+          node -e "
+          const admin = require('firebase-admin');
+          const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+          admin.initializeApp({ credential: admin.credential.cert(sa) });
+          const db = admin.firestore();
+          (async () => {
+            const total = await db.collection('characters').get();
+            console.log('TOTAL CHARACTERS:', total.size);
+            const sample = total.docs.slice(0, 3).map((d) => {
+              const c = d.data();
+              return { name: c.name, level: c.level, gold: c.gold, status: c.status, hasOwner: Boolean(c.ownerUid) };
+            });
+            console.log('SAMPLE:', JSON.stringify(sample, null, 1));
+            try {
+              const byLevel = await db.collection('characters').orderBy('level', 'desc').limit(5).get();
+              console.log('ORDERBY level OK:', byLevel.size);
+            } catch (e) { console.log('ORDERBY level FAILED:', e.message); }
+            try {
+              const byGold = await db.collection('characters').orderBy('gold', 'desc').limit(5).get();
+              console.log('ORDERBY gold OK:', byGold.size);
+            } catch (e) { console.log('ORDERBY gold FAILED:', e.message); }
+            process.exit(0);
+          })().catch((e) => { console.error('FATAL', e); process.exit(1); });
+          "
