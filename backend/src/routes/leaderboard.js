@@ -52,20 +52,22 @@ async function fetchTop(orderField, limit = 50) {
   return enrich(chars);
 }
 
-// En uzun sure hayatta kalanlar: olu$um -> olum (veya simdi)
+// Oyunda en cok vakit gecirenler: hamleler arasi gercek oynama suresi (play_seconds)
 async function fetchSurvival(limit = 50) {
-  const snap = await firestore.collection('characters')
-    .orderBy('created_at', 'asc')
-    .limit(150)
-    .get();
-  const now = Date.now();
-  const chars = snap.docs.map(docData).filter((c) => c && c.name && toMs(c.created_at)).map((c) => {
-    const created = toMs(c.created_at);
-    const end = c.status === 'dead' ? (toMs(c.updated_at) || created) : now;
-    return { ...c, survived_seconds: Math.max(0, Math.round((end - created) / 1000)) };
-  });
-  chars.sort((a, b) => b.survived_seconds - a.survived_seconds);
-  return enrich(chars.slice(0, limit));
+  let snap;
+  try {
+    snap = await firestore.collection('characters')
+      .orderBy('play_seconds', 'desc')
+      .limit(limit)
+      .get();
+  } catch (err) {
+    // play_seconds alani hicbir karakterde yoksa (eski karakterler) bos doner
+    console.warn('fetchSurvival fallback:', err.message);
+    return [];
+  }
+  const chars = snap.docs.map(docData).filter((c) => c && c.name && c.play_seconds > 0)
+    .map((c) => ({ ...c, survived_seconds: c.play_seconds }));
+  return enrich(chars);
 }
 
 router.get('/', verifyFirebaseToken, async (req, res) => {

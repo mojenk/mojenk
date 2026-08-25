@@ -7,7 +7,7 @@ const { determineFollowerRole, followerMaxHp, followerAttackDamage, applyAllFoll
 const { getSetting } = require('../settings');
 const { deleteCharacterCascade } = require('../utils/deleteCharacterCascade');
 const { verifyFirebaseToken } = require('../middleware/auth');
-const { firestore, docData, serverTimestamp } = require('../firestore');
+const { firestore, docData, serverTimestamp, increment } = require('../firestore');
 const { checkAndConsumeDailyTurn, claimDailyBonus, getDailyStatus, startAdSession, refundDailyTurn, getDiceLuck, rollLuckyDice } = require('../utils/dailyLimit');
 const { CATALOG, pickWeightedItem, RARITY } = require('../data/items');
 const { bumpStats } = require('../utils/achievements');
@@ -1214,6 +1214,21 @@ router.post('/chat', async (req, res) => {
     });
     batch.update(sessionRef, { updated_at: serverTimestamp() });
     await batch.commit();
+
+    // Gercek oynama suresi biriktir: iki hamle arasi gecen sure, ust sinir 5 dk
+    // (oyunu kapatip gunlerce acmayanin suresi sayilmaz)
+    try {
+      const toMs = (ts) => (ts && ts.toDate ? ts.toDate().getTime() : ts ? new Date(ts).getTime() : 0);
+      const lastActivity = toMs(session.updated_at);
+      if (lastActivity) {
+        const deltaSec = Math.max(0, Math.min(300, Math.round((Date.now() - lastActivity) / 1000)));
+        if (deltaSec > 0) {
+          await characterRef.update({ play_seconds: increment(deltaSec) });
+        }
+      }
+    } catch (playErr) {
+      console.warn('play_seconds tracking warning:', playErr.message);
+    }
 
     let events = [];
     try {
