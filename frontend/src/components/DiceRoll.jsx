@@ -116,8 +116,30 @@ export default function DiceRoll({ value, rolling, size = 64, label, skin }) {
         justifyContent: 'center',
         position: 'relative',
         border: `2px solid ${borderColor}`,
+        overflow: 'hidden',
       }}
     >
+      {theme && (
+        <>
+          {/* Koselerde kosuk pariltilar */}
+          <div
+            style={{
+              position: 'absolute', inset: 0, borderRadius: 'inherit', pointerEvents: 'none',
+              background: 'linear-gradient(115deg, rgba(255,255,255,0.28) 0%, transparent 28%, transparent 72%, rgba(255,255,255,0.08) 100%)',
+            }}
+          />
+          {/* Hareketli parlama supurmesi */}
+          <motion.div
+            animate={{ x: ['-130%', '230%'] }}
+            transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 1.6, ease: 'easeInOut' }}
+            style={{
+              position: 'absolute', top: 0, bottom: 0, width: '45%', pointerEvents: 'none',
+              background: 'linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)',
+              filter: 'blur(2px)',
+            }}
+          />
+        </>
+      )}
       <span
         style={{
           fontFamily: "'Cinzel', serif",
@@ -125,6 +147,7 @@ export default function DiceRoll({ value, rolling, size = 64, label, skin }) {
           fontWeight: 900,
           color: textColor,
           lineHeight: 1,
+          zIndex: 1,
           textShadow: value === 20 ? '0 0 8px rgba(255,255,255,0.6)' : theme ? '0 1px 2px rgba(0,0,0,0.5)' : 'none',
         }}
       >
@@ -138,6 +161,7 @@ export default function DiceRoll({ value, rolling, size = 64, label, skin }) {
             color: labelColor,
             letterSpacing: '0.06em',
             marginTop: size * 0.04,
+            zIndex: 1,
           }}
         >
           {label}

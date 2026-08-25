@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="72%">
+      <stop offset="0%" stop-color="#241a05"/>
+      <stop offset="100%" stop-color="#0f0902"/>
+    </radialGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0.85" y2="1">
+      <stop offset="0%" stop-color="#fff3b0"/>
+      <stop offset="55%" stop-color="#e6b800"/>
+      <stop offset="100%" stop-color="#8a5a00"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="14" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="250" r="185" fill="#ffd700" opacity="0.22" filter="url(#soft)"/>
+  <g filter="url(#glow)">
+    <!-- d20 icosahedron yuzeyi (ust bakan ucgen cati) -->
+    <polygon points="256,72 96,330 416,330" fill="url(#face)" stroke="#ffd700" stroke-width="7" stroke-linejoin="round"/>
+    <polygon points="256,72 96,330 256,300" fill="#ffffff" opacity="0.10"/>
+    <polygon points="256,72 256,300 416,330" fill="#000000" opacity="0.18"/>
+    <polygon points="96,330 256,300 416,330" fill="#000000" opacity="0.30"/>
+    <!-- kenar parlamalari -->
+    <polyline points="256,72 96,330" fill="none" stroke="#fff3b0" stroke-width="3" opacity="0.8"/>
+    <polyline points="256,72 416,330" fill="none" stroke="#fff3b0" stroke-width="2" opacity="0.4"/>
+    <!-- 20 rakami -->
+    <text x="256" y="285" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="128" font-weight="bold" fill="#3a2a00" style="letter-spacing:2px">20</text>
+    <!-- rune suslemeleri -->
+    <text x="150" y="392" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#7a5c00" opacity="0.85">&#10022;</text>
+    <text x="362" y="392" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#7a5c00" opacity="0.85">&#10022;</text>
+    <text x="256" y="415" text-anchor="middle" font-family="Georgia, serif" font-size="30" fill="#7a5c00" opacity="0.6">&#10039;</text>
+  </g>
+  <!-- kivilcim/mote parcaciklari -->
+  <g fill="#ffd700">
+    <circle cx="120" cy="150" r="5" opacity="0.7"/>
+    <circle cx="400" cy="130" r="4" opacity="0.55"/>
+    <circle cx="440" cy="250" r="3" opacity="0.45"/>
+    <circle cx="80" cy="270" r="4" opacity="0.5"/>
+    <circle cx="180" cy="90" r="3" opacity="0.5"/>
+    <circle cx="330" cy="80" r="4" opacity="0.6"/>
+  </g>
+</svg>

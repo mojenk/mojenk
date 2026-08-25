@@ -307,6 +307,13 @@ export async function shopBuy(characterId, itemId) {
   });
 }
 
+export async function verifyCosmeticPurchase(productId, purchaseToken, characterId) {
+  return safeFetch(`${API}/premium/verify-cosmetic`, {
+    method: 'POST',
+    body: JSON.stringify({ productId, purchaseToken, characterId }),
+  });
+}
+
 export async function shopCompanionActivate(characterId, itemId, slot) {
   return safeFetch(`${API}/shop/companion/activate`, {
     method: 'POST',

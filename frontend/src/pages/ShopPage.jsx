@@ -3,12 +3,14 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Coins, ShoppingBag, Backpack } from 'lucide-react';
 import { getItemIcon } from '../utils/icons';
-import { getCharacter, shopCatalog, shopBuy, shopSell, shopCompanionActivate, shopCosmeticEquip } from '../utils/api';
+import { getCharacter, shopCatalog, shopBuy, shopSell, shopCompanionActivate, shopCosmeticEquip, verifyCosmeticPurchase } from '../utils/api';
+import { isBillingAvailable, initBilling, purchaseProduct, getPurchaseToken, getProductId, getBillingProducts } from '../utils/billing';
+import { COSMETIC_PLAY_PRODUCTS } from '../utils/cosmeticProducts';
 import { useLang, t } from '../utils/i18n';
 import { playClick, playHeal, playError, playLevelUp } from '../utils/sounds';
 import Particles from '../components/Particles';
 
-const CATEGORY_ORDER = ['Tüketici', 'Silah', 'Zırh', 'Çeşitli', 'Evcil Hayvan', 'Binek', 'Unvan', 'Çerçeve', 'Zar Teması'];
+const CATEGORY_ORDER = ['Tüketici', 'Silah', 'Zırh', 'Çeşitli', 'Evcil Hayvan', 'Binek', 'Unvan', 'Çerçeve', 'Zar Teması', 'Paket'];
 
 // Turkish category label -> item type key, so getItemIcon() can resolve the
 // correct lucide icon for each category tab.
@@ -22,6 +24,7 @@ const CATEGORY_TYPE = {
   'Unvan': 'title',
   'Çerçeve': 'frame',
   'Zar Teması': 'dice_skin',
+  'Paket': 'pack',
 };
 
 const COSMETIC_CATEGORY_KIND = { 'Unvan': 'title', 'Çerçeve': 'frame', 'Zar Teması': 'dice_skin' };
@@ -97,6 +100,43 @@ export default function ShopPage({ user }) {
   }, [characterId, scenario]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!isBillingAvailable()) return;
+    initBilling(COSMETIC_PLAY_PRODUCTS, [], {
+      onProductUpdated: () => setStoreProducts(getBillingProducts()),
+    })
+      .then(() => setStoreProducts(getBillingProducts()))
+      .catch(() => {});
+  }, []);
+
+  const getStorePrice = (item) => {
+    if (!item.play_product_id) return null;
+    const p = storeProducts.find((sp) => sp.id === item.play_product_id);
+    return p?.pricing?.price || p?.price || null;
+  };
+
+  const handleRealMoneyBuy = async (item) => {
+    if (busy) return;
+    setBusy(item.id);
+    try {
+      const transaction = await purchaseProduct(item.play_product_id);
+      const token = getPurchaseToken(transaction);
+      const pid = getProductId(transaction);
+      if (!token || !pid) throw new Error('Satın alma jetonu alınamadı');
+      const result = await verifyCosmeticPurchase(pid, token, characterId);
+      setCharacter((c) => ({ ...c, owned_cosmetics: result.owned_cosmetics || [...(c.owned_cosmetics || []), ...(result.granted || [])] }));
+      showToast(`${item.name} satın alındı!`, 'success');
+      playLevelUp();
+    } catch (err) {
+      if (!/cancel/i.test(err.message || '')) {
+        showToast(err.message || 'Satın alma başarısız', 'error');
+        playError();
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const handleBuy = async (item) => {
     if (busy) return;
@@ -319,11 +359,18 @@ export default function ShopPage({ user }) {
               {(categorized[activeCategory] || []).map((item) => {
                 const isCompanion = item.type === 'pet' || item.type === 'mount';
                 const cosmeticKind = item.type === 'cosmetic' ? item.cosmetic_kind : null;
+                const isPack = item.type === 'pack';
+                const ownedCosmetics = character?.owned_cosmetics || [];
                 const owned = isCompanion
                   ? (character?.[item.type === 'pet' ? 'owned_pets' : 'owned_mounts'] || []).includes(item.id)
+                  : isPack
+                  ? (item.pack_grants || []).every((g) => ownedCosmetics.includes(g))
                   : cosmeticKind
-                  ? (character?.owned_cosmetics || []).includes(item.id)
+                  ? ownedCosmetics.includes(item.id)
                   : false;
+                const storePrice = getStorePrice(item);
+                const billingOn = isBillingAvailable();
+                const realMoneyItem = Boolean(item.play_product_id) && billingOn;
                 const equipFieldMap = { title: 'equipped_title', frame: 'equipped_frame', dice_skin: 'equipped_dice_skin' };
                 const isActive = isCompanion
                   ? character?.[item.type === 'pet' ? 'active_pet' : 'active_mount'] === item.id
@@ -395,16 +442,27 @@ export default function ShopPage({ user }) {
                         {item.description}
                       </p>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.6rem' }}>
-                        <span
-                          style={{
-                            color: canAfford ? 'var(--gold)' : 'var(--blood)',
-                            fontFamily: "'Cinzel', serif", fontSize: '0.82rem', fontWeight: 600,
-                            display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
-                          }}
-                        >
-                          <Coins size={13} />{item.price}
-                        </span>
-                        {owned ? (
+                        {realMoneyItem ? (
+                          <span
+                            style={{
+                              color: 'var(--gold)',
+                              fontFamily: "'Cinzel', serif", fontSize: '0.82rem', fontWeight: 600,
+                            }}
+                          >
+                            {storePrice || t('shop_real_money')}
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              color: canAfford ? 'var(--gold)' : 'var(--blood)',
+                              fontFamily: "'Cinzel', serif", fontSize: '0.82rem', fontWeight: 600,
+                              display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
+                            }}
+                          >
+                            <Coins size={13} />{item.price}
+                          </span>
+                        )}
+                        {owned && !isPack ? (
                           <motion.button
                             whileTap={{ scale: 0.94 }}
                             onClick={() => isCompanion ? handleCompanion(item, item.type) : handleCosmetic(item, cosmeticKind)}
@@ -413,6 +471,24 @@ export default function ShopPage({ user }) {
                             style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem', opacity: busy === item.id ? 0.6 : 1, minHeight: '30px' }}
                           >
                             {busy === item.id ? '...' : isActive ? t('shop_deactivate') : t('shop_activate')}
+                          </motion.button>
+                        ) : owned && isPack ? (
+                          <span style={{ color: '#8fbf7f', fontFamily: "'Cinzel', serif", fontSize: '0.7rem' }}>{t('shop_owned')}</span>
+                        ) : isPack && !billingOn ? (
+                          <span style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.68rem' }}>{t('shop_android_only')}</span>
+                        ) : realMoneyItem ? (
+                          <motion.button
+                            whileTap={{ scale: 0.94 }}
+                            onClick={() => handleRealMoneyBuy(item)}
+                            disabled={busy === item.id || !storePrice}
+                            className="btn-gold"
+                            style={{
+                              fontSize: '0.7rem', padding: '0.3rem 0.7rem',
+                              opacity: busy === item.id || !storePrice ? 0.6 : 1,
+                              minHeight: '30px',
+                            }}
+                          >
+                            {busy === item.id ? '...' : t('shop_buy_money')}
                           </motion.button>
                         ) : (
                           <motion.button

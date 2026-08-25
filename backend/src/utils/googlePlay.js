@@ -41,6 +41,16 @@ async function verifyProduct(productId, purchaseToken) {
   return res.data;
 }
 
+// Consume a one-time product purchase (kozmetik gibi tekrar satin alinabilir urunler icin)
+async function consumeProduct(productId, purchaseToken) {
+  const androidpublisher = getAndroidPublisher();
+  await androidpublisher.purchases.products.consume({
+    packageName: PACKAGE_NAME,
+    productId,
+    token: purchaseToken,
+  });
+}
+
 // Verify a subscription purchase
 async function verifySubscription(subscriptionId, purchaseToken) {
   const androidpublisher = getAndroidPublisher();
@@ -68,6 +78,7 @@ function isSubscriptionActive(sub) {
 module.exports = {
   verifyProduct,
   verifySubscription,
+  consumeProduct,
   isProductActive,
   isSubscriptionActive,
   getServiceAccountJson,

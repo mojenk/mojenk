@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCharacters, getSessions, deleteCharacter, deleteSession } from '../utils/api';
+import { getCharacters, getSessions, deleteCharacter, deleteSession, getLeaderboard } from '../utils/api';
 import { playClick, playDamage, playError } from '../utils/sounds';
 import Particles from '../components/Particles';
 import AnnouncementsBar from '../components/AnnouncementsBar';
-import { Sparkles, Swords, Castle, Skull, Heart, Coins, ScrollText, Trash2, X, Dices, Crown, ChevronRight, Play } from 'lucide-react';
+import { Sparkles, Swords, Castle, Skull, Heart, Coins, ScrollText, Trash2, X, Dices, Crown, ChevronRight, Play, Trophy } from 'lucide-react';
 import { useLang, t, getLang } from '../utils/i18n';
 
 const RACE_PORTRAITS = {
@@ -30,6 +30,8 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [createdNotice, setCreatedNotice] = useState('');
+  const [lbData, setLbData] = useState({ level: [], gold: [] });
+  const [lbTab, setLbTab] = useState('level');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -54,6 +56,9 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
         map[c.id] = (sessionsResults[i].sessions || []).slice(0, 5);
       });
       setSessionMap(map);
+      getLeaderboard()
+        .then((lb) => setLbData({ level: lb.level || [], gold: lb.gold || [] }))
+        .catch(() => {});
     } catch (err) {
       setError(err.message || t('data_load_fail'));
     }
@@ -197,14 +202,6 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
             style={{ fontSize: '0.75rem', padding: '0.35rem 0.85rem', minHeight: '36px' }}
           >
             {t('achievements_btn')}
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            onClick={() => { playClick(); navigate('/leaderboard'); }}
-            className="btn-dark"
-            style={{ fontSize: '0.75rem', padding: '0.35rem 0.85rem', minHeight: '36px' }}
-          >
-            {t('leaderboard_btn')}
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.96 }}
@@ -805,6 +802,85 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
         )}
       </AnimatePresence>
       </div>
+
+        {/* Gomulu Liderlik Tablosu — top 5 */}
+        {(lbData.level.length > 0 || lbData.gold.length > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="stone-card"
+            style={{ margin: '0 1rem 1.5rem', padding: '0.85rem 0.9rem' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.55rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <Trophy size={16} style={{ color: 'var(--gold)' }} />
+                <span className="font-fantasy" style={{ color: 'var(--gold2)', fontSize: '0.9rem', letterSpacing: '0.08em' }}>
+                  {t('leaderboard_title')}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                {['level', 'gold'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => { playClick(); setLbTab(tab); }}
+                    className={lbTab === tab ? 'btn-gold' : 'btn-dark'}
+                    style={{ fontSize: '0.65rem', padding: '0.2rem 0.55rem', minHeight: '28px' }}
+                  >
+                    {tab === 'level' ? t('leaderboard_tab_level') : t('leaderboard_tab_gold')}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              {(lbTab === 'level' ? lbData.level : lbData.gold).slice(0, 5).map((e) => (
+                <div
+                  key={e.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.55rem',
+                    padding: '0.35rem 0.5rem', borderRadius: '6px',
+                    background: e.is_own ? 'rgba(201,162,39,0.12)' : 'rgba(255,255,255,0.02)',
+                    border: e.is_own ? '1px solid rgba(232,193,90,0.45)' : '1px solid transparent',
+                  }}
+                >
+                  <span
+                    className="font-fantasy"
+                    style={{
+                      width: '1.4rem', textAlign: 'center', fontSize: '0.8rem', fontWeight: 700,
+                      color: e.rank === 1 ? '#e8c15a' : e.rank === 2 ? '#c9c9d4' : e.rank === 3 ? '#b58150' : 'var(--text-dim)',
+                    }}
+                  >
+                    {e.rank}
+                  </span>
+                  <div style={{ width: '1.7rem', height: '1.7rem', borderRadius: '50%', overflow: 'hidden', border: '1px solid rgba(92,74,42,0.5)', flexShrink: 0 }}>
+                    <img src={e.portrait || '/races/insan.png'} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span className="font-fantasy" style={{ color: 'var(--text)', fontSize: '0.78rem' }}>
+                      {e.name}
+                    </span>
+                    {e.title && (
+                      <span style={{ color: '#c9a227', fontFamily: "'Crimson Text', serif", fontStyle: 'italic', fontSize: '0.65rem', marginLeft: '0.3rem' }}>
+                        «{e.title}»
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-fantasy" style={{ color: '#e8c15a', fontSize: '0.78rem', fontWeight: 600, flexShrink: 0 }}>
+                    {lbTab === 'level' ? `${t('leaderboard_level')}${e.level}` : e.gold}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => { playClick(); navigate('/leaderboard'); }}
+              className="btn-dark"
+              style={{ width: '100%', marginTop: '0.6rem', fontSize: '0.72rem', padding: '0.4rem', minHeight: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
+            >
+              {t('leaderboard_view_all')} <ChevronRight size={14} />
+            </motion.button>
+          </motion.div>
+        )}
     </div>
   );
 }

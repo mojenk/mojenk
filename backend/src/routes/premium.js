@@ -3,7 +3,8 @@ const router = express.Router();
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { firestore, docData, serverTimestamp } = require('../firestore');
 const { isPremium, grantPremium } = require('../utils/premium');
-const { verifyProduct, verifySubscription, isProductActive, isSubscriptionActive, getServiceAccountJson } = require('../utils/googlePlay');
+const { verifyProduct, verifySubscription, consumeProduct, isProductActive, isSubscriptionActive, getServiceAccountJson } = require('../utils/googlePlay');
+const { CATALOG } = require('../data/items');
 const { google } = require('googleapis');
 
 const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v1';
@@ -273,6 +274,47 @@ router.get('/public-test', async (req, res) => {
     console.error('premium/public-test error:', err.message);
     results.error = { step: 'auth', message: err.message };
     return res.status(500).json({ ok: false, results });
+  }
+});
+
+
+// Kozmetik/paket satin alimini dogrular ve karaktere hediye eder.
+// play_product_id'si olan her urun (zar temalari, unvan/cerceve paketleri) bu yolla alinir.
+router.post('/verify-cosmetic', verifyFirebaseToken, async (req, res) => {
+  const uid = req.firebaseUser.uid;
+  const { productId, purchaseToken, characterId } = req.body;
+  if (!productId || !purchaseToken || !characterId) {
+    return res.status(400).json({ error: 'productId, purchaseToken ve characterId gerekli' });
+  }
+  try {
+    const item = CATALOG.find((e) => e.play_product_id === productId);
+    if (!item) return res.status(400).json({ error: 'Bilinmeyen ürün' });
+
+    const characterRef = firestore.collection('characters').doc(characterId);
+    const character = docData(await characterRef.get());
+    if (!character || character.ownerUid !== uid) {
+      return res.status(404).json({ error: 'Karakter bulunamadı' });
+    }
+
+    const product = await verifyProduct(productId, purchaseToken);
+    if (!isProductActive(product)) {
+      return res.status(402).json({ error: 'Satın alım aktif değil veya doğrulanamadı' });
+    }
+
+    const granted = item.type === 'pack' ? (item.pack_grants || []) : [item.id];
+    const owned = Array.isArray(character.owned_cosmetics) ? character.owned_cosmetics : [];
+    const merged = [...new Set([...owned, ...granted])];
+    await characterRef.update({ owned_cosmetics: merged, updated_at: serverTimestamp() });
+
+    // Tuket ki ayni urun baska karaktere / tekrar alinabilsin
+    try { await consumeProduct(productId, purchaseToken); } catch (err) {
+      console.warn('consumeProduct warning:', err.message);
+    }
+
+    return res.json({ ok: true, granted, owned_cosmetics: merged });
+  } catch (err) {
+    console.error('premium/verify-cosmetic error:', err.message);
+    return res.status(500).json({ error: 'Satın alım doğrulanırken hata oluştu', detail: err.message });
   }
 });
 
