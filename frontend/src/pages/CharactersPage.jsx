@@ -765,81 +765,6 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
             })}
           </div>
         )}
-      </div>
-
-      {/* Delete confirmation overlay */}
-      <AnimatePresence>
-        {deleteConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.75)',
-              zIndex: 100,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '1.5rem',
-            }}
-            onClick={() => !deleting && setDeleteConfirm(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="stone-card"
-              style={{ padding: '1.5rem', maxWidth: '20rem', width: '100%', textAlign: 'center' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'center', color: 'var(--blood)' }}><Skull size={40} /></div>
-              <h3
-                className="font-fantasy"
-                style={{ color: 'var(--blood)', fontSize: '1rem', margin: '0 0 0.5rem' }}
-              >{t('delete_hero_title')}</h3>
-              <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.9rem', marginBottom: '1rem' }}>
-                {t("delete_hero_desc", characters.find((c) => c.id === deleteConfirm)?.name || "")}
-              </p>
-              <div style={{ display: 'flex', gap: '0.6rem' }}>
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => setDeleteConfirm(null)}
-                  className="btn-dark"
-                  disabled={deleting}
-                  style={{ flex: 1, fontSize: '0.9rem', padding: '0.5rem 0' }}
-                >{t('cancel')}</motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => handleDelete(deleteConfirm)}
-                  disabled={deleting}
-                  style={{
-                    flex: 1,
-                    background: 'rgba(155,32,32,0.25)',
-                    border: '1px solid rgba(155,32,32,0.6)',
-                    color: '#ff6b6b',
-                    fontFamily: "'Cinzel', serif",
-                    fontSize: '0.9rem',
-                    padding: '0.5rem 0',
-                    borderRadius: '8px',
-                    cursor: deleting ? 'not-allowed' : 'pointer',
-                    opacity: deleting ? 0.5 : 1,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.4rem',
-                  }}
-                >
-                  {deleting ? '...' : (<><Skull size={15} /> {t('delete')}</>)}
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      </div>
-
         {/* Kozmetik Magaza — gercek parayla (ana ekran) */}
         {cosmetics.length > 0 && (
           <motion.div
@@ -990,6 +915,81 @@ export default function CharactersPage({ user, onLogout, isAdmin }) {
             </motion.button>
           </motion.div>
         )}
+      </div>
+
+      {/* Delete confirmation overlay */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.75)',
+              zIndex: 100,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1.5rem',
+            }}
+            onClick={() => !deleting && setDeleteConfirm(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="stone-card"
+              style={{ padding: '1.5rem', maxWidth: '20rem', width: '100%', textAlign: 'center' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'center', color: 'var(--blood)' }}><Skull size={40} /></div>
+              <h3
+                className="font-fantasy"
+                style={{ color: 'var(--blood)', fontSize: '1rem', margin: '0 0 0.5rem' }}
+              >{t('delete_hero_title')}</h3>
+              <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.9rem', marginBottom: '1rem' }}>
+                {t("delete_hero_desc", characters.find((c) => c.id === deleteConfirm)?.name || "")}
+              </p>
+              <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setDeleteConfirm(null)}
+                  className="btn-dark"
+                  disabled={deleting}
+                  style={{ flex: 1, fontSize: '0.9rem', padding: '0.5rem 0' }}
+                >{t('cancel')}</motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => handleDelete(deleteConfirm)}
+                  disabled={deleting}
+                  style={{
+                    flex: 1,
+                    background: 'rgba(155,32,32,0.25)',
+                    border: '1px solid rgba(155,32,32,0.6)',
+                    color: '#ff6b6b',
+                    fontFamily: "'Cinzel', serif",
+                    fontSize: '0.9rem',
+                    padding: '0.5rem 0',
+                    borderRadius: '8px',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    opacity: deleting ? 0.5 : 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
+                  {deleting ? '...' : (<><Skull size={15} /> {t('delete')}</>)}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      </div>
+
     </div>
   );
 }
