@@ -15,12 +15,7 @@ const RACE_ICON = {
   'Melek Soylu': '/races/meleksoylu.png',
 };
 
-async function fetchTop(orderField, limit = 50) {
-  const snap = await firestore.collection('characters')
-    .orderBy(orderField, 'desc')
-    .limit(limit)
-    .get();
-  const chars = snap.docs.map(docData).filter((c) => c && c.name);
+async function enrich(chars) {
   const uids = [...new Set(chars.map((c) => c.ownerUid).filter(Boolean))];
   const usernames = {};
   await Promise.all(uids.map(async (uid) => {
@@ -42,14 +37,43 @@ async function fetchTop(orderField, limit = 50) {
     is_own: false,
     portrait: RACE_ICON[c.race] || null,
     status: c.status || 'alive',
+    survived_seconds: c.survived_seconds || 0,
   }));
+}
+
+const toMs = (ts) => (ts && ts.toDate ? ts.toDate().getTime() : ts ? new Date(ts).getTime() : 0);
+
+async function fetchTop(orderField, limit = 50) {
+  const snap = await firestore.collection('characters')
+    .orderBy(orderField, 'desc')
+    .limit(limit)
+    .get();
+  const chars = snap.docs.map(docData).filter((c) => c && c.name);
+  return enrich(chars);
+}
+
+// En uzun sure hayatta kalanlar: olu$um -> olum (veya simdi)
+async function fetchSurvival(limit = 50) {
+  const snap = await firestore.collection('characters')
+    .orderBy('created_at', 'asc')
+    .limit(150)
+    .get();
+  const now = Date.now();
+  const chars = snap.docs.map(docData).filter((c) => c && c.name && toMs(c.created_at)).map((c) => {
+    const created = toMs(c.created_at);
+    const end = c.status === 'dead' ? (toMs(c.updated_at) || created) : now;
+    return { ...c, survived_seconds: Math.max(0, Math.round((end - created) / 1000)) };
+  });
+  chars.sort((a, b) => b.survived_seconds - a.survived_seconds);
+  return enrich(chars.slice(0, limit));
 }
 
 router.get('/', verifyFirebaseToken, async (req, res) => {
   try {
-    const [byLevel, byGold] = await Promise.all([
+    const [byLevel, byGold, bySurvival] = await Promise.all([
       fetchTop('level'),
       fetchTop('gold'),
+      fetchSurvival(),
     ]);
     // Seviye aynıysa deneyim ile kır
     byLevel.sort((a, b) => (b.level - a.level) || (b.experience - a.experience));
@@ -63,6 +87,7 @@ router.get('/', verifyFirebaseToken, async (req, res) => {
     res.json({
       level: await markOwn(mark(byLevel)),
       gold: await markOwn(mark(byGold)),
+      survival: await markOwn(mark(bySurvival)),
     });
   } catch (err) {
     console.error('leaderboard error:', err.message);

@@ -22,6 +22,16 @@ const RACE_PORTRAITS = {
   'Melek Soylu': '/races/meleksoylu.png',
 };
 
+function formatLbDuration(seconds) {
+  if (!seconds) return '0';
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}${t('leaderboard_day')}${h}${t('leaderboard_hour')}`;
+  if (h > 0) return `${h}${t('leaderboard_hour')}${m}${t('leaderboard_min')}`;
+  return `${m}${t('leaderboard_min')}`;
+}
+
 export default function CharactersPage({ user, onLogout, isAdmin, onUserUpdate }) {
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +43,7 @@ export default function CharactersPage({ user, onLogout, isAdmin, onUserUpdate }
   const [deleting, setDeleting] = useState(false);
   const [createdNotice, setCreatedNotice] = useState('');
   const [lbData, setLbData] = useState(null);
+  const lbLists = lbData ? { level: lbData.level, gold: lbData.gold, survival: lbData.survival || [] } : null;
   const [cosmetics, setCosmetics] = useState([]);
   const [storeProducts, setStoreProducts] = useState([]);
   const [cosBusy, setCosBusy] = useState(null);
@@ -71,7 +82,7 @@ export default function CharactersPage({ user, onLogout, isAdmin, onUserUpdate }
           .catch(() => {});
       }
       getLeaderboard()
-        .then((lb) => { console.log('leaderboard data:', lb); setLbData({ level: lb.level || [], gold: lb.gold || [] }); })
+        .then((lb) => { setLbData({ level: lb.level || [], gold: lb.gold || [], survival: lb.survival || [] }); })
         .catch((err) => { console.error('leaderboard fetch error:', err); setLbData({ level: [], gold: [], error: err.message || 'hata' }); });
     } catch (err) {
       setError(err.message || t('data_load_fail'));
@@ -896,25 +907,25 @@ export default function CharactersPage({ user, onLogout, isAdmin, onUserUpdate }
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '0.35rem' }}>
-                {['level', 'gold'].map((tab) => (
+                {['level', 'gold', 'survival'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => { playClick(); setLbTab(tab); }}
                     className={lbTab === tab ? 'btn-gold' : 'btn-dark'}
                     style={{ fontSize: '0.65rem', padding: '0.2rem 0.55rem', minHeight: '28px' }}
                   >
-                    {tab === 'level' ? t('leaderboard_tab_level') : t('leaderboard_tab_gold')}
+                    {tab === 'level' ? t('leaderboard_tab_level') : tab === 'gold' ? t('leaderboard_tab_gold') : t('leaderboard_tab_survival')}
                   </button>
                 ))}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              {(lbTab === 'level' ? lbData.level : lbData.gold).length === 0 && (
+              {lbLists[lbTab].length === 0 && (
                 <p style={{ color: 'var(--text-dim)', fontFamily: "'Crimson Text', serif", fontSize: '0.78rem', textAlign: 'center', padding: '0.5rem 0', margin: 0 }}>
                   {lbData.error ? lbData.error : t('leaderboard_empty')}
                 </p>
               )}
-              {(lbTab === 'level' ? lbData.level : lbData.gold).slice(0, 5).map((e) => (
+              {lbLists[lbTab].slice(0, 5).map((e) => (
                 <div
                   key={e.id}
                   style={{
@@ -947,7 +958,7 @@ export default function CharactersPage({ user, onLogout, isAdmin, onUserUpdate }
                     )}
                   </div>
                   <span className="font-fantasy" style={{ color: '#e8c15a', fontSize: '0.78rem', fontWeight: 600, flexShrink: 0 }}>
-                    {lbTab === 'level' ? `${t('leaderboard_level')}${e.level}` : e.gold}
+                    {lbTab === 'level' ? `${t('leaderboard_level')}${e.level}` : lbTab === 'gold' ? e.gold : formatLbDuration(e.survived_seconds)}
                   </span>
                 </div>
               ))}

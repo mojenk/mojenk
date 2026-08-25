@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trophy, Coins, Crown } from 'lucide-react';
+import { Trophy, Coins, Crown, HeartPulse } from 'lucide-react';
 import { getLeaderboard } from '../utils/api';
 import { useLang, t, getLang } from '../utils/i18n';
 import { playClick } from '../utils/sounds';
 import Particles from '../components/Particles';
+
+function formatDuration(seconds) {
+  if (!seconds) return '0';
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}${t('leaderboard_day')} ${h}${t('leaderboard_hour')}`;
+  if (h > 0) return `${h}${t('leaderboard_hour')} ${m}${t('leaderboard_min')}`;
+  return `${m}${t('leaderboard_min')}`;
+}
 
 const RANK_STYLE = {
   1: { color: '#e8c15a', size: '1.35rem' },
@@ -16,17 +26,17 @@ const RANK_STYLE = {
 export default function LeaderboardPage({ user }) {
   const navigate = useNavigate();
   useLang();
-  const [data, setData] = useState({ level: [], gold: [] });
+  const [data, setData] = useState({ level: [], gold: [], survival: [] });
   const [tab, setTab] = useState('level');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getLeaderboard()
-      .then((d) => { setData({ level: d.level || [], gold: d.gold || [] }); setLoading(false); })
+      .then((d) => { setData({ level: d.level || [], gold: d.gold || [], survival: d.survival || [] }); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
-  const list = tab === 'level' ? data.level : data.gold;
+  const list = tab === 'level' ? data.level : tab === 'gold' ? data.gold : data.survival;
 
   const renderRow = (entry, i) => {
     const rankStyle = RANK_STYLE[entry.rank] || { color: 'var(--text-dim)', size: '0.95rem' };
@@ -88,10 +98,10 @@ export default function LeaderboardPage({ user }) {
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div className="font-fantasy" style={{ color: '#e8c15a', fontSize: '1rem', fontWeight: 700 }}>
-            {tab === 'level' ? `${t('leaderboard_level')} ${entry.level}` : entry.gold}
+            {tab === 'level' ? `${t('leaderboard_level')} ${entry.level}` : tab === 'gold' ? entry.gold : formatDuration(entry.survived_seconds)}
           </div>
           <div style={{ color: 'var(--text-dim)', fontSize: '0.68rem', fontFamily: "'Crimson Text', serif" }}>
-            {tab === 'level' ? `${entry.experience} XP` : t('leaderboard_gold_unit')}
+            {tab === 'level' ? `${entry.experience} XP` : tab === 'gold' ? t('leaderboard_gold_unit') : (entry.status === 'dead' ? t('leaderboard_dead') : t('leaderboard_alive'))}
           </div>
         </div>
       </motion.div>
@@ -135,6 +145,7 @@ export default function LeaderboardPage({ user }) {
         {[
           { id: 'level', icon: <Trophy size={15} />, label: t('leaderboard_tab_level') },
           { id: 'gold', icon: <Coins size={15} />, label: t('leaderboard_tab_gold') },
+          { id: 'survival', icon: <HeartPulse size={15} />, label: t('leaderboard_tab_survival') },
         ].map((tb) => (
           <motion.button
             key={tb.id}

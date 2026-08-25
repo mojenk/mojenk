@@ -10,7 +10,7 @@ import { useLang, t } from '../utils/i18n';
 import { playClick, playHeal, playError, playLevelUp } from '../utils/sounds';
 import Particles from '../components/Particles';
 
-const CATEGORY_ORDER = ['Tüketici', 'Silah', 'Zırh', 'Çeşitli', 'Evcil Hayvan', 'Binek', 'Unvan', 'Çerçeve'];
+const CATEGORY_ORDER = ['Tüketici', 'Silah', 'Zırh', 'Çeşitli', 'Evcil Hayvan', 'Binek'];
 
 // Turkish category label -> item type key, so getItemIcon() can resolve the
 // correct lucide icon for each category tab.
