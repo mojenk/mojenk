@@ -310,6 +310,7 @@ export async function shopBuy(characterId, itemId) {
 export async function verifyCosmeticPurchase(productId, purchaseToken, characterId) {
   return safeFetch(`${API}/premium/verify-cosmetic`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ productId, purchaseToken, characterId }),
   });
 }

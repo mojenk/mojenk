@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCharacters, getSessions, deleteCharacter, deleteSession, getLeaderboard, shopCatalog, verifyCosmeticPurchase, verifyPurchase } from '../utils/api';
+import { getCharacters, getSessions, deleteCharacter, deleteSession, getLeaderboard, shopCatalog, shopCosmeticEquip, verifyCosmeticPurchase, verifyPurchase } from '../utils/api';
 import { isBillingAvailable, initBilling, purchaseProduct, getPurchaseToken, getProductId, getBillingProducts } from '../utils/billing';
 import { COSMETIC_PLAY_PRODUCTS } from '../utils/cosmeticProducts';
 import { playClick, playDamage, playError } from '../utils/sounds';
@@ -124,9 +124,36 @@ export default function CharactersPage({ user, onLogout, isAdmin, onUserUpdate }
       const pid = getProductId(transaction);
       if (!token || !pid) throw new Error('Satın alma jetonu alınamadı');
       await verifyCosmeticPurchase(pid, token, target.id);
+      const granted = item.type === 'pack' ? (item.pack_grants || []) : [item.id];
+      setCharacters((prev) => prev.map((c) => c.id === target.id
+        ? { ...c, owned_cosmetics: [...new Set([...(c.owned_cosmetics || []), ...granted])] }
+        : c));
       setCosNotice(`${item.name} → ${target.name} (${t('shop_owned')})`);
     } catch (err) {
       if (!/cancel/i.test(err.message || '')) setCosNotice(err.message || 'Satın alma başarısız');
+    } finally {
+      setCosBusy(null);
+    }
+  };
+
+  const COSMETIC_FIELDS = { title: 'equipped_title', frame: 'equipped_frame', dice_skin: 'equipped_dice_skin' };
+
+  const handleCosmeticEquip = async (item) => {
+    if (cosBusy) return;
+    const target = characters.find((c) => c.status !== 'dead') || characters[0];
+    if (!target || !item.cosmetic_kind) return;
+    const field = COSMETIC_FIELDS[item.cosmetic_kind];
+    const isEquipped = target[field] === item.cosmetic_value;
+    setCosBusy(item.id);
+    setCosNotice('');
+    try {
+      await shopCosmeticEquip(target.id, isEquipped ? null : item.id, item.cosmetic_kind);
+      setCharacters((prev) => prev.map((c) => c.id === target.id
+        ? { ...c, [field]: isEquipped ? null : item.cosmetic_value }
+        : c));
+      setCosNotice(`${item.name}: ${isEquipped ? t('shop_deactivate') : t('shop_activate')} ✓`);
+    } catch (err) {
+      setCosNotice(err.message || 'İşlem başarısız');
     } finally {
       setCosBusy(null);
     }
@@ -848,19 +875,30 @@ export default function CharactersPage({ user, onLogout, isAdmin, onUserUpdate }
                 const price = (storeProducts.find((sp) => sp.id === item.play_product_id)?.pricing?.price)
                   || (storeProducts.find((sp) => sp.id === item.play_product_id)?.price)
                   || null;
+                const cosTarget = characters.find((c) => c.status !== 'dead') || characters[0];
+                const ownedList = Array.isArray(cosTarget?.owned_cosmetics) ? cosTarget.owned_cosmetics : [];
+                const isPack = item.type === 'pack';
+                const owned = isPack
+                  ? (item.pack_grants || []).every((g) => ownedList.includes(g))
+                  : ownedList.includes(item.id);
+                const eqField = item.cosmetic_kind ? COSMETIC_FIELDS[item.cosmetic_kind] : null;
+                const equipped = Boolean(eqField && cosTarget?.[eqField] === item.cosmetic_value);
+                const canToggle = owned && !isPack && eqField;
                 return (
                   <motion.button
                     key={item.id}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => handleCosmeticBuy(item)}
-                    disabled={cosBusy === item.id}
+                    onClick={() => (canToggle ? handleCosmeticEquip(item) : owned ? null : handleCosmeticBuy(item))}
+                    disabled={cosBusy === item.id || (owned && !canToggle)}
                     style={{
-                      background: 'rgba(201,150,58,0.06)',
-                      border: '1px solid rgba(92,74,42,0.5)',
+                      background: equipped ? 'rgba(201,150,58,0.22)' : 'rgba(201,150,58,0.06)',
+                      border: equipped ? '1px solid rgba(232,193,90,0.85)' : owned ? '1px solid rgba(201,150,58,0.55)' : '1px solid rgba(92,74,42,0.5)',
                       borderRadius: '8px',
                       padding: '0.4rem 0.25rem',
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem',
-                      cursor: 'pointer', opacity: cosBusy === item.id ? 0.6 : 1,
+                      cursor: owned && !canToggle ? 'default' : 'pointer',
+                      opacity: cosBusy === item.id ? 0.6 : 1,
+                      boxShadow: equipped ? '0 0 10px rgba(201,150,58,0.35)' : 'none',
                     }}
                   >
                     <div style={{ width: '3.2rem', height: '3.2rem', borderRadius: '6px', overflow: 'hidden', background: 'rgba(0,0,0,0.35)' }}>
@@ -875,8 +913,12 @@ export default function CharactersPage({ user, onLogout, isAdmin, onUserUpdate }
                     <span className="font-fantasy" style={{ color: 'var(--parch)', fontSize: '0.58rem', textAlign: 'center', lineHeight: 1.15 }}>
                       {item.name}
                     </span>
-                    <span style={{ color: 'var(--gold)', fontFamily: "'Cinzel', serif", fontSize: '0.62rem', fontWeight: 700 }}>
-                      {price || t('shop_real_money')}
+                    <span style={{ color: equipped ? '#e8c15a' : 'var(--gold)', fontFamily: "'Cinzel', serif", fontSize: '0.62rem', fontWeight: 700 }}>
+                      {canToggle
+                        ? (equipped ? t('shop_deactivate') : t('shop_activate'))
+                        : owned
+                          ? t('shop_owned')
+                          : (price || t('shop_real_money'))}
                     </span>
                   </motion.button>
                 );
